@@ -53,7 +53,7 @@
       style: {
         minHeight: '100vh',
         background: 'var(--surface-page)',
-        color: 'var(--text-base)',
+        color: 'var(--text-default)',
         display: 'flex',
         flexDirection: 'column',
         overflowX: 'hidden',
@@ -86,13 +86,14 @@
 
       // بدنه اصلی
       h('main', {
+        className: 'bsh-app-main',
         style: {
           flex: 1,
           maxWidth: 1280,
           width: '100%',
           margin: '0 auto',
           padding: 'var(--space-4)',
-          paddingInline: 'clamp(12px, 3vw, var(--space-6))',
+          paddingInline: 'clamp(var(--space-3), 3vw, var(--space-6))',
           boxSizing: 'border-box'
         }
       },
@@ -107,9 +108,9 @@
             }
           })
         ) : (
-          h('div', { style: { display: 'grid', gap: 'var(--space-6)', maxWidth: '100%' } },
+          h('div', { className: 'bsh-stack bsh-stack--lg' },
             // نوار تب‌های اصلی با اسکرول افقی روی موبایل
-            h('div', { style: { overflowX: 'auto', maxWidth: '100%', WebkitOverflowScrolling: 'touch', paddingBottom: 2 } },
+            h('div', { style: { maxWidth: '100%' } },
               h(B.Tabs, {
                 label: 'بخش‌های اصلی',
                 items: navTabs,

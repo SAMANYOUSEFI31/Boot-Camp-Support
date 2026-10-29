@@ -307,7 +307,7 @@
             checked: isSelected,
             onChange: function (e) { setIn(setSelected, selected, i, e.target.checked); }
           }),
-          h('div', { className: 'caption', style: { color: 'var(--text-muted)' } },
+          h('div', { className: 'caption', style: { color: 'var(--text-subtle)' } },
             Names.toPersianDigits(groupsCount) + ' گروه · ' +
             Names.toPersianDigits(peopleCount) + ' نفر · شروع: ' +
             (c.startDate ? Names.formatShamsi(c.startDate) : 'نامشخص')
@@ -357,7 +357,7 @@
             type: 'file',
             accept: '.json,application/json',
             onChange: handleFileSelected,
-            style: { display: 'block', width: '100%', color: 'var(--text-base)' }
+            style: { display: 'block', width: '100%', color: 'var(--text-default)' }
           })
         ),
         h(B.RadioGroup, {
@@ -372,7 +372,7 @@
               label: h('span', null,
                 h('strong', null, 'افزودن به داده‌های فعلی (پیشنهادی)'),
                 h('br'),
-                h('span', { className: 'caption', style: { color: 'var(--text-muted)' } }, 'دوره‌های فایل کنار دوره‌های فعلی اضافه می‌شوند و چیزی پاک نمی‌شود.')
+                h('span', { className: 'caption', style: { color: 'var(--text-subtle)' } }, 'دوره‌های فایل کنار دوره‌های فعلی اضافه می‌شوند و چیزی پاک نمی‌شود.')
               )
             },
             {
@@ -380,7 +380,7 @@
               label: h('span', null,
                 h('strong', null, 'جایگزینی کامل'),
                 h('br'),
-                h('span', { className: 'caption', style: { color: 'var(--text-muted)' } }, 'همهٔ اطلاعات فعلی پاک و با محتوای فایل عوض می‌شود.')
+                h('span', { className: 'caption', style: { color: 'var(--text-subtle)' } }, 'همهٔ اطلاعات فعلی پاک و با محتوای فایل عوض می‌شود.')
               )
             }
           ]
@@ -404,7 +404,7 @@
               ),
           (backup.exportedAt || backup.lastBackupAt) && h('div', {
             className: 'caption',
-            style: { color: 'var(--text-muted)' }
+            style: { color: 'var(--text-subtle)' }
           }, 'تاریخ ساخت فایل: ' + Names.formatShamsi(backup.exportedAt || backup.lastBackupAt))
         )
       )

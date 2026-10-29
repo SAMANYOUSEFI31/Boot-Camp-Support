@@ -729,7 +729,6 @@
         parts.length > 1 && h(B.Button, {
           variant: 'secondary',
           size: 'sm',
-          iconStart: 'Download',
           onClick: handleDownloadAllParts
         }, 'دانلود همه‌ی ' + Names.toPersianDigits(parts.length) + ' بخش'),
         h(B.Button, {
@@ -802,7 +801,7 @@
         h('div', {
           className: 'caption',
           style: {
-            color: 'var(--text-muted)',
+            color: 'var(--text-subtle)',
             display: 'flex',
             justifyContent: 'space-between',
             alignItems: 'center',

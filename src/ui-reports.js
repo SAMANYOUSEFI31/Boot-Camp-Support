@@ -36,6 +36,16 @@
     var activeGroup = myGroups.find(function (g) { return g.id === selectedGroupId; }) || myGroups[0] || null;
     var mainDays = (cohort.days || []).filter(function (d) { return d.type === 'main'; });
 
+    if (!activeGroup) {
+      return h(B.Card, { padding: 'lg' },
+        h(B.EmptyState, {
+          icon: 'Inbox',
+          title: 'گروهی برای گزارش وجود ندارد',
+          description: 'ابتدا در تب «گروه‌ها و اعضا» یک گروه بسازید.'
+        })
+      );
+    }
+
     function handleExportDay() {
       if (!activeGroup) return;
       setLoadingReport('day');
@@ -129,34 +139,26 @@
     var frozenCount = (cohort.participants || []).filter(function (p) { return p.status === 'frozen'; }).length;
     var activeCount = (cohort.participants || []).filter(function (p) { return p.status === 'active'; }).length;
 
-    return h('div', { style: { display: 'grid', gap: 'var(--space-6)' } },
+    return h('div', { className: 'bsh-stack bsh-stack--lg' },
       h('div', null,
         h('h2', { className: 'heading-md' }, 'گزارش‌ها و خروجی‌های اکسل و تصویر'),
-        h('p', { className: 'body-sm', style: { color: 'var(--text-muted)' } },
+        h('p', { className: 'body-sm', style: { color: 'var(--text-subtle)' } },
           'فایل‌های اکسل استاندارد و تصاویر تمیز تلگرامی (PNG ۱۰۸۰p) برای ارسال مستقیم در گروه‌ها و اشتراک‌گذاری.'
         )
       ),
 
       // خلاصه آمار دوره
-      h('div', { style: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 'var(--space-3)' } },
-        h(B.Card, { padding: 'md' },
-          h(B.Stat, { label: 'تعداد کل اعضا', value: Names.toPersianDigits(totalParticipants) + ' نفر' })
-        ),
-        h(B.Card, { padding: 'md' },
-          h(B.Stat, { label: 'اعضای فعال', value: Names.toPersianDigits(activeCount) + ' نفر' })
-        ),
-        h(B.Card, { padding: 'md' },
-          h(B.Stat, { label: 'افراد فریز شده', value: Names.toPersianDigits(frozenCount) + ' نفر' })
-        ),
-        h(B.Card, { padding: 'md' },
-          h(B.Stat, { label: 'تعداد گروه‌های من', value: Names.toPersianDigits(myGroups.length) + ' گروه' })
-        )
+      h('div', { style: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, calc(var(--space-32) + var(--space-8))), 1fr))', gap: 'var(--space-3)' } },
+        h(B.Stat, { label: 'تعداد کل اعضا', value: Names.toPersianDigits(totalParticipants) + ' نفر' }),
+        h(B.Stat, { label: 'اعضای فعال', value: Names.toPersianDigits(activeCount) + ' نفر' }),
+        h(B.Stat, { label: 'افراد فریز شده', value: Names.toPersianDigits(frozenCount) + ' نفر' }),
+        h(B.Stat, { label: 'تعداد گروه‌های من', value: Names.toPersianDigits(myGroups.length) + ' گروه' })
       ),
 
       // تنظیمات مشترک گزارش‌ها
       h(B.Card, { padding: 'lg', style: { display: 'grid', gap: 'var(--space-4)' } },
         h('h3', { className: 'title' }, 'انتخاب گروه و روز برای گزارش'),
-        h('div', { style: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 'var(--space-4)' } },
+        h('div', { style: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, var(--overlay-width-xs)), 1fr))', gap: 'var(--space-4)' } },
           h(B.Select, {
             label: 'انتخاب گروه هدف',
             options: myGroups.map(function (g) { return { value: g.id, label: g.name }; }),
@@ -186,7 +188,7 @@
       ),
 
       // کارت‌های انواع خروجی اکسل و تصویر
-      h('div', { style: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 'var(--space-4)' } },
+      h('div', { style: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, calc(var(--overlay-width-xs) + var(--space-8))), 1fr))', gap: 'var(--space-4)' } },
         // خروجی ۱: گزارش روز گروه (اکسل و تصویر)
         h(B.Card, { padding: 'lg', style: { display: 'flex', flexDirection: 'column', justifyContent: 'space-between' } },
           h('div', null,
@@ -194,14 +196,13 @@
               h(B.Icon, { name: 'CalendarDays', size: 'lg', className: 'text-brand' }),
               h('h4', { className: 'title' }, '۱. گزارش روز گروه (اکسل و تصویر)')
             ),
-            h('p', { className: 'body-sm', style: { color: 'var(--text-muted)', marginBottom: 'var(--space-4)' } },
+            h('p', { className: 'body-sm', style: { color: 'var(--text-subtle)', marginBottom: 'var(--space-4)' } },
               'مخصوص ارسال در گروه تلگرام در پایان روز. تصویر بهینه ۱۰۸۰ پیکسلی شارپ با فونت Vazirmatn، همراه با اکسل دو شیت.'
             )
           ),
           h('div', { style: { display: 'grid', gap: 'var(--space-2)' } },
             h(B.Button, {
               variant: 'primary',
-              iconStart: 'Image',
               loading: loadingReport === 'image',
               onClick: handleExportImage
             }, 'خروجی تصویر گزارش (PNG)'),
@@ -215,7 +216,6 @@
               }, 'دانلود اکسل'),
               h(B.Button, {
                 variant: 'secondary',
-                iconStart: 'FolderArchive',
                 style: { flex: 1 },
                 loading: loadingReport === 'both',
                 onClick: handleExportBoth
@@ -231,7 +231,7 @@
               h(B.Icon, { name: 'ChartColumn', size: 'lg', className: 'text-brand' }),
               h('h4', { className: 'title' }, '۲. ماتریس کل دوره گروه')
             ),
-            h('p', { className: 'body-sm', style: { color: 'var(--text-muted)', marginBottom: 'var(--space-4)' } },
+            h('p', { className: 'body-sm', style: { color: 'var(--text-subtle)', marginBottom: 'var(--space-4)' } },
               'ماتریس ۲۱ روز اصلی برای تمام اعضای گروه، امتیاز هر روز در صورت بسته بودن، مجموع تجمعی و درصد نهایی.'
             )
           ),
@@ -250,7 +250,7 @@
               h(B.Icon, { name: 'House', size: 'lg', className: 'text-brand' }),
               h('h4', { className: 'title' }, '۳. همه گروه‌ها (گزارش روز)')
             ),
-            h('p', { className: 'body-sm', style: { color: 'var(--text-muted)', marginBottom: 'var(--space-4)' } },
+            h('p', { className: 'body-sm', style: { color: 'var(--text-subtle)', marginBottom: 'var(--space-4)' } },
               'یک فایل اکسل واحد شامل شیت‌های مجزا برای تک‌تک گروه‌های مسئولیت من در روز انتخاب‌شده.'
             )
           ),
@@ -269,7 +269,7 @@
               h(B.Icon, { name: 'Copy', size: 'lg', className: 'text-brand' }),
               h('h4', { className: 'title' }, '۴. همه گروه‌ها (کل دوره)')
             ),
-            h('p', { className: 'body-sm', style: { color: 'var(--text-muted)', marginBottom: 'var(--space-4)' } },
+            h('p', { className: 'body-sm', style: { color: 'var(--text-subtle)', marginBottom: 'var(--space-4)' } },
               'یک فایل اکسل جامع شامل شیت ماتریس ۲۱ روزه برای تمام گروه‌های تحت نظارت شما.'
             )
           ),

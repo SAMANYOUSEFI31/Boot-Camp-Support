@@ -50,34 +50,24 @@
 
     var activeGroup = allGroups.find(function (g) { return g.id === selectedGroupId; }) || visibleGroups[0] || null;
 
-    return h('div', { style: { display: 'grid', gap: 'var(--space-6)' } },
+    return h('div', { className: 'bsh-stack bsh-stack--lg' },
       // هدر نوار ابزار گروه‌ها
-      h('div', {
-        style: {
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          gap: 'var(--space-3)',
-          flexWrap: 'wrap'
-        }
-      },
-        h('div', { style: { display: 'flex', alignItems: 'center', gap: 'var(--space-3)' } },
-          h('h2', { className: 'heading-md' }, 'مدیریت گروه‌ها و اعضا'),
+      h('div', { className: 'bsh-row' },
+        h('h2', { className: 'heading-md' }, 'مدیریت گروه‌ها و اعضا'),
+        h(B.Button, {
+          variant: 'primary',
+          iconStart: 'Plus',
+          onClick: function () {
+            setGroupToEdit(null);
+            setGroupModalOpen(true);
+          }
+        }, 'افزودن گروه'),
+        h('div', { className: 'bsh-row__end' },
           h(B.Switch, {
             label: 'نمایش همه گروه‌ها (شامل گروه‌های دیگران)',
             checked: showAllGroups,
             onChange: function (e) { setShowAllGroups(e.target.checked); }
           })
-        ),
-        h('div', { style: { display: 'flex', gap: 'var(--space-2)' } },
-          h(B.Button, {
-            variant: 'primary',
-            iconStart: 'Plus',
-            onClick: function () {
-              setGroupToEdit(null);
-              setGroupModalOpen(true);
-            }
-          }, 'افزودن گروه')
         )
       ),
 
@@ -89,7 +79,7 @@
             title: 'هیچ گروهی یافت نشد',
             description: showAllGroups ? 'هنوز گروهی در این دوره تعریف نشده است.' : 'هیچ گروهی با علامت «مال من است» وجود ندارد. «نمایش همه» را بزنید یا گروه جدید بسازید.',
             action: h(B.Button, {
-              variant: 'primary',
+              variant: 'secondary',
               onClick: function () {
                 setGroupToEdit(null);
                 setGroupModalOpen(true);
@@ -98,9 +88,9 @@
           })
         )
       ) : (
-        h('div', { style: { display: 'grid', gap: 'var(--space-4)', maxWidth: '100%' } },
+        h('div', { className: 'bsh-stack' },
           // انتخابگر گروه با اسکرول افقی روی موبایل
-          h('div', { style: { maxWidth: '100%', overflowX: 'auto', WebkitOverflowScrolling: 'touch' } },
+          h('div', { style: { maxWidth: '100%', overflowX: 'auto', WebkitOverflowScrolling: 'touch', paddingBlock: 'var(--space-1)' } },
             h(B.SegmentedControl, {
               label: 'انتخاب گروه',
               items: visibleGroups.map(function (g) {
@@ -251,8 +241,8 @@
         key: 'telegram',
         label: 'آیدی تلگرام',
         render: function (row) {
-          if (!row.telegram) return h('span', { style: { color: 'var(--text-muted)' } }, '—');
-          return h('span', { className: 'code', dir: 'ltr' }, '@' + row.telegram);
+          if (!row.telegram) return h('span', { style: { color: 'var(--text-subtle)' } }, '—');
+          return h('bdi', { className: 'code', dir: 'ltr' }, '@' + row.telegram);
         }
       },
       {
@@ -269,7 +259,7 @@
             { value: '4', label: '۴ عادت' }
           ];
 
-          return h('div', { style: { maxWidth: 130 } },
+          return h('div', { style: { maxInlineSize: 'calc(var(--space-16) * 2)' } },
             h(B.Select, {
               size: 'sm',
               options: options,
@@ -291,7 +281,7 @@
         key: 'actions',
         label: 'عملیات',
         render: function (row) {
-          return h('div', { style: { display: 'flex', gap: 'var(--space-1)' } },
+          return h('div', { style: { display: 'flex', gap: 'var(--space-2)' } },
             h(B.IconButton, {
               icon: 'Pencil',
               size: 'sm',
@@ -310,23 +300,20 @@
       }
     ];
 
-    return h(B.Card, { padding: 'lg', style: { display: 'grid', gap: 'var(--space-4)' } },
+    return h(B.Card, { padding: 'lg', style: { display: 'grid', gap: 'var(--space-4)', minInlineSize: 0 } },
       // مشخصات گروه و دکمه‌های اقدام
       h('div', {
+        className: 'bsh-row',
         style: {
-          display: 'flex',
           justifyContent: 'space-between',
-          alignItems: 'center',
-          gap: 'var(--space-3)',
-          flexWrap: 'wrap',
-          borderBottom: '1px solid var(--border-subtle)',
-          paddingBottom: 'var(--space-3)'
+          borderBlockEnd: 'var(--border-width-thin) solid var(--border-subtle)',
+          paddingBlockEnd: 'var(--space-3)'
         }
       },
         h('div', { style: { display: 'flex', alignItems: 'center', gap: 'var(--space-3)', flexWrap: 'wrap' } },
           h('h3', { className: 'heading-sm' }, group.name),
           group.mine ? h(B.Badge, { intent: 'brand', emphasis: 'bold' }, 'گروه من') : h(B.Badge, { intent: 'neutral', emphasis: 'subtle' }, 'گروه دیگران'),
-          h('span', { className: 'caption', style: { color: 'var(--text-muted)' } },
+          h('span', { className: 'caption', style: { color: 'var(--text-subtle)' } },
             'امروز: ' + Names.toPersianDigits(summary.unrecordedTodayCount) + ' نفر هنوز ثبت نشده‌اند'
           )
         ),
@@ -353,7 +340,7 @@
       ),
 
       // نوار سوئیچ بین جدول اعضا و نمای کلی ۲۱ روزه
-      h('div', { style: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 'var(--space-3)' } },
+      h('div', { className: 'bsh-row', style: { justifyContent: 'space-between' } },
         h(B.Tabs, {
           items: [
             { id: 'members', label: 'لیست اعضا (' + Names.toPersianDigits(members.length) + ' نفر)' },
@@ -384,7 +371,7 @@
             icon: 'User',
             title: 'عضوی در این گروه نیست',
             description: 'می‌توانید با پیست کردن لیست اسامی، اعضای گروه را وارد کنید.',
-            action: h(B.Button, { variant: 'primary', onClick: onAddPaste }, 'افزودن اعضا')
+            action: h(B.Button, { variant: 'secondary', onClick: onAddPaste }, 'افزودن اعضا')
           })
         ) : (
           h(B.Table, {
@@ -429,25 +416,21 @@
       style: {
         overflowX: 'auto',
         maxWidth: '100%',
-        border: '1px solid var(--border-subtle)',
+        border: 'var(--border-width-thin) solid var(--border-subtle)',
         borderRadius: 'var(--radius-md)'
       }
     },
       h('table', {
         className: 'bsh-table',
-        style: { borderCollapse: 'collapse', width: '100%', minWidth: 900 }
+        style: { borderCollapse: 'collapse', width: '100%', minWidth: 'calc(var(--container-md) + var(--space-16) * 2)' }
       },
         h('thead', null,
           h('tr', null,
             h('th', {
-              className: 'label-sm',
+              className: 'label-sm bsh-sticky-right',
               style: {
-                position: 'sticky',
-                right: 0,
-                zIndex: 3,
-                background: 'var(--surface-raised)',
-                borderBottom: '2px solid var(--border-subtle)',
-                minWidth: 160
+                borderBlockEnd: 'var(--border-width-thick) solid var(--border-subtle)',
+                minWidth: 'calc(var(--space-16) * 2.5)'
               }
             }, 'نام فرد'),
             mainDays.map(function (d) {
@@ -459,13 +442,13 @@
                 className: 'label-sm is-num',
                 style: {
                   textAlign: 'center',
-                  background: isClosed ? 'var(--neutral-800)' : 'var(--surface-raised)',
-                  minWidth: 54,
+                  background: isClosed ? 'var(--bg-neutral-subtle)' : 'var(--surface-raised)',
+                  minWidth: 'calc(var(--space-12) + var(--space-1) + var(--space-1))',
                   padding: 'var(--space-2)'
                 }
               },
                 h('div', null, 'ر' + Names.toPersianDigits(d.n)),
-                h('div', { className: 'caption', style: { color: 'var(--text-muted)' } }, shamsi),
+                h('div', { className: 'caption', style: { color: 'var(--text-subtle)' } }, shamsi),
                 h('div', null,
                   isClosed
                     ? h(B.Badge, { intent: 'success', emphasis: 'subtle', icon: 'Check' }, 'بسته')
@@ -484,18 +467,14 @@
             return h('tr', { key: p.id },
               // ستون نام چسبان
               h('td', {
-                className: 'body-sm',
+                className: 'body-sm bsh-sticky-right',
                 style: {
-                  position: 'sticky',
-                  right: 0,
-                  zIndex: 2,
-                  background: 'var(--surface-raised)',
                   fontWeight: 600,
-                  borderLeft: '1px solid var(--border-subtle)'
+                  borderInlineEnd: 'var(--border-width-thin) solid var(--border-subtle)'
                 }
               },
                 p.name,
-                p.status === 'frozen' && h('span', { className: 'caption', style: { color: 'var(--sky-400)', marginRight: 4 } }, '(فریز)')
+                p.status === 'frozen' && h('span', { className: 'caption', style: { color: 'var(--text-info)', marginInlineStart: 'var(--space-1)' } }, '(فریز)')
               ),
               // ستون‌های روزهای اصلی
               mainDays.map(function (d) {
@@ -509,11 +488,11 @@
                 if (isClosed) {
                   var sc = Scoring.dayScore(p, rec, d);
                   content = Names.toPersianDigits(sc);
-                  cellIntent = sc > 0 ? 'var(--emerald-500)' : 'var(--neutral-500)';
+                  cellIntent = sc > 0 ? 'var(--text-success)' : 'var(--text-subtlest)';
                 } else if (hasRec) {
                   var tempSc = Scoring.dayScore(p, rec, d);
                   content = Names.toPersianDigits(tempSc);
-                  cellIntent = 'var(--amber-400)';
+                  cellIntent = 'var(--text-warning)';
                 }
 
                 return h('td', {
@@ -521,13 +500,13 @@
                   className: 'body-sm is-num',
                   style: {
                     textAlign: 'center',
-                    color: cellIntent || 'var(--text-muted)'
+                    color: cellIntent || 'var(--text-subtle)'
                   }
                 }, content);
               }),
               h('td', { className: 'body-sm is-num', style: { textAlign: 'center', fontWeight: 700 } }, Names.toPersianDigits(totals.totalScore)),
               h('td', { className: 'body-sm is-num', style: { textAlign: 'center' } }, Names.toPersianDigits(totals.totalMax)),
-              h('td', { className: 'body-sm is-num', style: { textAlign: 'center', fontWeight: 700, color: 'var(--brand-400)' } }, Names.toPersianDigits(totals.percent) + '٪')
+              h('td', { className: 'body-sm is-num', style: { textAlign: 'center', fontWeight: 700 } }, Names.toPersianDigits(totals.percent) + '٪')
             );
           })
         )
@@ -806,6 +785,7 @@
         }),
         h(B.TextField, {
           label: 'آیدی تلگرام',
+          dir: 'ltr',
           placeholder: 'username',
           value: telegram,
           onChange: function (e) { setTelegram(e.target.value); }

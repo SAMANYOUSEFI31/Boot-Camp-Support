@@ -187,7 +187,7 @@
           h(B.Card, { padding: 'lg', style: { textAlign: 'center', border: '2px dashed var(--border-subtle)' } },
             h(B.Icon, { name: 'Inbox', size: '2xl', className: 'text-brand', style: { margin: '0 auto var(--space-2)' } }),
             h('h3', { className: 'heading-xs' }, 'فایل یا فایل‌های اکسل (.xlsx) یا .csv را انتخاب کنید'),
-            h('p', { className: 'body-sm', style: { color: 'var(--text-muted)', margin: 'var(--space-2) 0' } },
+            h('p', { className: 'body-sm', style: { color: 'var(--text-subtle)', margin: 'var(--space-2) 0' } },
               'می‌توانید «جدول گروه‌بندی»، «لیست ثبت‌نامی» یا هر دو را همزمان انتخاب نمایید.'
             ),
             h('input', {
@@ -195,7 +195,7 @@
               multiple: true,
               accept: '.xlsx,.csv',
               onChange: handleFilesChosen,
-              style: { margin: 'var(--space-3) auto', display: 'block', color: 'var(--text-base)' }
+              style: { margin: 'var(--space-3) auto', display: 'block', color: 'var(--text-default)' }
             })
           ),
 
@@ -204,7 +204,7 @@
             h('div', { style: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 'var(--space-2)' } },
               h('div', null,
                 h('div', { className: 'title' }, 'بارگذاری فایل‌های نمونه آزمون پذیرش'),
-                h('div', { className: 'caption', style: { color: 'var(--text-muted)' } },
+                h('div', { className: 'caption', style: { color: 'var(--text-subtle)' } },
                   'شامل ۵ گروه با ۸۵ نفر، مغایرت سمیه سعدی، ۳ نفر بدون گروه و ۵ فریز شده.'
                 )
               ),
@@ -257,7 +257,7 @@
                         setGroupConfigMap(updated);
                       }
                     }),
-                    h('div', { className: 'caption', style: { color: 'var(--text-muted)', marginTop: 4 } },
+                    h('div', { className: 'caption', style: { color: 'var(--text-subtle)', marginTop: 'var(--space-1)' } },
                       'نمونه اعضا: ' + (firstNames || 'بدون عضو')
                     )
                   ),
@@ -321,7 +321,7 @@
           ),
           h(B.Card, { padding: 'md' },
             h('div', { className: 'title', style: { marginBottom: 'var(--space-2)' } }, 'آماده اعمال در دوره: ' + cohort.name),
-            h('p', { className: 'body-sm', style: { color: 'var(--text-muted)' } },
+            h('p', { className: 'body-sm', style: { color: 'var(--text-subtle)' } },
               'با کلیک روی تأیید، اعضا و گروه‌های مشخص‌شده به دوره اضافه می‌شوند و یک نسخه پشتیبان در حافظه ذخیره می‌گردد تا در صورت تمایل امکان Undo داشته باشید.'
             )
           ),

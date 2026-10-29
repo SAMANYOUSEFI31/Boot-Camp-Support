@@ -102,7 +102,14 @@
       };
     });
 
+    var backupStatusText = 'آخرین بکاپ: ' + formatRelativeBackupTime(state.lastBackupAt);
+
     var menuItems = [
+      {
+        label: backupStatusText,
+        disabled: true
+      },
+      { divider: true },
       {
         label: 'ورود از اکسل / CSV',
         icon: 'Inbox',
@@ -137,17 +144,15 @@
       }
     ];
 
-    var backupStatusText = 'آخرین بکاپ: ' + formatRelativeBackupTime(state.lastBackupAt);
 
     return h('header', {
       className: 'bsh-header',
       style: {
         background: 'var(--surface-raised)',
-        borderBottom: '1px solid var(--border-subtle)',
+        borderBottom: 'var(--border-width-thin) solid var(--border-subtle)',
         padding: 'var(--space-3) var(--space-4)',
         position: 'sticky',
-        top: 0,
-        zIndex: 20
+        top: 0
       }
     },
       h('div', {
@@ -162,7 +167,7 @@
         }
       },
         // بخش راست: برند و انتخاب دوره
-        h('div', { style: { display: 'flex', alignItems: 'center', gap: 'var(--space-3)', flexWrap: 'wrap' } },
+        h('div', { className: 'bsh-header__brand', style: { display: 'flex', alignItems: 'center', gap: 'var(--space-3)', flexWrap: 'wrap' } },
           h('div', { style: { display: 'flex', alignItems: 'center', gap: 'var(--space-2)' } },
             (SupportApp.Brand && SupportApp.Brand.markWhite)
               ? h('img', {
@@ -173,7 +178,7 @@
               : h(B.Icon, { name: 'Flame', size: 'lg', className: 'text-brand' }),
             h('span', { className: 'heading-xs' }, 'پشتیبان بوشیدو')
           ),
-          cohorts.length > 0 && h('div', { style: { minWidth: 160 } },
+          cohorts.length > 0 && h('div', { className: 'bsh-header__cohort' },
             h(B.Select, {
               size: 'sm',
               options: cohortOptions,
@@ -189,8 +194,8 @@
         // بخش چپ: وضعیت بکاپ و منوی ابزار
         h('div', { style: { display: 'flex', alignItems: 'center', gap: 'var(--space-3)' } },
           h('span', {
-            className: 'caption',
-            style: { color: 'var(--text-muted)', whiteSpace: 'nowrap' }
+            className: 'caption bsh-backup-status',
+            style: { color: 'var(--text-subtle)', whiteSpace: 'nowrap' }
           }, backupStatusText),
           h(B.Menu, {
             trigger: h(B.Button, {
@@ -198,6 +203,7 @@
               size: 'sm',
               iconStart: 'Settings'
             }, 'ابزارها'),
+            align: 'end',
             items: menuItems
           })
         )
@@ -205,20 +211,30 @@
     );
   }
 
+  var BANNER_SNOOZE_KEY = 'bsh_backup_banner_snoozed';
+
+  function isBannerSnoozed() {
+    try { return sessionStorage.getItem(BANNER_SNOOZE_KEY) === '1'; } catch (e) { return false; }
+  }
+
   /**
-   * بنر هشدار نیاز به بکاپ
+   * بنر هشدار نیاز به بکاپ (قابل بستن تا بعد؛ در موبایل جمع‌وجور)
    */
   function BackupReminderBanner(props) {
-    var overdue = Store.isBackupOverdue();
-    if (!overdue) return null;
+    var [snoozed, setSnoozed] = root.React.useState(isBannerSnoozed());
+    if (snoozed || !Store.isBackupOverdue()) return null;
 
-    return h('div', { style: { maxWidth: 1024, margin: 'var(--space-3) auto 0 auto', padding: '0 var(--space-4)' } },
+    return h('div', { className: 'bsh-banner-wrap bsh-banner' },
       h(B.Alert, {
         intent: 'warning',
         title: 'یادآوری تهیه پشتیبان',
+        onClose: function () {
+          try { sessionStorage.setItem(BANNER_SNOOZE_KEY, '1'); } catch (e) {}
+          setSnoozed(true);
+        },
         action: h(B.Button, {
           size: 'sm',
-          variant: 'primary',
+          variant: 'secondary',
           onClick: downloadAllBackup
         }, 'دانلود بکاپ همهٔ دوره‌ها')
       }, 'اگر حافظه یا تاریخچه مرورگر پاک شود، اطلاعات از بین می‌رود. لطفاً فایل پشتیبان دریافت کنید.')
@@ -232,7 +248,7 @@
     var hasConflict = Store.getMultiTabWarning();
     if (!hasConflict) return null;
 
-    return h('div', { style: { maxWidth: 1024, margin: 'var(--space-3) auto 0 auto', padding: '0 var(--space-4)' } },
+    return h('div', { className: 'bsh-banner-wrap' },
       h(B.Alert, {
         intent: 'danger',
         title: 'هشدار باز بودن همزمان چند تب',

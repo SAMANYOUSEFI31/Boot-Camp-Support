@@ -95,10 +95,10 @@
       window.location.reload();
     }
 
-    return h('div', { style: { display: 'grid', gap: 'var(--space-6)' } },
+    return h('div', { className: 'bsh-stack bsh-stack--lg' },
       h('div', null,
         h('h2', { className: 'heading-md' }, 'تنظیمات دوره و سیستم'),
-        h('p', { className: 'body-sm', style: { color: 'var(--text-muted)' } },
+        h('p', { className: 'body-sm', style: { color: 'var(--text-subtle)' } },
           'پیکربندی روزهای ۳۰‌گانه دوره فعال، پشتیبان‌گیری، تست‌ها و پاکسازی حافظه.'
         )
       ),
@@ -168,20 +168,20 @@
           h('div', {
             style: {
               overflowX: 'auto',
-              border: '1px solid var(--border-subtle)',
+              border: 'var(--border-width-thin) solid var(--border-subtle)',
               borderRadius: 'var(--radius-md)'
             }
           },
             h('table', {
               className: 'bsh-table',
-              style: { borderCollapse: 'collapse', width: '100%', minWidth: 640 }
+              style: { borderCollapse: 'collapse', width: '100%', minWidth: 'var(--container-sm)' }
             },
               h('thead', null,
                 h('tr', null,
                   h('th', { className: 'label-sm is-num', style: { textAlign: 'center', width: 60 } }, 'روز'),
-                  h('th', { className: 'label-sm', style: { minWidth: 120 } }, 'تاریخ شمسی'),
-                  h('th', { className: 'label-sm', style: { minWidth: 130 } }, 'نوع روز'),
-                  h('th', { className: 'label-sm', style: { minWidth: 130 } }, 'سطح کار سخت'),
+                  h('th', { className: 'label-sm', style: { minWidth: 'var(--space-32)' } }, 'تاریخ شمسی'),
+                  h('th', { className: 'label-sm', style: { minWidth: 'var(--space-32)' } }, 'نوع روز'),
+                  h('th', { className: 'label-sm', style: { minWidth: 'var(--space-32)' } }, 'سطح کار سخت'),
                   h('th', { className: 'label-sm', style: { minWidth: 120, textAlign: 'center' } }, 'مأموریت ویژه'),
                   h('th', { className: 'label-sm', style: { minWidth: 100, textAlign: 'center' } }, 'اقدام')
                 )
@@ -256,7 +256,7 @@
             h('div', { style: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 'var(--space-3)' } },
               h('div', null,
                 h('div', { className: 'title' }, 'آرشیو کردن این دوره'),
-                h('p', { className: 'body-sm', style: { color: 'var(--text-muted)' } },
+                h('p', { className: 'body-sm', style: { color: 'var(--text-subtle)' } },
                   'با آرشیو کردن دوره، ثبت روزانه برای آن قفل و فقط‌خواندنی می‌شود، اما امکان دریافت گزارش اکسل باقی می‌ماند.'
                 )
               ),
@@ -276,7 +276,7 @@
             h('div', { style: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 'var(--space-3)' } },
               h('div', null,
                 h('div', { className: 'title' }, 'آزمون‌های صحت محاسبات'),
-                h('p', { className: 'body-sm', style: { color: 'var(--text-muted)' } },
+                h('p', { className: 'body-sm', style: { color: 'var(--text-subtle)' } },
                   'بررسی ۱۵ تست اجباری موتور امتیازدهی در مرورگر.'
                 )
               ),
@@ -291,13 +291,13 @@
           // پاکسازی کامل داده‌ها (خطرناک)
           h(B.Card, {
             padding: 'lg',
-            style: { border: '1px solid var(--crimson-700)', background: 'var(--surface-overlay)' }
+            style: { border: 'var(--border-width-thin) solid var(--border-danger-subtle)', background: 'var(--surface-overlay)' }
           },
             h('div', { style: { display: 'flex', alignItems: 'center', gap: 'var(--space-2)', marginBottom: 'var(--space-2)' } },
               h(B.Icon, { name: 'OctagonAlert', size: 'lg', className: 'text-danger' }),
-              h('h3', { className: 'heading-sm', style: { color: 'var(--crimson-400)' } }, 'منطقه‌ی خطر: پاک‌کردن همه‌ی داده‌ها')
+              h('h3', { className: 'heading-sm', style: { color: 'var(--text-danger)' } }, 'منطقه‌ی خطر: پاک‌کردن همه‌ی داده‌ها')
             ),
-            h('p', { className: 'body-sm', style: { color: 'var(--text-muted)', marginBottom: 'var(--space-4)' } },
+            h('p', { className: 'body-sm', style: { color: 'var(--text-subtle)', marginBottom: 'var(--space-4)' } },
               'با این کار تمام دوره‌ها، گروه‌ها، افراد و رکوردهای ثبت‌شده در این مرورگر به طور کامل و غیرقابل بازگشت پاک خواهند شد. حتماً قبل از این کار، فایل پشتیبان (بکاپ) دریافت کنید.'
             ),
             h(B.Button, {
