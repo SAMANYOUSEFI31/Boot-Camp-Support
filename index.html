@@ -19,26 +19,6 @@
   <body style="background: var(--surface-page); color: var(--text-default); margin: 0; min-height: var(--app-dvh);">
     <div id="root"></div>
 
-    <!-- بارگذاری ری‌اکت و کامپوننت‌های بوشیدو بدون مرحله ساخت (Buildless) -->
-    <script src="ds/lib/react.production.min.js"></script>
-    <script src="ds/lib/react-dom.production.min.js"></script>
-    <script src="ds/bundle.js"></script>
-
-    <!-- ماژول‌های منطق و رابط کاربری -->
-    <script src="src/names.js"></script>
-    <script src="src/scoring.js"></script>
-    <script src="src/excel.js"></script>
-    <script src="src/brand.js"></script>
-    <script src="src/image-export.js"></script>
-    <script src="src/importer.js"></script>
-    <script src="src/store.js"></script>
-    <script src="src/ui-common.js"></script>
-    <script src="src/ui-cohorts.js"></script>
-    <script src="src/ui-groups.js"></script>
-    <script src="src/ui-daily.js"></script>
-    <script src="src/ui-reports.js"></script>
-    <script src="src/ui-settings.js"></script>
-    <script src="src/ui-wizard.js"></script>
-    <script src="src/app.js"></script>
+    <script type="module" src="/src/main.ts"></script>
   </body>
 </html>
