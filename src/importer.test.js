@@ -1,10 +1,7 @@
-import test from 'node:test';
+import { test } from 'vitest';
 import assert from 'node:assert/strict';
-import { createRequire } from 'node:module';
-
-const require = createRequire(import.meta.url);
-const Names = require('./names.js');
-const Importer = require('./importer.js');
+import { Names } from './names.js';
+import { Importer } from './importer.js';
 
 test('بررسی معیارهای پذیرش ورود فایل‌های نمونه (۸۵ نفر در ۵ گروه، مغایرت سمیه سعدی، ۳ نفر بدون گروه، ۵ فریز)', () => {
   const sampleData = Importer.generateSampleFilesData();

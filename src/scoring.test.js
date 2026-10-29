@@ -1,11 +1,9 @@
-import test from 'node:test';
+import { test } from 'vitest';
 import assert from 'node:assert/strict';
 
-import { createRequire } from 'node:module';
-const require = createRequire(import.meta.url);
-const Names = require('./names.js');
-const Scoring = require('./scoring.js');
-const ImageExport = require('./image-export.js');
+import { Names } from './names.js';
+import { Scoring } from './scoring.js';
+import { ImageExport } from './image-export.js';
 
 test('۱. habitCount=3, done=3, hard=3 (روز با ۳ سطح), special=1 (روز ماموریت دارد) -> ۷ از ۷', () => {
   const p = { id: 'p1', habitCount: 3 };
