@@ -1,0 +1,235 @@
+/**
+ * @license
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+(function (root) {
+  'use strict';
+
+  var SupportApp = root.SupportApp || (root.SupportApp = {});
+  var h = root.React.createElement;
+  var B = root.Bushido;
+  var Names = SupportApp.Names || {};
+  var Store = SupportApp.Store || {};
+
+  /**
+   * محاسبه زمان گذشته به زبان ساده فارسی
+   * مثلاً: «۳ روز پیش»، «امروز»، «دیروز»، «هرگز»
+   */
+  function formatRelativeBackupTime(isoDate) {
+    if (!isoDate) return 'هرگز بکاپ گرفته نشده';
+    var then = new Date(isoDate).getTime();
+    var now = Date.now();
+    var diffMs = now - then;
+    if (diffMs < 0) diffMs = 0;
+
+    var diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+    var diffDays = Math.floor(diffHours / 24);
+
+    if (diffDays === 0) {
+      if (diffHours === 0) return 'همین امروز';
+      return Names.toPersianDigits(diffHours) + ' ساعت پیش';
+    } else if (diffDays === 1) {
+      return 'دیروز';
+    } else {
+      return Names.toPersianDigits(diffDays) + ' روز پیش';
+    }
+  }
+
+  /**
+   * نوار بالای صفحه (Header)
+   * انتخابگر دوره، وضعیت آخرین بکاپ، منوی ابزار
+   */
+  function Header(props) {
+    var state = props.state;
+    var activeCohort = props.activeCohort;
+    var onOpenCohortModal = props.onOpenCohortModal;
+    var onOpenImportWizard = props.onOpenImportWizard;
+    var onOpenBackupModal = props.onOpenBackupModal;
+    var onOpenRestoreModal = props.onOpenRestoreModal;
+
+    var cohorts = state.cohorts || [];
+
+    var cohortOptions = cohorts.map(function (c) {
+      return {
+        value: c.id,
+        label: c.name + (c.archived ? ' (آرشیو)' : '')
+      };
+    });
+
+    var menuItems = [
+      {
+        label: 'ورود از اکسل / CSV',
+        icon: 'Inbox',
+        onSelect: onOpenImportWizard
+      },
+      {
+        label: 'دانلود بکاپ کامل (JSON)',
+        icon: 'Copy',
+        onSelect: function () {
+          var data = Store.getState();
+          var activeName = activeCohort ? activeCohort.name : 'همه';
+          var dateStr = new Date().toISOString().slice(0, 10);
+          var filename = 'support-backup-' + Names.sanitizeFilename(activeName) + '-' + dateStr + '.json';
+          var blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+          var url = URL.createObjectURL(blob);
+          var a = document.createElement('a');
+          a.href = url;
+          a.download = filename;
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          setTimeout(function () { URL.revokeObjectURL(url); }, 2000);
+          Store.recordBackupTime();
+        }
+      },
+      {
+        label: 'بازگردانی از فایل بکاپ',
+        icon: 'ExternalLink',
+        onSelect: onOpenRestoreModal
+      },
+      { divider: true },
+      {
+        label: 'ساخت دوره جدید',
+        icon: 'Plus',
+        onSelect: function () { onOpenCohortModal('new'); }
+      },
+      {
+        label: 'مشاهده آزمون‌های موتور محاسبات',
+        icon: 'CircleCheck',
+        onSelect: function () { window.open('tests.html', '_blank'); }
+      }
+    ];
+
+    var backupStatusText = 'آخرین بکاپ: ' + formatRelativeBackupTime(state.lastBackupAt);
+
+    return h('header', {
+      className: 'bsh-header',
+      style: {
+        background: 'var(--surface-raised)',
+        borderBottom: '1px solid var(--border-subtle)',
+        padding: 'var(--space-3) var(--space-4)',
+        position: 'sticky',
+        top: 0,
+        zIndex: 20
+      }
+    },
+      h('div', {
+        style: {
+          maxWidth: 1024,
+          margin: '0 auto',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          gap: 'var(--space-3)',
+          flexWrap: 'wrap'
+        }
+      },
+        // بخش راست: برند و انتخاب دوره
+        h('div', { style: { display: 'flex', alignItems: 'center', gap: 'var(--space-3)', flexWrap: 'wrap' } },
+          h('div', { style: { display: 'flex', alignItems: 'center', gap: 'var(--space-2)' } },
+            h(B.Icon, { name: 'Flame', size: 'lg', className: 'text-brand' }),
+            h('span', { className: 'heading-xs' }, 'پشتیبان بوشیدو')
+          ),
+          cohorts.length > 0 && h('div', { style: { minWidth: 160 } },
+            h(B.Select, {
+              size: 'sm',
+              options: cohortOptions,
+              value: activeCohort ? activeCohort.id : '',
+              onChange: function (e) {
+                Store.setActiveCohortId(e.target.value);
+              }
+            })
+          ),
+          activeCohort && activeCohort.archived && h(B.Badge, { intent: 'warning', emphasis: 'subtle' }, 'فقط‌خواندنی (آرشیو)')
+        ),
+
+        // بخش چپ: وضعیت بکاپ و منوی ابزار
+        h('div', { style: { display: 'flex', alignItems: 'center', gap: 'var(--space-3)' } },
+          h('span', {
+            className: 'caption',
+            style: { color: 'var(--text-muted)', whiteSpace: 'nowrap' }
+          }, backupStatusText),
+          h(B.Menu, {
+            trigger: h(B.Button, {
+              variant: 'secondary',
+              size: 'sm',
+              iconStart: 'Settings'
+            }, 'ابزارها'),
+            items: menuItems
+          })
+        )
+      )
+    );
+  }
+
+  /**
+   * بنر هشدار نیاز به بکاپ
+   */
+  function BackupReminderBanner(props) {
+    var overdue = Store.isBackupOverdue();
+    if (!overdue) return null;
+
+    return h('div', { style: { maxWidth: 1024, margin: 'var(--space-3) auto 0 auto', padding: '0 var(--space-4)' } },
+      h(B.Alert, {
+        intent: 'warning',
+        title: 'یادآوری تهیه پشتیبان',
+        action: h(B.Button, {
+          size: 'sm',
+          variant: 'primary',
+          onClick: function () {
+            var data = Store.getState();
+            var activeCohort = Store.getActiveCohort();
+            var activeName = activeCohort ? activeCohort.name : 'داده‌ها';
+            var dateStr = new Date().toISOString().slice(0, 10);
+            var filename = 'support-backup-' + Names.sanitizeFilename(activeName) + '-' + dateStr + '.json';
+            var blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+            var url = URL.createObjectURL(blob);
+            var a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            setTimeout(function () { URL.revokeObjectURL(url); }, 2000);
+            Store.recordBackupTime();
+          }
+        }, 'دانلود بکاپ (JSON)')
+      }, 'اگر حافظه یا تاریخچه مرورگر پاک شود، اطلاعات از بین می‌رود. لطفاً فایل پشتیبان دریافت کنید.')
+    );
+  }
+
+  /**
+   * هشدار باز بودن تب‌های همزمان
+   */
+  function MultiTabWarningBanner() {
+    var hasConflict = Store.getMultiTabWarning();
+    if (!hasConflict) return null;
+
+    return h('div', { style: { maxWidth: 1024, margin: 'var(--space-3) auto 0 auto', padding: '0 var(--space-4)' } },
+      h(B.Alert, {
+        intent: 'danger',
+        title: 'هشدار باز بودن همزمان چند تب',
+        action: h(B.Button, {
+          size: 'sm',
+          variant: 'secondary',
+          onClick: function () {
+            Store.clearMultiTabWarning();
+            window.location.reload();
+          }
+        }, 'تازه‌سازی صفحه')
+      }, 'این برنامه در تب دیگری باز است یا داده‌ها تغییر کرده‌اند. برای جلوگیری از بازنویسی تصادفی اطلاعات، این صفحه را تازه‌سازی کنید.')
+    );
+  }
+
+  SupportApp.UICommon = {
+    formatRelativeBackupTime: formatRelativeBackupTime,
+    Header: Header,
+    BackupReminderBanner: BackupReminderBanner,
+    MultiTabWarningBanner: MultiTabWarningBanner
+  };
+
+  if (typeof module !== 'undefined' && module.exports) {
+    module.exports = SupportApp.UICommon;
+  }
+})(typeof window !== 'undefined' ? window : globalThis);

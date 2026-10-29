@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="fa" dir="rtl">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#09090b" />
+    <title>پشتیبان بوشیدو — ابزار مدیریت و ثبت امتیاز بوت‌کمپ</title>
+    <meta name="description" content="ابزار داخلی پشتیبان‌های بوت‌کمپ بوشیدو برای مدیریت گروه‌ها، افراد، ثبت سریع نتایج روزانه و خروجی گزارش‌های استاندارد اکسل." />
+    <meta property="og:title" content="پشتیبان بوشیدو — ابزار مدیریت و ثبت امتیاز بوت‌کمپ" />
+    <meta property="og:description" content="ابزار داخلی پشتیبان‌های بوت‌کمپ بوشیدو برای مدیریت گروه‌ها، افراد، ثبت سریع نتایج روزانه و خروجی گزارش‌های استاندارد اکسل." />
+    <meta property="og:type" content="website" />
+    <meta name="twitter:card" content="summary_large_image" />
+
+    <!-- استایل‌ها و توکن‌های دیزاین سیستم بوشیدو -->
+    <link rel="stylesheet" href="ds/tokens.css" />
+    <link rel="stylesheet" href="ds/bundle.css" />
+  </head>
+  <body style="background: var(--surface-page); color: var(--text-base); margin: 0; min-height: 100vh;">
+    <div id="root"></div>
+
+    <!-- بارگذاری ری‌اکت و کامپوننت‌های بوشیدو بدون مرحله ساخت (Buildless) -->
+    <script src="ds/lib/react.production.min.js"></script>
+    <script src="ds/lib/react-dom.production.min.js"></script>
+    <script src="ds/bundle.js"></script>
+
+    <!-- ماژول‌های منطق و رابط کاربری -->
+    <script src="src/names.js"></script>
+    <script src="src/scoring.js"></script>
+    <script src="src/excel.js"></script>
+    <script src="src/importer.js"></script>
+    <script src="src/store.js"></script>
+    <script src="src/ui-common.js"></script>
+    <script src="src/ui-cohorts.js"></script>
+    <script src="src/ui-groups.js"></script>
+    <script src="src/ui-daily.js"></script>
+    <script src="src/ui-reports.js"></script>
+    <script src="src/ui-settings.js"></script>
+    <script src="src/ui-wizard.js"></script>
+    <script src="src/app.js"></script>
+  </body>
+</html>

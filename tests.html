@@ -1,0 +1,303 @@
+<!doctype html>
+<html lang="fa" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>آزمون‌های موتور امتیاز — بوشیدو</title>
+  <link rel="stylesheet" href="ds/tokens.css">
+  <link rel="stylesheet" href="ds/bundle.css">
+</head>
+<body style="background: var(--surface-page); color: var(--text-base); min-height: 100vh; padding: var(--space-6) var(--space-4);">
+  <div id="root" style="max-width: 768px; margin: 0 auto;"></div>
+
+  <script src="ds/lib/react.production.min.js"></script>
+  <script src="ds/lib/react-dom.production.min.js"></script>
+  <script src="ds/bundle.js"></script>
+  <script src="src/names.js"></script>
+  <script src="src/scoring.js"></script>
+  <script>
+    var h = React.createElement;
+    var B = window.Bushido;
+
+    var testDefinitions = [
+      {
+        id: 1,
+        title: '۱. habitCount=3, done=3, hard=3, special=1 در روز ۳ سطحی با مأموریت -> ۷ از ۷',
+        run: function () {
+          var p = { id: 'p1', habitCount: 3 };
+          var day = { n: 8, type: 'main', hardLevels: 3, specialMission: true };
+          var rec = { done: 3, hard: 3, special: 1 };
+          var sc = SupportApp.Scoring.dayScore(p, rec, day);
+          var mx = SupportApp.Scoring.dayMax(p, day, rec);
+          return { pass: sc === 7 && mx === 7, detail: 'امتیاز: ' + sc + ' از ' + mx };
+        }
+      },
+      {
+        id: 2,
+        title: '۲. habitCount=4, done=2, hard=0, special=0 در همان روز -> ۲ از ۸',
+        run: function () {
+          var p = { id: 'p2', habitCount: 4 };
+          var day = { n: 8, type: 'main', hardLevels: 3, specialMission: true };
+          var rec = { done: 2, hard: 0, special: 0 };
+          var sc = SupportApp.Scoring.dayScore(p, rec, day);
+          var mx = SupportApp.Scoring.dayMax(p, day, rec);
+          return { pass: sc === 2 && mx === 8, detail: 'امتیاز: ' + sc + ' از ' + mx };
+        }
+      },
+      {
+        id: 3,
+        title: '۳. habitCount=1, done=1, hard=2 در روز ۲ سطحی بدون مأموریت -> ۳ از ۳',
+        run: function () {
+          var p = { id: 'p3', habitCount: 1 };
+          var day = { n: 10, type: 'main', hardLevels: 2, specialMission: false };
+          var rec = { done: 1, hard: 2, special: 0 };
+          var sc = SupportApp.Scoring.dayScore(p, rec, day);
+          var mx = SupportApp.Scoring.dayMax(p, day, rec);
+          return { pass: sc === 3 && mx === 3, detail: 'امتیاز: ' + sc + ' از ' + mx };
+        }
+      },
+      {
+        id: 4,
+        title: '۴. روز بدون کار سخت (hardLevels=0) با مأموریت، habitCount=2, done=2, special=1 -> ۳ از ۳',
+        run: function () {
+          var p = { id: 'p4', habitCount: 2 };
+          var day = { n: 11, type: 'main', hardLevels: 0, specialMission: true };
+          var rec = { done: 2, hard: 0, special: 1 };
+          var sc = SupportApp.Scoring.dayScore(p, rec, day);
+          var mx = SupportApp.Scoring.dayMax(p, day, rec);
+          return { pass: sc === 3 && mx === 3, detail: 'امتیاز: ' + sc + ' از ' + mx };
+        }
+      },
+      {
+        id: 5,
+        title: '۵. hard بزرگتر از hardLevels امروز: به سقف روز clamp می‌شود',
+        run: function () {
+          var p = { id: 'p5', habitCount: 2 };
+          var day = { n: 12, type: 'main', hardLevels: 1, specialMission: false };
+          var rec = { done: 2, hard: 3, special: 0 };
+          var sc = SupportApp.Scoring.dayScore(p, rec, day);
+          return { pass: sc === 3, detail: 'امتیاز محاسبه شده: ' + sc + ' (سقف کار سخت: ۱)' };
+        }
+      },
+      {
+        id: 6,
+        title: '۶. done بزرگتر از habitCount: validateRecord خطا می‌دهد و dayScore clamp می‌کند',
+        run: function () {
+          var p = { id: 'p6', habitCount: 2 };
+          var day = { n: 13, type: 'main', hardLevels: 3, specialMission: true };
+          var rec = { done: 4, hard: 1, special: 0 };
+          var val = SupportApp.Scoring.validateRecord(p, rec, day);
+          var sc = SupportApp.Scoring.dayScore(p, rec, day);
+          return { pass: !val.valid && sc === 3, detail: 'خطا: ' + val.errors.join('، ') + ' | امتیاز کلَمپ شده: ' + sc };
+        }
+      },
+      {
+        id: 7,
+        title: '۷. habitCount=null و done=2 -> حداکثر شامل ۲ عادت',
+        run: function () {
+          var p = { id: 'p7', habitCount: null };
+          var day = { n: 14, type: 'main', hardLevels: 3, specialMission: true };
+          var rec = { done: 2, hard: 1, special: 0 };
+          var mx = SupportApp.Scoring.dayMax(p, day, rec);
+          var sc = SupportApp.Scoring.dayScore(p, rec, day);
+          return { pass: mx === 6 && sc === 3, detail: 'حداکثر: ' + mx + ' | امتیاز: ' + sc };
+        }
+      },
+      {
+        id: 8,
+        title: '۸. روز warmup یا review: امتیاز و حداکثر هر دو صفر و در مجموع نیامده',
+        run: function () {
+          var p = { id: 'p8', habitCount: 3 };
+          var w = { n: 3, type: 'warmup', hardLevels: 0, specialMission: false };
+          var r = { n: 29, type: 'review', hardLevels: 0, specialMission: false };
+          var rec = { done: 3, hard: 2, special: 1 };
+          var scW = SupportApp.Scoring.dayScore(p, rec, w);
+          var mxW = SupportApp.Scoring.dayMax(p, w, rec);
+          var scR = SupportApp.Scoring.dayScore(p, rec, r);
+          var mxR = SupportApp.Scoring.dayMax(p, r, rec);
+          var ok = scW === 0 && mxW === 0 && scR === 0 && mxR === 0;
+          return { pass: ok, detail: 'Warmup: ' + scW + '/' + mxW + ' | Review: ' + scR + '/' + mxR };
+        }
+      },
+      {
+        id: 9,
+        title: '۹. روز باز در personTotals نیامده؛ روز بسته آمده',
+        run: function () {
+          var p = { id: 'p9', habitCount: 3 };
+          var cohort = {
+            days: [
+              { n: 8, type: 'main', hardLevels: 3, specialMission: true },
+              { n: 9, type: 'main', hardLevels: 3, specialMission: true }
+            ],
+            records: { p9: { 8: { done: 3, hard: 3, special: 1 }, 9: { done: 2, hard: 2, special: 0 } } }
+          };
+          var gOpen = { id: 'g1', closedDays: [] };
+          var gClosed = { id: 'g1', closedDays: [8] };
+          var resOpen = SupportApp.Scoring.personTotals(p, cohort, gOpen);
+          var resClosed = SupportApp.Scoring.personTotals(p, cohort, gClosed);
+          var ok = resOpen.totalScore === 0 && resClosed.totalScore === 7;
+          return { pass: ok, detail: 'روز باز: ' + resOpen.totalScore + ' | روز بسته: ' + resClosed.totalScore };
+        }
+      },
+      {
+        id: 10,
+        title: '۱۰. روز بسته‌شده و نفری که هیچ رکوردی ندارد -> امتیاز ۰، حداکثر = hardLevels + مأموریت',
+        run: function () {
+          var p = { id: 'p10', habitCount: null };
+          var cohort = {
+            days: [{ n: 8, type: 'main', hardLevels: 3, specialMission: true }],
+            records: {}
+          };
+          var g = { id: 'g1', closedDays: [8] };
+          var res = SupportApp.Scoring.personTotals(p, cohort, g);
+          return { pass: res.totalScore === 0 && res.totalMax === 4, detail: 'امتیاز: ' + res.totalScore + ' از ' + res.totalMax };
+        }
+      },
+      {
+        id: 11,
+        title: '۱۱. جمع تجمعی: روز ۸ با ۷ از ۷ و روز ۹ با ۳ از ۵ -> ۱۰ از ۱۲ و درصد ۸۳',
+        run: function () {
+          var p = { id: 'p11', habitCount: 3 };
+          var cohort = {
+            days: [
+              { n: 8, type: 'main', hardLevels: 3, specialMission: true },
+              { n: 9, type: 'main', hardLevels: 1, specialMission: true }
+            ],
+            records: { p11: { 8: { done: 3, hard: 3, special: 1 }, 9: { done: 2, hard: 1, special: 0 } } }
+          };
+          var g = { id: 'g1', closedDays: [8, 9] };
+          var res = SupportApp.Scoring.personTotals(p, cohort, g);
+          return { pass: res.totalScore === 10 && res.totalMax === 12 && res.percent === 83, detail: res.totalScore + ' از ' + res.totalMax + ' (' + res.percent + '٪)' };
+        }
+      },
+      {
+        id: 12,
+        title: '۱۲. افراد frozen و left در groupSummary نیستند',
+        run: function () {
+          var cohort = {
+            days: [{ n: 8, type: 'main', hardLevels: 3, specialMission: true }],
+            participants: [
+              { id: 'p1', groupId: 'g1', status: 'active', habitCount: 3 },
+              { id: 'p2', groupId: 'g1', status: 'frozen', habitCount: 3 },
+              { id: 'p3', groupId: 'g1', status: 'left', habitCount: 3 }
+            ],
+            records: {
+              p1: { 8: { done: 3, hard: 3, special: 1 } },
+              p2: { 8: { done: 3, hard: 3, special: 1 } },
+              p3: { 8: { done: 3, hard: 3, special: 1 } }
+            }
+          };
+          var g = { id: 'g1', closedDays: [8] };
+          var s = SupportApp.Scoring.groupSummary(cohort, g, 8, false);
+          return { pass: s.activeCount === 1 && s.totalScore === 7 && s.totalMax === 7, detail: 'امتیاز گروه فعال: ' + s.totalScore + ' از ' + s.totalMax };
+        }
+      },
+      {
+        id: 13,
+        title: '۱۳. بستن روز و بازکردن دوباره‌اش مجموع را به‌روز می‌کند',
+        run: function () {
+          var p = { id: 'p13', habitCount: 3 };
+          var cohort = {
+            days: [{ n: 8, type: 'main', hardLevels: 3, specialMission: true }],
+            records: { p13: { 8: { done: 3, hard: 3, special: 1 } } }
+          };
+          var g = { id: 'g1', closedDays: [8] };
+          var t1 = SupportApp.Scoring.personTotals(p, cohort, g);
+          g.closedDays = [];
+          var t2 = SupportApp.Scoring.personTotals(p, cohort, g);
+          return { pass: t1.totalScore === 7 && t2.totalScore === 0, detail: 'بسته: ' + t1.totalScore + ' -> باز: ' + t2.totalScore };
+        }
+      },
+      {
+        id: 14,
+        title: '۱۴. تغییر hardLevels یک روزِ بسته بعد از ثبت، حداکثر و امتیاز را درست بازمحاسبه می‌کند',
+        run: function () {
+          var p = { id: 'p14', habitCount: 3 };
+          var day = { n: 8, type: 'main', hardLevels: 3, specialMission: true };
+          var rec = { done: 3, hard: 3, special: 1 };
+          var s1 = SupportApp.Scoring.dayScore(p, rec, day);
+          day.hardLevels = 1;
+          var s2 = SupportApp.Scoring.dayScore(p, rec, day);
+          var m2 = SupportApp.Scoring.dayMax(p, day, rec);
+          return { pass: s1 === 7 && s2 === 5 && m2 === 5, detail: 'سقف ۳: ' + s1 + ' -> سقف ۱: ' + s2 + ' از ' + m2 };
+        }
+      },
+      {
+        id: 15,
+        title: '۱۵. ورودی عددی با رقم فارسی یا عربی («۳» یا «٣») به عدد لاتین تبدیل می‌شود',
+        run: function () {
+          var p = { id: 'p15', habitCount: 3 };
+          var day = { n: 8, type: 'main', hardLevels: 3, specialMission: true };
+          var rFa = { done: '۳', hard: '۲', special: '۱' };
+          var rAr = { done: '٣', hard: '٢', special: '١' };
+          var sFa = SupportApp.Scoring.dayScore(p, rFa, day);
+          var sAr = SupportApp.Scoring.dayScore(p, rAr, day);
+          return { pass: sFa === 6 && sAr === 6, detail: 'فارسی: ' + sFa + ' | عربی: ' + sAr };
+        }
+      }
+    ];
+
+    function TestApp() {
+      var results = testDefinitions.map(function (t) {
+        try {
+          var res = t.run();
+          return { id: t.id, title: t.title, pass: res.pass, detail: res.detail };
+        } catch (e) {
+          return { id: t.id, title: t.title, pass: false, detail: 'خطا: ' + e.message };
+        }
+      });
+
+      var passCount = results.filter(function (r) { return r.pass; }).length;
+      var allPassed = passCount === results.length;
+
+      return h('div', { style: { display: 'grid', gap: 'var(--space-4)' } },
+        h('div', { style: { display: 'flex', justifyContent: 'space-between', alignItems: 'center' } },
+          h('div', null,
+            h('h1', { className: 'heading-lg' }, 'آزمون‌های موتور محاسبات بوشیدو'),
+            h('p', { className: 'body-sm', style: { color: 'var(--text-muted)' } }, 'بررسی ۱۵ قانون اجباری امتیازدهی طبق بخش ۵ سند SPEC')
+          ),
+          h(B.Button, { variant: 'secondary', href: 'index.html', iconStart: 'ArrowLeft' }, 'بازگشت به برنامه')
+        ),
+        h(B.Card, { padding: 'lg' },
+          h('div', { style: { display: 'flex', alignItems: 'center', justifyContent: 'space-between' } },
+            h('div', { style: { display: 'flex', alignItems: 'center', gap: 'var(--space-3)' } },
+              h(B.Badge, {
+                intent: allPassed ? 'success' : 'danger',
+                emphasis: 'bold',
+                icon: allPassed ? 'CircleCheck' : 'OctagonAlert'
+              }, allPassed ? 'همه آزمون‌ها با موفقیت پاس شدند' : 'خطا در برخی آزمون‌ها'),
+              h('span', { className: 'numeric-md' }, B.toFa(passCount) + ' از ' + B.toFa(results.length))
+            ),
+            h(B.Button, { variant: 'ghost', size: 'sm', onClick: function () { window.location.reload(); } }, 'اجرای مجدد')
+          )
+        ),
+        h('div', { style: { display: 'grid', gap: 'var(--space-2)' } },
+          results.map(function (r) {
+            return h(B.Card, {
+              key: r.id,
+              padding: 'md',
+              style: {
+                borderRight: '4px solid ' + (r.pass ? 'var(--emerald-500)' : 'var(--crimson-500)')
+              }
+            },
+              h('div', { style: { display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' } },
+                h('div', null,
+                  h('div', { className: 'body-md', style: { fontWeight: 600 } }, r.title),
+                  h('div', { className: 'caption', style: { color: 'var(--text-muted)', marginTop: 'var(--space-1)' } }, r.detail)
+                ),
+                h(B.Badge, {
+                  intent: r.pass ? 'success' : 'danger',
+                  emphasis: 'subtle',
+                  icon: r.pass ? 'Check' : 'X'
+                }, r.pass ? 'موفق' : 'ناموفق')
+              )
+            );
+          })
+        )
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(h(TestApp));
+  </script>
+</body>
+</html>
