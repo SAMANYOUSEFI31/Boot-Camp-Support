@@ -164,7 +164,13 @@
         // بخش راست: برند و انتخاب دوره
         h('div', { style: { display: 'flex', alignItems: 'center', gap: 'var(--space-3)', flexWrap: 'wrap' } },
           h('div', { style: { display: 'flex', alignItems: 'center', gap: 'var(--space-2)' } },
-            h(B.Icon, { name: 'Flame', size: 'lg', className: 'text-brand' }),
+            (SupportApp.Brand && SupportApp.Brand.markWhite)
+              ? h('img', {
+                src: SupportApp.Brand.markWhite,
+                alt: 'لوگوی بوشیدو',
+                style: { height: 'var(--logo-min)', width: 'auto', display: 'block', marginInlineEnd: 'var(--space-1)' }
+              })
+              : h(B.Icon, { name: 'Flame', size: 'lg', className: 'text-brand' }),
             h('span', { className: 'heading-xs' }, 'پشتیبان بوشیدو')
           ),
           cohorts.length > 0 && h('div', { style: { minWidth: 160 } },
