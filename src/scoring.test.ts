@@ -1,9 +1,10 @@
 import { test } from 'vitest';
 import assert from 'node:assert/strict';
 
-import { Names } from './names.js';
-import { Scoring } from './scoring.js';
-import { ImageExport } from './image-export.js';
+import { Names } from './names';
+import { Scoring } from './scoring';
+import { ImageExport } from './image-export';
+import type { Cohort, Group } from './types';
 
 test('۱. habitCount=3, done=3, hard=3 (روز با ۳ سطح), special=1 (روز ماموریت دارد) -> ۷ از ۷', () => {
   const p = { id: 'p1', habitCount: 3 };
@@ -95,7 +96,7 @@ test('۹. روز باز در personTotals نیامده؛ روز بسته امد�
     records: {
       p9: {
         8: { done: 3, hard: 3, special: 1 }, // 7/7
-        9: { done: 2, hard: 2, special: 0 }  // 4/7
+        9: { done: 2, hard: 2, special: 0 } // 4/7
       }
     }
   };
@@ -204,7 +205,7 @@ test('۱۴. تغییر hardLevels یک روزِ بسته بعد از ثبت، ح
   // Now change hardLevels to 1
   day.hardLevels = 1;
   assert.equal(Scoring.dayScore(p, rec, day), 5); // 3 done + 1 hard (clamped from 3) + 1 special = 5
-  assert.equal(Scoring.dayMax(p, day, rec), 5);  // 3 habit + 1 hard + 1 special = 5
+  assert.equal(Scoring.dayMax(p, day, rec), 5); // 3 habit + 1 hard + 1 special = 5
 });
 
 test('۱۵. ورودی عددی با رقم فارسی یا عربی («۳» یا «٣») به عدد لاتین تبدیل میشود', () => {
@@ -238,7 +239,7 @@ test('۱۶. تطابق کامل داده‌های گزارش تصویری Canvas
   const group = { id: 'g1', name: 'گروه عقاب', closedDays: [8] };
 
   // آزمون ۱: فقط اعضای فعال (بدون فریز)
-  const reportData = ImageExport.getGroupDayReportRows(cohort, group, 8, false);
+  const reportData = ImageExport.getGroupDayReportRows(cohort as unknown as Cohort, group as Group, 8, false);
   assert.equal(reportData.rows.length, 2);
 
   const row1 = reportData.rows[0];
@@ -256,9 +257,13 @@ test('۱۶. تطابق کامل داده‌های گزارش تصویری Canvas
   assert.equal(row2.percent, 25);
 
   // آزمون ۲: با احتساب افراد فریز
-  const reportWithFrozen = ImageExport.getGroupDayReportRows(cohort, group, 8, true);
+  const reportWithFrozen = ImageExport.getGroupDayReportRows(
+    cohort as unknown as Cohort,
+    group as Group,
+    8,
+    true
+  );
   assert.equal(reportWithFrozen.rows.length, 3);
   assert.equal(reportWithFrozen.rows[2].status, 'frozen');
   assert.ok(reportWithFrozen.rows[2].name.includes('(فریز)'));
 });
-

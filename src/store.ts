@@ -3,28 +3,43 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { Names } from './names.js';
+import { Names } from './names';
+import type {
+  AppState,
+  Cohort,
+  DayConfig,
+  DayRecord,
+  DayType,
+  Group,
+  MergeOptions,
+  MergeReport,
+  Participant,
+  ValidateResult
+} from './types';
 
-
-var SCHEMA_VERSION = 1;
-var STORAGE_KEY = 'bsh_support_app_state_v1';
-var TAB_CHANNEL_NAME = 'bsh_support_tab_sync';
-var currentTabId = 'tab_' + Math.random().toString(36).slice(2, 9);
+const SCHEMA_VERSION = 1;
+const STORAGE_KEY = 'bsh_support_app_state_v1';
+const TAB_CHANNEL_NAME = 'bsh_support_tab_sync';
+const currentTabId = 'tab_' + Math.random().toString(36).slice(2, 9);
 
 /**
  * ساخت ۳۰ روز پیش‌فرض دوره
  */
-function createDefaultDays(warmupCount, mainCount, reviewCount) {
-  var w = warmupCount != null ? warmupCount : 7;
-  var m = mainCount != null ? mainCount : 21;
-  var r = reviewCount != null ? reviewCount : 2;
-  var total = 30;
+function createDefaultDays(
+  warmupCount?: number | null,
+  mainCount?: number | null,
+  reviewCount?: number | null
+): DayConfig[] {
+  const w = warmupCount != null ? warmupCount : 7;
+  const m = mainCount != null ? mainCount : 21;
+  const r = reviewCount != null ? reviewCount : 2;
+  const total = 30;
 
-  var days = [];
-  for (var i = 1; i <= total; i++) {
-    var type = 'main';
-    var hard = 3;
-    var special = true;
+  const days: DayConfig[] = [];
+  for (let i = 1; i <= total; i++) {
+    let type: DayType = 'main';
+    let hard = 3;
+    let special = true;
 
     if (i <= w) {
       type = 'warmup';
@@ -49,7 +64,7 @@ function createDefaultDays(warmupCount, mainCount, reviewCount) {
 /**
  * مدل خالی و اولیه
  */
-function createInitialState() {
+function createInitialState(): AppState {
   return {
     schemaVersion: 1,
     activeCohortId: null,
@@ -62,20 +77,21 @@ function createInitialState() {
 /**
  * تابع مهاجرت داده‌های قدیمی به نسخه‌های جدید
  */
-function migrate(data) {
+// داده‌های ورودی (localStorage یا فایل) قابل‌اعتماد نیستند؛ تا قبل از اعتبارسنجی any است
+function migrate(data: any): AppState {
   if (!data || typeof data !== 'object') {
     return createInitialState();
   }
-  var version = data.schemaVersion || 1;
+  const version = data.schemaVersion || 1;
   if (version === 1) {
     if (!Array.isArray(data.cohorts)) data.cohorts = [];
-    data.cohorts.forEach(function (c) {
+    data.cohorts.forEach(function (c: any) {
       if (!c.days || !c.days.length) c.days = createDefaultDays();
       if (!Array.isArray(c.groups)) c.groups = [];
       if (!Array.isArray(c.participants)) c.participants = [];
       if (!c.records || typeof c.records !== 'object') c.records = {};
       if (c.archived === undefined) c.archived = false;
-      c.groups.forEach(function (g) {
+      c.groups.forEach(function (g: any) {
         if (!Array.isArray(g.closedDays)) g.closedDays = [];
         if (g.mine === undefined) g.mine = true;
       });
@@ -85,11 +101,11 @@ function migrate(data) {
   return data;
 }
 
-function deepClone(obj) {
+function deepClone<T>(obj: T): T {
   return JSON.parse(JSON.stringify(obj));
 }
 
-function isPlainObject(v) {
+function isPlainObject(v: unknown): v is Record<string, any> {
   return !!v && typeof v === 'object' && !Array.isArray(v);
 }
 
@@ -97,20 +113,22 @@ function isPlainObject(v) {
  * اعتبارسنجی فایل بکاپ. هیچ تغییری روی ورودی نمی‌دهد.
  * خروجی: { ok: true, data } (کپی عمیق و مهاجرت‌شده) یا { ok: false, error } با پیام فارسی ساده
  */
-function validateBackup(raw) {
+function validateBackup(raw: any): ValidateResult {
   if (!isPlainObject(raw)) {
     return { ok: false, error: 'این فایل، فایل بکاپ برنامه نیست.' };
   }
-  if (raw.schemaVersion !== undefined &&
-      (typeof raw.schemaVersion !== 'number' || raw.schemaVersion < 1 || raw.schemaVersion > SCHEMA_VERSION)) {
+  if (
+    raw.schemaVersion !== undefined &&
+    (typeof raw.schemaVersion !== 'number' || raw.schemaVersion < 1 || raw.schemaVersion > SCHEMA_VERSION)
+  ) {
     return { ok: false, error: 'نسخهٔ این فایل با برنامه سازگار نیست. شاید با نسخهٔ جدیدتری ساخته شده است.' };
   }
   if (!Array.isArray(raw.cohorts)) {
     return { ok: false, error: 'در این فایل فهرست دوره‌ها پیدا نشد.' };
   }
-  for (var i = 0; i < raw.cohorts.length; i++) {
-    var c = raw.cohorts[i];
-    var label = 'دورهٔ شمارهٔ ' + (i + 1);
+  for (let i = 0; i < raw.cohorts.length; i++) {
+    const c = raw.cohorts[i];
+    let label = 'دورهٔ شمارهٔ ' + (i + 1);
     if (!isPlainObject(c) || typeof c.id !== 'string' || !c.id) {
       return { ok: false, error: label + ' شناسه ندارد یا خراب است.' };
     }
@@ -122,13 +140,13 @@ function validateBackup(raw) {
     if (!Array.isArray(c.participants)) return { ok: false, error: label + ': فهرست افراد خراب است.' };
     if (!isPlainObject(c.records)) return { ok: false, error: label + ': اطلاعات ثبت روزانه خراب است.' };
     if (!Array.isArray(c.days)) return { ok: false, error: label + ': فهرست روزها خراب است.' };
-    for (var gi = 0; gi < c.groups.length; gi++) {
+    for (let gi = 0; gi < c.groups.length; gi++) {
       if (!isPlainObject(c.groups[gi]) || typeof c.groups[gi].id !== 'string') {
         return { ok: false, error: label + ': یکی از گروه‌ها خراب است.' };
       }
     }
-    for (var pi = 0; pi < c.participants.length; pi++) {
-      var p = c.participants[pi];
+    for (let pi = 0; pi < c.participants.length; pi++) {
+      const p = c.participants[pi];
       if (!isPlainObject(p) || typeof p.id !== 'string' || typeof p.name !== 'string') {
         return { ok: false, error: label + ': اطلاعات یکی از افراد خراب است.' };
       }
@@ -137,17 +155,22 @@ function validateBackup(raw) {
   return { ok: true, data: migrate(deepClone(raw)) };
 }
 
-function sameCohortKey(a, b) {
-  return String(a.name || '').trim() === String(b.name || '').trim() &&
-    String(a.startDate || '') === String(b.startDate || '');
+function sameCohortKey(
+  a: Pick<Cohort, 'name' | 'startDate'>,
+  b: Pick<Cohort, 'name' | 'startDate'>
+): boolean {
+  return (
+    String(a.name || '').trim() === String(b.name || '').trim() &&
+    String(a.startDate || '') === String(b.startDate || '')
+  );
 }
 
 /**
  * پیدا کردن دورهٔ موجود که با دورهٔ ورودی یکی است
  * (هم‌شناسه، یا هم‌نام و هم‌تاریخ شروع). خروجی: اندیس یا -1
  */
-function findConflictIndex(cohorts, incoming) {
-  var i;
+function findConflictIndex(cohorts: Cohort[], incoming: Cohort): number {
+  let i: number;
   for (i = 0; i < cohorts.length; i++) {
     if (cohorts[i].id === incoming.id) return i;
   }
@@ -161,14 +184,18 @@ function newCohortId() {
   return 'cohort_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6);
 }
 
-function copyName(cohorts, baseName) {
-  var fa = Names.toPersianDigits || String;
-  var n = 2;
-  var name;
+function copyName(cohorts: Cohort[], baseName: string): string {
+  const fa = Names.toPersianDigits;
+  let n = 2;
+  let name: string;
   do {
     name = baseName + ' ـ' + fa(n);
     n++;
-  } while (cohorts.some(function (c) { return c.name === name; }));
+  } while (
+    cohorts.some(function (c) {
+      return c.name === name;
+    })
+  );
   return name;
 }
 
@@ -184,41 +211,50 @@ function copyName(cohorts, baseName) {
  *
  * خروجی: { state, report: { added, replaced, copied, skipped } } (فهرست نام دوره‌ها)
  */
-function mergeCohorts(currentState, incomingCohorts, options) {
+function mergeCohorts(
+  currentState: AppState,
+  incomingCohorts: Cohort[],
+  options?: MergeOptions
+): { state: AppState; report: MergeReport } {
   options = options || {};
-  var selected = options.selected || {};
-  var decisions = options.decisions || {};
-  var groupMine = options.groupMine || {};
-  var makeId = options.newId || newCohortId;
+  const selected = options.selected || {};
+  const decisions = options.decisions || {};
+  const groupMine = options.groupMine || {};
+  const makeId = options.newId || newCohortId;
 
-  var next = deepClone(currentState);
-  var report = { added: [], replaced: [], copied: [], skipped: [] };
+  const next = deepClone(currentState);
+  const report: MergeReport = { added: [], replaced: [], copied: [], skipped: [] };
 
-  (incomingCohorts || []).forEach(function (raw, idx) {
+  (incomingCohorts || []).forEach(function (raw: Cohort, idx: number) {
     if (selected[idx] === false) return;
-    var inc = deepClone(raw);
+    const inc = deepClone(raw);
 
-    var mineMap = groupMine[idx];
+    const mineMap = groupMine[idx];
     if (mineMap) {
-      inc.groups.forEach(function (g) {
+      inc.groups.forEach(function (g: Group) {
         if (mineMap[g.id] !== undefined) g.mine = !!mineMap[g.id];
       });
     }
 
-    var at = findConflictIndex(next.cohorts, inc);
+    const at = findConflictIndex(next.cohorts, inc);
     if (at === -1) {
       next.cohorts.push(inc);
       report.added.push(inc.name);
       return;
     }
 
-    var decision = decisions[idx] || 'skip';
+    const decision = decisions[idx] || 'skip';
     if (decision === 'replace') {
       next.cohorts[at] = inc;
       report.replaced.push(inc.name);
     } else if (decision === 'copy') {
       inc.id = makeId();
-      while (next.cohorts.some(function (c) { return c.id === inc.id; })) inc.id = makeId();
+      while (
+        next.cohorts.some(function (c) {
+          return c.id === inc.id;
+        })
+      )
+        inc.id = makeId();
       inc.name = copyName(next.cohorts, inc.name);
       next.cohorts.push(inc);
       report.copied.push(inc.name);
@@ -236,11 +272,13 @@ function mergeCohorts(currentState, incomingCohorts, options) {
 /**
  * ساخت دادهٔ فایل بکاپ؛ با cohortId فقط همان دوره، وگرنه همهٔ دوره‌ها
  */
-function buildBackupData(fromState, cohortId) {
-  var data = deepClone(fromState);
+function buildBackupData(fromState: AppState, cohortId?: string | null): AppState {
+  const data = deepClone(fromState);
   data.exportedAt = new Date().toISOString();
   if (cohortId) {
-    data.cohorts = data.cohorts.filter(function (c) { return c.id === cohortId; });
+    data.cohorts = data.cohorts.filter(function (c) {
+      return c.id === cohortId;
+    });
     data.activeCohortId = data.cohorts[0] ? data.cohorts[0].id : null;
   }
   return data;
@@ -253,14 +291,17 @@ if (typeof navigator !== 'undefined' && navigator.storage && navigator.storage.p
   } catch (e) {}
 }
 
-var state = createInitialState();
-var listeners = [];
-var saveTimer = null;
-var hasQuotaError = false;
-var multiTabConflict = false;
+type StoreEvent = { type: string; [key: string]: unknown };
+type ListenerFn = (state: AppState, event?: StoreEvent) => void;
+
+let state = createInitialState();
+let listeners: ListenerFn[] = [];
+let saveTimer: ReturnType<typeof setTimeout> | null = null;
+let hasQuotaError = false;
+let multiTabConflict = false;
 
 // کانال همگام‌سازی بین تب‌ها
-var broadcastChannel = null;
+let broadcastChannel: (BroadcastChannel & { unref?: () => void }) | null = null;
 try {
   if (typeof BroadcastChannel !== 'undefined') {
     broadcastChannel = new BroadcastChannel(TAB_CHANNEL_NAME);
@@ -277,9 +318,9 @@ try {
 // لود اولیه از localStorage
 try {
   if (typeof localStorage !== 'undefined') {
-    var raw = localStorage.getItem(STORAGE_KEY);
+    const raw = localStorage.getItem(STORAGE_KEY);
     if (raw) {
-      var parsed = JSON.parse(raw);
+      const parsed = JSON.parse(raw);
       state = migrate(parsed);
     }
   }
@@ -287,7 +328,7 @@ try {
   console.warn('Storage read error:', e);
 }
 
-function notifyListeners(event) {
+function notifyListeners(event?: StoreEvent) {
   listeners.forEach(function (fn) {
     try {
       fn(state, event);
@@ -318,14 +359,14 @@ function persistToStorage() {
 
 function scheduleSave() {
   state.lastChangeAt = new Date().toISOString();
-  clearTimeout(saveTimer);
+  if (saveTimer) clearTimeout(saveTimer);
   saveTimer = setTimeout(function () {
     persistToStorage();
   }, 250);
 }
 
 function saveImmediately() {
-  clearTimeout(saveTimer);
+  if (saveTimer) clearTimeout(saveTimer);
   state.lastChangeAt = new Date().toISOString();
   persistToStorage();
   notifyListeners({ type: 'saved' });
@@ -335,20 +376,24 @@ function getState() {
   return state;
 }
 
-function subscribe(fn) {
+function subscribe(fn: ListenerFn) {
   listeners.push(fn);
   return function () {
-    listeners = listeners.filter(function (l) { return l !== fn; });
+    listeners = listeners.filter(function (l) {
+      return l !== fn;
+    });
   };
 }
 
-function getActiveCohort() {
+function getActiveCohort(): Cohort | null {
   if (!state.cohorts.length) return null;
   if (!state.activeCohortId) {
-    var nonArchived = state.cohorts.filter(function (c) { return !c.archived; });
+    const nonArchived = state.cohorts.filter(function (c) {
+      return !c.archived;
+    });
     return nonArchived[0] || state.cohorts[0] || null;
   }
-  for (var i = 0; i < state.cohorts.length; i++) {
+  for (let i = 0; i < state.cohorts.length; i++) {
     if (state.cohorts[i].id === state.activeCohortId) {
       return state.cohorts[i];
     }
@@ -356,7 +401,7 @@ function getActiveCohort() {
   return state.cohorts[0] || null;
 }
 
-function setActiveCohortId(cohortId) {
+function setActiveCohortId(cohortId: string | null) {
   state.activeCohortId = cohortId;
   saveImmediately();
   notifyListeners({ type: 'active_cohort_changed' });
@@ -365,26 +410,37 @@ function setActiveCohortId(cohortId) {
 /**
  * ساخت دوره جدید
  */
-function createCohort(params) {
-  var name = (params && params.name) || 'دوره جدید';
-  var startDate = (params && params.startDate) || new Date().toISOString().slice(0, 10);
-  var warmup = params && params.warmupDays != null ? params.warmupDays : 7;
-  var main = params && params.mainDays != null ? params.mainDays : 21;
-  var review = params && params.reviewDays != null ? params.reviewDays : 2;
+interface CreateCohortParams {
+  name?: string;
+  startDate?: string;
+  warmupDays?: number;
+  mainDays?: number;
+  reviewDays?: number;
+  copyFromCohortId?: string | null;
+}
 
-  var newId = 'cohort_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6);
-  var days = createDefaultDays(warmup, main, review);
+function createCohort(params?: CreateCohortParams): Cohort {
+  const name = (params && params.name) || 'دوره جدید';
+  const startDate = (params && params.startDate) || new Date().toISOString().slice(0, 10);
+  const warmup = params && params.warmupDays != null ? params.warmupDays : 7;
+  const main = params && params.mainDays != null ? params.mainDays : 21;
+  const review = params && params.reviewDays != null ? params.reviewDays : 2;
 
-  var groups = [];
-  var participants = [];
+  const newId = 'cohort_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6);
+  const days = createDefaultDays(warmup, main, review);
+
+  const groups: Group[] = [];
+  const participants: Participant[] = [];
 
   // اگر کپی از دوره قبلی خواسته شده باشد
   if (params && params.copyFromCohortId) {
-    var srcCohort = state.cohorts.find(function (c) { return c.id === params.copyFromCohortId; });
+    const srcCohort = state.cohorts.find(function (c) {
+      return c.id === params.copyFromCohortId;
+    });
     if (srcCohort) {
-      var groupMap = {};
+      const groupMap: Record<string, string> = {};
       srcCohort.groups.forEach(function (g, idx) {
-        var newGId = 'grp_' + Date.now() + '_' + idx;
+        const newGId = 'grp_' + Date.now() + '_' + idx;
         groupMap[g.id] = newGId;
         groups.push({
           id: newGId,
@@ -399,7 +455,7 @@ function createCohort(params) {
         participants.push({
           id: 'p_' + Date.now() + '_' + idx,
           name: p.name,
-          nameKey: p.nameKey || (Names.normalizeName && Names.normalizeName(p.name)) || p.name,
+          nameKey: p.nameKey || Names.normalizeName(p.name) || p.name,
           telegram: p.telegram || '',
           groupId: groupMap[p.groupId] || (groups[0] && groups[0].id) || '',
           status: p.status || 'active',
@@ -409,7 +465,7 @@ function createCohort(params) {
     }
   }
 
-  var newCohort = {
+  const newCohort: Cohort = {
     id: newId,
     name: name,
     startDate: startDate,
@@ -427,24 +483,30 @@ function createCohort(params) {
   return newCohort;
 }
 
-function updateCohort(cohortId, updates) {
-  var c = state.cohorts.find(function (item) { return item.id === cohortId; });
+function updateCohort(cohortId: string, updates: Partial<Cohort>) {
+  const c = state.cohorts.find(function (item) {
+    return item.id === cohortId;
+  });
   if (!c) return;
   Object.assign(c, updates);
   saveImmediately();
   notifyListeners({ type: 'cohort_updated', cohort: c });
 }
 
-function archiveCohort(cohortId, archived) {
-  var c = state.cohorts.find(function (item) { return item.id === cohortId; });
+function archiveCohort(cohortId: string, archived?: boolean) {
+  const c = state.cohorts.find(function (item) {
+    return item.id === cohortId;
+  });
   if (!c) return;
   c.archived = archived !== false;
   saveImmediately();
   notifyListeners({ type: 'cohort_archived', cohort: c });
 }
 
-function deleteCohort(cohortId) {
-  state.cohorts = state.cohorts.filter(function (c) { return c.id !== cohortId; });
+function deleteCohort(cohortId: string) {
+  state.cohorts = state.cohorts.filter(function (c) {
+    return c.id !== cohortId;
+  });
   if (state.activeCohortId === cohortId) {
     state.activeCohortId = state.cohorts[0] ? state.cohorts[0].id : null;
   }
@@ -455,13 +517,17 @@ function deleteCohort(cohortId) {
 /**
  * افزودن گروه به دوره
  */
-function addGroup(cohortId, groupData) {
-  var c = state.cohorts.find(function (item) { return item.id === cohortId; });
+function addGroup(cohortId: string, groupData: Partial<Group>): Group | null {
+  const c = state.cohorts.find(function (item) {
+    return item.id === cohortId;
+  });
   if (!c) return null;
-  var maxOrder = c.groups.reduce(function (max, g) { return Math.max(max, g.order || 0); }, 0);
-  var newGroup = {
+  const maxOrder = c.groups.reduce(function (max: number, g) {
+    return Math.max(max, g.order || 0);
+  }, 0);
+  const newGroup: Group = {
     id: 'grp_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6),
-    name: groupData.name || ('گروه ' + (maxOrder + 1)),
+    name: groupData.name || 'گروه ' + (maxOrder + 1),
     order: groupData.order || maxOrder + 1,
     mine: groupData.mine !== false,
     closedDays: []
@@ -472,22 +538,32 @@ function addGroup(cohortId, groupData) {
   return newGroup;
 }
 
-function updateGroup(cohortId, groupId, updates) {
-  var c = state.cohorts.find(function (item) { return item.id === cohortId; });
+function updateGroup(cohortId: string, groupId: string, updates: Partial<Group>) {
+  const c = state.cohorts.find(function (item) {
+    return item.id === cohortId;
+  });
   if (!c) return;
-  var g = c.groups.find(function (item) { return item.id === groupId; });
+  const g = c.groups.find(function (item) {
+    return item.id === groupId;
+  });
   if (!g) return;
   Object.assign(g, updates);
   saveImmediately();
   notifyListeners({ type: 'group_updated', group: g });
 }
 
-function deleteGroup(cohortId, groupId) {
-  var c = state.cohorts.find(function (item) { return item.id === cohortId; });
+function deleteGroup(cohortId: string, groupId: string) {
+  const c = state.cohorts.find(function (item) {
+    return item.id === cohortId;
+  });
   if (!c) return;
-  c.groups = c.groups.filter(function (g) { return g.id !== groupId; });
+  c.groups = c.groups.filter(function (g) {
+    return g.id !== groupId;
+  });
   // حذف افراد آن گروه
-  c.participants = c.participants.filter(function (p) { return p.groupId !== groupId; });
+  c.participants = c.participants.filter(function (p) {
+    return p.groupId !== groupId;
+  });
   saveImmediately();
   notifyListeners({ type: 'group_deleted' });
 }
@@ -495,22 +571,36 @@ function deleteGroup(cohortId, groupId) {
 /**
  * افزودن افراد
  */
-function addParticipants(cohortId, groupId, pList) {
-  var c = state.cohorts.find(function (item) { return item.id === cohortId; });
+interface NewParticipantInput {
+  name?: string;
+  telegram?: string;
+  groupId?: string;
+  status?: Participant['status'];
+  habitCount?: number | string | null;
+}
+
+function addParticipants(
+  cohortId: string,
+  groupId: string | null | undefined,
+  pList: NewParticipantInput[]
+): Participant[] {
+  const c = state.cohorts.find(function (item) {
+    return item.id === cohortId;
+  });
   if (!c) return [];
-  var added = [];
+  const added: Participant[] = [];
   pList.forEach(function (p) {
-    var name = (p.name || '').trim();
+    const name = (p.name || '').trim();
     if (!name) return;
-    var nameKey = Names.normalizeName ? Names.normalizeName(name) : name.trim();
-    var newP = {
+    const nameKey = Names.normalizeName(name);
+    const newP: Participant = {
       id: 'p_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7),
       name: name,
       nameKey: nameKey,
       telegram: (p.telegram || '').trim().replace(/^@/, ''),
-      groupId: groupId || p.groupId,
+      groupId: (groupId || p.groupId) as string,
       status: p.status || 'active',
-      habitCount: p.habitCount != null ? parseInt(p.habitCount, 10) : null
+      habitCount: p.habitCount != null ? parseInt(String(p.habitCount), 10) : null
     };
     c.participants.push(newP);
     added.push(newP);
@@ -520,13 +610,17 @@ function addParticipants(cohortId, groupId, pList) {
   return added;
 }
 
-function updateParticipant(cohortId, participantId, updates) {
-  var c = state.cohorts.find(function (item) { return item.id === cohortId; });
+function updateParticipant(cohortId: string, participantId: string, updates: Partial<Participant>) {
+  const c = state.cohorts.find(function (item) {
+    return item.id === cohortId;
+  });
   if (!c) return;
-  var p = c.participants.find(function (item) { return item.id === participantId; });
+  const p = c.participants.find(function (item) {
+    return item.id === participantId;
+  });
   if (!p) return;
   if (updates.name && updates.name !== p.name) {
-    updates.nameKey = Names.normalizeName ? Names.normalizeName(updates.name) : updates.name;
+    updates.nameKey = Names.normalizeName(updates.name);
   }
   if (updates.telegram !== undefined) {
     updates.telegram = (updates.telegram || '').replace(/^@/, '').trim();
@@ -536,10 +630,14 @@ function updateParticipant(cohortId, participantId, updates) {
   notifyListeners({ type: 'participant_updated', participant: p });
 }
 
-function deleteParticipant(cohortId, participantId) {
-  var c = state.cohorts.find(function (item) { return item.id === cohortId; });
+function deleteParticipant(cohortId: string, participantId: string) {
+  const c = state.cohorts.find(function (item) {
+    return item.id === cohortId;
+  });
   if (!c) return;
-  c.participants = c.participants.filter(function (p) { return p.id !== participantId; });
+  c.participants = c.participants.filter(function (p) {
+    return p.id !== participantId;
+  });
   if (c.records && c.records[participantId]) {
     delete c.records[participantId];
   }
@@ -550,14 +648,16 @@ function deleteParticipant(cohortId, participantId) {
 /**
  * ثبت روزانه نتیجه یک فرد
  */
-function recordDaily(cohortId, participantId, dayN, recordData) {
-  var c = state.cohorts.find(function (item) { return item.id === cohortId; });
+function recordDaily(cohortId: string, participantId: string, dayN: number, recordData: Partial<DayRecord>) {
+  const c = state.cohorts.find(function (item) {
+    return item.id === cohortId;
+  });
   if (!c) return;
   if (!c.records) c.records = {};
   if (!c.records[participantId]) c.records[participantId] = {};
 
-  var existing = c.records[participantId][dayN] || { done: null, hard: null, special: null };
-  var updated = Object.assign({}, existing, recordData);
+  const existing: DayRecord = c.records[participantId][dayN] || { done: null, hard: null, special: null };
+  const updated = Object.assign({}, existing, recordData);
 
   c.records[participantId][dayN] = updated;
   scheduleSave();
@@ -567,17 +667,26 @@ function recordDaily(cohortId, participantId, dayN, recordData) {
 /**
  * ابزارهای گروهی ثبت روزانه
  */
-function batchRecordDay(cohortId, groupId, dayN, action) {
-  var c = state.cohorts.find(function (item) { return item.id === cohortId; });
+type BatchAction = 'all_habits_done' | 'all_special_done' | 'clear_day';
+
+function batchRecordDay(
+  cohortId: string,
+  groupId: string,
+  dayN: number,
+  action: BatchAction
+): (() => void) | null {
+  const c = state.cohorts.find(function (item) {
+    return item.id === cohortId;
+  });
   if (!c) return null;
-  var groupMembers = c.participants.filter(function (p) {
+  const groupMembers = c.participants.filter(function (p) {
     return p.groupId === groupId && p.status === 'active';
   });
 
   if (!c.records) c.records = {};
 
   // ذخیره کپی قبل از تغییر برای undo
-  var previousRecords = {};
+  const previousRecords: Record<string, DayRecord | null> = {};
   groupMembers.forEach(function (p) {
     if (c.records[p.id] && c.records[p.id][dayN]) {
       previousRecords[p.id] = Object.assign({}, c.records[p.id][dayN]);
@@ -588,7 +697,7 @@ function batchRecordDay(cohortId, groupId, dayN, action) {
 
   groupMembers.forEach(function (p) {
     if (!c.records[p.id]) c.records[p.id] = {};
-    var cur = c.records[p.id][dayN] || { done: null, hard: null, special: null };
+    const cur = c.records[p.id][dayN] || { done: null, hard: null, special: null };
 
     if (action === 'all_habits_done') {
       cur.done = p.habitCount != null ? p.habitCount : 3;
@@ -609,10 +718,11 @@ function batchRecordDay(cohortId, groupId, dayN, action) {
   return function rollback() {
     groupMembers.forEach(function (p) {
       if (!c.records[p.id]) c.records[p.id] = {};
-      if (previousRecords[p.id] === null) {
+      const previous = previousRecords[p.id];
+      if (previous === null) {
         delete c.records[p.id][dayN];
       } else {
-        c.records[p.id][dayN] = previousRecords[p.id];
+        c.records[p.id][dayN] = previous;
       }
     });
     saveImmediately();
@@ -623,17 +733,23 @@ function batchRecordDay(cohortId, groupId, dayN, action) {
 /**
  * بستن یا باز کردن مجدد یک روز برای گروه
  */
-function toggleCloseDay(cohortId, groupId, dayN, shouldClose) {
-  var c = state.cohorts.find(function (item) { return item.id === cohortId; });
+function toggleCloseDay(cohortId: string, groupId: string, dayN: number, shouldClose: boolean) {
+  const c = state.cohorts.find(function (item) {
+    return item.id === cohortId;
+  });
   if (!c) return;
-  var g = c.groups.find(function (item) { return item.id === groupId; });
+  const g = c.groups.find(function (item) {
+    return item.id === groupId;
+  });
   if (!g) return;
   if (!Array.isArray(g.closedDays)) g.closedDays = [];
 
-  var idx = g.closedDays.indexOf(dayN);
+  const idx = g.closedDays.indexOf(dayN);
   if (shouldClose && idx === -1) {
     g.closedDays.push(dayN);
-    g.closedDays.sort(function (a, b) { return a - b; });
+    g.closedDays.sort(function (a, b) {
+      return a - b;
+    });
   } else if (!shouldClose && idx !== -1) {
     g.closedDays.splice(idx, 1);
   }
@@ -644,8 +760,10 @@ function toggleCloseDay(cohortId, groupId, dayN, shouldClose) {
 /**
  * بروزرسانی تنظیمات روزهای دوره (تعداد سطوح کار سخت، ماموریت، نوع روز)
  */
-function updateDaysConfig(cohortId, updatedDays) {
-  var c = state.cohorts.find(function (item) { return item.id === cohortId; });
+function updateDaysConfig(cohortId: string, updatedDays: DayConfig[]) {
+  const c = state.cohorts.find(function (item) {
+    return item.id === cohortId;
+  });
   if (!c) return;
   c.days = updatedDays;
   saveImmediately();
@@ -667,7 +785,7 @@ function recordBackupTime() {
  */
 function isBackupOverdue() {
   if (!state.cohorts || !state.cohorts.length) return false;
-  var totalParticipants = 0;
+  let totalParticipants = 0;
   state.cohorts.forEach(function (c) {
     totalParticipants += (c.participants || []).length;
   });
@@ -677,8 +795,8 @@ function isBackupOverdue() {
     return true;
   }
 
-  var lastBackupTime = new Date(state.lastBackupAt).getTime();
-  var lastChangeTime = new Date(state.lastChangeAt || 0).getTime();
+  const lastBackupTime = new Date(state.lastBackupAt).getTime();
+  const lastChangeTime = new Date(state.lastChangeAt || 0).getTime();
 
   // اگر از زمان آخرین بکاپ تغییری داده نشده باشد، هشدار نده
   if (lastChangeTime <= lastBackupTime) {
@@ -686,9 +804,9 @@ function isBackupOverdue() {
   }
 
   // اگر تغییر داده شده و بیش از ۲ روز گذشته است
-  var twoDaysMs = 2 * 24 * 60 * 60 * 1000;
-  var now = Date.now();
-  return (now - lastBackupTime) > twoDaysMs;
+  const twoDaysMs = 2 * 24 * 60 * 60 * 1000;
+  const now = Date.now();
+  return now - lastBackupTime > twoDaysMs;
 }
 
 /**
@@ -706,10 +824,10 @@ function clearAllData() {
 /**
  * جایگزینی کامل داده‌ها از بکاپ
  */
-function restoreState(backupData) {
-  var v = validateBackup(backupData);
+function restoreState(backupData: unknown) {
+  const v = validateBackup(backupData);
   if (!v.ok) throw new Error(v.error);
-  var restored = v.data;
+  const restored = v.data;
   restored.lastBackupAt = new Date().toISOString();
   state = restored;
   saveImmediately();
@@ -719,11 +837,11 @@ function restoreState(backupData) {
 /**
  * افزودن دوره‌های فایل بکاپ به داده‌های فعلی (گزینه‌ها: mergeCohorts)
  */
-function mergeFromBackup(backupData, options) {
-  var v = validateBackup(backupData);
+function mergeFromBackup(backupData: unknown, options?: MergeOptions): MergeReport {
+  const v = validateBackup(backupData);
   if (!v.ok) throw new Error(v.error);
-  var result = mergeCohorts(state, v.data.cohorts, options);
-  var merged = result.state;
+  const result = mergeCohorts(state, v.data.cohorts, options);
+  const merged = result.state;
   state = merged;
   saveImmediately();
   notifyListeners({ type: 'state_merged' });
@@ -759,7 +877,13 @@ export const Store = {
   findConflictIndex: findConflictIndex,
   validateBackup: validateBackup,
   buildBackupData: buildBackupData,
-  getMultiTabWarning: function () { return multiTabConflict; },
-  clearMultiTabWarning: function () { multiTabConflict = false; },
-  getQuotaError: function () { return hasQuotaError; }
+  getMultiTabWarning: function () {
+    return multiTabConflict;
+  },
+  clearMultiTabWarning: function () {
+    multiTabConflict = false;
+  },
+  getQuotaError: function () {
+    return hasQuotaError;
+  }
 };
