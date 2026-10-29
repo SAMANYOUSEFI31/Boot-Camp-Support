@@ -2,7 +2,7 @@
 <html lang="fa" dir="rtl">
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <meta name="theme-color" content="#09090b" />
     <title>پشتیبان بوشیدو — ابزار مدیریت و ثبت امتیاز بوت‌کمپ</title>
     <meta name="description" content="ابزار داخلی پشتیبان‌های بوت‌کمپ بوشیدو برای مدیریت گروه‌ها، افراد، ثبت سریع نتایج روزانه و خروجی گزارش‌های استاندارد اکسل." />
@@ -14,6 +14,62 @@
     <!-- استایل‌ها و توکن‌های دیزاین سیستم بوشیدو -->
     <link rel="stylesheet" href="ds/tokens.css" />
     <link rel="stylesheet" href="ds/bundle.css" />
+    <style>
+      :root {
+        --app-dvh: 100vh;
+      }
+      @supports (height: 100dvh) {
+        :root {
+          --app-dvh: 100dvh;
+        }
+      }
+      html, body {
+        overflow-x: hidden;
+        min-height: 100vh;
+        min-height: var(--app-dvh);
+        padding-top: env(safe-area-inset-top, 0);
+        padding-bottom: env(safe-area-inset-bottom, 0);
+        padding-left: env(safe-area-inset-left, 0);
+        padding-right: env(safe-area-inset-right, 0);
+        box-sizing: border-box;
+      }
+      *, *::before, *::after {
+        box-sizing: inherit;
+      }
+      /* جلوگیری از زوم خودکار سافاری در فرم‌ها روی گوشی */
+      @media (max-width: 768px) {
+        input, select, textarea {
+          font-size: 16px !important;
+        }
+      }
+      /* حداقل سایز تاچ در موبایل */
+      @media (max-width: 600px) {
+        button, a, input[type="checkbox"], input[type="radio"] {
+          min-height: 44px;
+        }
+        .bsh-compact-touch {
+          min-height: 38px !important;
+        }
+      }
+      /* کارت ثبت روزانه موبایل */
+      .bsh-card-pressable {
+        transition: transform 0.15s ease, border-color 0.15s ease, background-color 0.15s ease;
+      }
+      .bsh-card-pressable:active {
+        transform: scale(0.98);
+      }
+      /* سایه نرم اسکرول جدول */
+      .bsh-table-scroll-container {
+        position: relative;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+      }
+      .bsh-sticky-right {
+        position: sticky;
+        right: 0;
+        z-index: 3;
+      }
+    </style>
   </head>
   <body style="background: var(--surface-page); color: var(--text-base); margin: 0; min-height: 100vh;">
     <div id="root"></div>
@@ -27,6 +83,7 @@
     <script src="src/names.js"></script>
     <script src="src/scoring.js"></script>
     <script src="src/excel.js"></script>
+    <script src="src/image-export.js"></script>
     <script src="src/importer.js"></script>
     <script src="src/store.js"></script>
     <script src="src/ui-common.js"></script>

@@ -88,10 +88,11 @@
       h('main', {
         style: {
           flex: 1,
-          maxWidth: 1024,
+          maxWidth: 1280,
           width: '100%',
           margin: '0 auto',
           padding: 'var(--space-4)',
+          paddingInline: 'clamp(12px, 3vw, var(--space-6))',
           boxSizing: 'border-box'
         }
       },

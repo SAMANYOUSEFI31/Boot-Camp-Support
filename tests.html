@@ -15,6 +15,7 @@
   <script src="ds/bundle.js"></script>
   <script src="src/names.js"></script>
   <script src="src/scoring.js"></script>
+  <script src="src/image-export.js"></script>
   <script>
     var h = React.createElement;
     var B = window.Bushido;
@@ -233,6 +234,55 @@
           var sFa = SupportApp.Scoring.dayScore(p, rFa, day);
           var sAr = SupportApp.Scoring.dayScore(p, rAr, day);
           return { pass: sFa === 6 && sAr === 6, detail: 'فارسی: ' + sFa + ' | عربی: ' + sAr };
+        }
+      },
+      {
+        id: 16,
+        title: '۱۶. تطابق کامل داده‌های گزارش تصویری Canvas با خروجی و محاسبات اکسل',
+        run: function () {
+          var cohort = {
+            name: 'دوره ۱۲',
+            startDate: '2026-03-21',
+            days: [
+              { n: 8, type: 'main', hardLevels: 3, specialMission: true },
+              { n: 9, type: 'main', hardLevels: 2, specialMission: true }
+            ],
+            participants: [
+              { id: 'p1', name: 'علی رضایی', groupId: 'g1', status: 'active', habitCount: 3 },
+              { id: 'p2', name: 'زهرا موسوی', groupId: 'g1', status: 'active', habitCount: 4 },
+              { id: 'p3', name: 'مهدی کریمی', groupId: 'g1', status: 'frozen', habitCount: 3 }
+            ],
+            records: {
+              p1: { 8: { done: 3, hard: 3, special: 1 }, 9: { done: 2, hard: 1, special: 0 } },
+              p2: { 8: { done: 2, hard: 0, special: 0 }, 9: { done: 4, hard: 2, special: 1 } },
+              p3: { 8: { done: 3, hard: 3, special: 1 } }
+            }
+          };
+          var group = { id: 'g1', name: 'گروه عقاب', closedDays: [8] };
+
+          // تست ۱: بدون افراد فریز
+          var reportData = SupportApp.ImageExport.getGroupDayReportRows(cohort, group, 8, false);
+          if (reportData.rows.length !== 2) {
+            return { pass: false, detail: 'تعداد اعضای فعال باید ۲ نفر باشد اما ' + reportData.rows.length + ' است.' };
+          }
+
+          var row1 = reportData.rows[0];
+          // محاسبات برای روز ۸: p1 => done: 3, hard: 3, special: 1 -> dayScore: 7, dayMax: 7, totalScore: 7, totalMax: 7, percent: 100
+          var ok1 = row1.dayScore === 7 && row1.dayMax === 7 && row1.totalScore === 7 && row1.percent === 100;
+
+          var row2 = reportData.rows[1];
+          // محاسبات برای روز ۸: p2 => done: 2, hard: 0, special: 0 -> dayScore: 2, dayMax: 8, totalScore: 2, totalMax: 8, percent: 25
+          var ok2 = row2.dayScore === 2 && row2.dayMax === 8 && row2.totalScore === 2 && row2.percent === 25;
+
+          // تست ۲: با افراد فریز
+          var reportWithFrozen = SupportApp.ImageExport.getGroupDayReportRows(cohort, group, 8, true);
+          var okFrozen = reportWithFrozen.rows.length === 3 && reportWithFrozen.rows[2].status === 'frozen';
+
+          var allOk = ok1 && ok2 && okFrozen;
+          return {
+            pass: allOk,
+            detail: 'فرد ۱: ' + row1.dayScore + '/' + row1.dayMax + ' (' + row1.percent + '٪) | فرد ۲: ' + row2.dayScore + '/' + row2.dayMax + ' (' + row2.percent + '٪) | فریز: ' + reportWithFrozen.rows.length + ' نفر'
+          };
         }
       }
     ];

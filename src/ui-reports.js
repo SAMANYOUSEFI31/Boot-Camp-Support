@@ -11,10 +11,11 @@
   var B = root.Bushido;
   var Names = SupportApp.Names || {};
   var Excel = SupportApp.Excel || {};
+  var ImageExport = SupportApp.ImageExport || {};
   var Scoring = SupportApp.Scoring || {};
 
   /**
-   * تب گزارش‌ها و دریافت خروجی‌های استاندارد اکسل
+   * تب گزارش‌ها و دریافت خروجی‌های استاندارد اکسل و تصویر PNG
    */
   function ReportsTab(props) {
     var cohort = props.cohort;
@@ -26,10 +27,13 @@
     var [selectedGroupId, setSelectedGroupId] = root.React.useState(myGroups[0] ? myGroups[0].id : '');
     var [selectedDayN, setSelectedDayN] = root.React.useState(8);
     var [includeFrozen, setIncludeFrozen] = root.React.useState(false);
-    var [loadingReport, setLoadingReport] = root.React.useState(null); // 'day' | 'full' | 'all_day' | 'all_full' | null
+    var [loadingReport, setLoadingReport] = root.React.useState(null); // 'day' | 'full' | 'all_day' | 'all_full' | 'image' | 'both' | null
+
+    // مودال پیش‌نمایش تصویر
+    var [imageModalOpen, setImageModalOpen] = root.React.useState(false);
+    var [imagePreviewData, setImagePreviewData] = root.React.useState(null);
 
     var activeGroup = myGroups.find(function (g) { return g.id === selectedGroupId; }) || myGroups[0] || null;
-
     var mainDays = (cohort.days || []).filter(function (d) { return d.type === 'main'; });
 
     function handleExportDay() {
@@ -39,6 +43,40 @@
         .then(function () {
           setLoadingReport(null);
           if (toast) toast.show({ intent: 'success', message: 'گزارش روز ' + Names.toPersianDigits(selectedDayN) + ' دانلود شد.' });
+        })
+        .catch(function (err) {
+          setLoadingReport(null);
+          if (toast) toast.show({ intent: 'danger', message: err.message });
+        });
+    }
+
+    function handleExportImage() {
+      if (!activeGroup) return;
+      setLoadingReport('image');
+      ImageExport.generateGroupDayReportImages(cohort, activeGroup, selectedDayN, includeFrozen)
+        .then(function (result) {
+          setLoadingReport(null);
+          setImagePreviewData(result);
+          setImageModalOpen(true);
+        })
+        .catch(function (err) {
+          setLoadingReport(null);
+          if (toast) toast.show({ intent: 'danger', message: err.message });
+        });
+    }
+
+    function handleExportBoth() {
+      if (!activeGroup) return;
+      setLoadingReport('both');
+      Excel.exportGroupDayReport(cohort, activeGroup, selectedDayN, includeFrozen)
+        .then(function () {
+          return ImageExport.generateGroupDayReportImages(cohort, activeGroup, selectedDayN, includeFrozen);
+        })
+        .then(function (result) {
+          setLoadingReport(null);
+          setImagePreviewData(result);
+          setImageModalOpen(true);
+          if (toast) toast.show({ intent: 'success', message: 'اکسل دانلود شد و تصویر گزارش آماده است.' });
         })
         .catch(function (err) {
           setLoadingReport(null);
@@ -93,9 +131,9 @@
 
     return h('div', { style: { display: 'grid', gap: 'var(--space-6)' } },
       h('div', null,
-        h('h2', { className: 'heading-md' }, 'گزارش‌ها و خروجی‌های اکسل'),
+        h('h2', { className: 'heading-md' }, 'گزارش‌ها و خروجی‌های اکسل و تصویر'),
         h('p', { className: 'body-sm', style: { color: 'var(--text-muted)' } },
-          'فایل‌های اکسل استاندارد و راست‌به‌چپ برای ارسال مستقیم در گروه‌های تلگرام و تحلیل داده‌ها.'
+          'فایل‌های اکسل استاندارد و تصاویر تمیز تلگرامی (PNG ۱۰۸۰p) برای ارسال مستقیم در گروه‌ها و اشتراک‌گذاری.'
         )
       ),
 
@@ -147,25 +185,43 @@
         )
       ),
 
-      // کارت‌های انواع خروجی اکسل
+      // کارت‌های انواع خروجی اکسل و تصویر
       h('div', { style: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 'var(--space-4)' } },
-        // خروجی ۱: گزارش روز گروه
+        // خروجی ۱: گزارش روز گروه (اکسل و تصویر)
         h(B.Card, { padding: 'lg', style: { display: 'flex', flexDirection: 'column', justifyContent: 'space-between' } },
           h('div', null,
             h('div', { style: { display: 'flex', alignItems: 'center', gap: 'var(--space-2)', marginBottom: 'var(--space-2)' } },
               h(B.Icon, { name: 'CalendarDays', size: 'lg', className: 'text-brand' }),
-              h('h4', { className: 'title' }, '۱. گزارش روز گروه')
+              h('h4', { className: 'title' }, '۱. گزارش روز گروه (اکسل و تصویر)')
             ),
             h('p', { className: 'body-sm', style: { color: 'var(--text-muted)', marginBottom: 'var(--space-4)' } },
-              'مخصوص ارسال در گروه تلگرام در پایان روز. شامل شیت متنی گزارش با قلم Tahoma و شیت داده عددی با فرمول‌های قابل محاسبه.'
+              'مخصوص ارسال در گروه تلگرام در پایان روز. تصویر بهینه ۱۰۸۰ پیکسلی شارپ با فونت Vazirmatn، همراه با اکسل دو شیت.'
             )
           ),
-          h(B.Button, {
-            variant: 'primary',
-            iconStart: 'Share2',
-            loading: loadingReport === 'day',
-            onClick: handleExportDay
-          }, 'دانلود اکسل گزارش روز ' + Names.toPersianDigits(selectedDayN))
+          h('div', { style: { display: 'grid', gap: 'var(--space-2)' } },
+            h(B.Button, {
+              variant: 'primary',
+              iconStart: 'Image',
+              loading: loadingReport === 'image',
+              onClick: handleExportImage
+            }, 'خروجی تصویر گزارش (PNG)'),
+            h('div', { style: { display: 'flex', gap: 'var(--space-2)' } },
+              h(B.Button, {
+                variant: 'secondary',
+                iconStart: 'Share2',
+                style: { flex: 1 },
+                loading: loadingReport === 'day',
+                onClick: handleExportDay
+              }, 'دانلود اکسل'),
+              h(B.Button, {
+                variant: 'secondary',
+                iconStart: 'FolderArchive',
+                style: { flex: 1 },
+                loading: loadingReport === 'both',
+                onClick: handleExportBoth
+              }, 'خروجی هر دو')
+            )
+          )
         ),
 
         // خروجی ۲: گزارش کل دوره یک گروه
@@ -224,7 +280,15 @@
             onClick: handleExportAllGroupsFull
           }, 'دانلود همه گروه‌ها (کل دوره)')
         )
-      )
+      ),
+
+      // دیالوگ پیش‌نمایش تصویر گزارش
+      imageModalOpen && h(ImageExport.ImagePreviewModal, {
+        open: imageModalOpen,
+        imagesData: imagePreviewData,
+        onClose: function () { setImageModalOpen(false); },
+        toast: toast
+      })
     );
   }
 

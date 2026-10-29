@@ -5,6 +5,7 @@ import { createRequire } from 'node:module';
 const require = createRequire(import.meta.url);
 const Names = require('./names.js');
 const Scoring = require('./scoring.js');
+const ImageExport = require('./image-export.js');
 
 test('۱. habitCount=3, done=3, hard=3 (روز با ۳ سطح), special=1 (روز ماموریت دارد) -> ۷ از ۷', () => {
   const p = { id: 'p1', habitCount: 3 };
@@ -216,3 +217,50 @@ test('۱۵. ورودی عددی با رقم فارسی یا عربی («۳» ی�
   assert.equal(Scoring.dayScore(p, recFa, day), 6);
   assert.equal(Scoring.dayScore(p, recAr, day), 6);
 });
+
+test('۱۶. تطابق کامل داده‌های گزارش تصویری Canvas با خروجی و محاسبات اکسل', () => {
+  const cohort = {
+    name: 'دوره ۱۲',
+    startDate: '2026-03-21',
+    days: [
+      { n: 8, type: 'main', hardLevels: 3, specialMission: true },
+      { n: 9, type: 'main', hardLevels: 2, specialMission: true }
+    ],
+    participants: [
+      { id: 'p1', name: 'علی رضایی', groupId: 'g1', status: 'active', habitCount: 3 },
+      { id: 'p2', name: 'زهرا موسوی', groupId: 'g1', status: 'active', habitCount: 4 },
+      { id: 'p3', name: 'مهدی کریمی', groupId: 'g1', status: 'frozen', habitCount: 3 }
+    ],
+    records: {
+      p1: { 8: { done: 3, hard: 3, special: 1 }, 9: { done: 2, hard: 1, special: 0 } },
+      p2: { 8: { done: 2, hard: 0, special: 0 }, 9: { done: 4, hard: 2, special: 1 } },
+      p3: { 8: { done: 3, hard: 3, special: 1 } }
+    }
+  };
+  const group = { id: 'g1', name: 'گروه عقاب', closedDays: [8] };
+
+  // آزمون ۱: فقط اعضای فعال (بدون فریز)
+  const reportData = ImageExport.getGroupDayReportRows(cohort, group, 8, false);
+  assert.equal(reportData.rows.length, 2);
+
+  const row1 = reportData.rows[0];
+  assert.equal(row1.dayScore, 7);
+  assert.equal(row1.dayMax, 7);
+  assert.equal(row1.totalScore, 7);
+  assert.equal(row1.totalMax, 7);
+  assert.equal(row1.percent, 100);
+
+  const row2 = reportData.rows[1];
+  assert.equal(row2.dayScore, 2);
+  assert.equal(row2.dayMax, 8);
+  assert.equal(row2.totalScore, 2);
+  assert.equal(row2.totalMax, 8);
+  assert.equal(row2.percent, 25);
+
+  // آزمون ۲: با احتساب افراد فریز
+  const reportWithFrozen = ImageExport.getGroupDayReportRows(cohort, group, 8, true);
+  assert.equal(reportWithFrozen.rows.length, 3);
+  assert.equal(reportWithFrozen.rows[2].status, 'frozen');
+  assert.ok(reportWithFrozen.rows[2].name.includes('(فریز)'));
+});
+
