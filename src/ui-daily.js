@@ -191,20 +191,31 @@
     var unrecordedCount = totalMembersCount - recordedMembersCount;
     var progressPercent = totalMembersCount > 0 ? Math.round((recordedMembersCount / totalMembersCount) * 100) : 0;
 
-    return h('div', { style: { display: 'grid', gap: 'var(--space-4)', paddingBottom: 'var(--space-12)' } },
+    // «بستن روز» تنها دکمهٔ اصلی صفحه است؛ در هر عرض فقط یک نسخهٔ آن دیده می‌شود
+    var closeDayButton = isDayClosed ? (
+      h(B.Button, {
+        variant: 'ghost',
+        size: 'sm',
+        onClick: function () {
+          Store.toggleCloseDay(cohort.id, activeGroup.id, selectedDayN, false);
+          if (toast) toast.show({ intent: 'info', message: 'روز دوباره باز شد.' });
+        }
+      }, 'باز کردن دوباره روز')
+    ) : (
+      h(B.Button, {
+        variant: 'primary',
+        size: 'sm',
+        iconStart: 'CircleCheck',
+        onClick: function () { setCloseDayModalOpen(true); }
+      }, 'بستن روز')
+    );
+
+    return h('div', { className: 'bsh-stack bsh-daily' },
       // ۱. نوار کنترل بالای صفحه
       h(B.Card, { padding: 'md' },
-        h('div', {
-          style: {
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            gap: 'var(--space-3)',
-            flexWrap: 'wrap'
-          }
-        },
+        h('div', { className: 'bsh-row', style: { justifyContent: 'space-between' } },
           // انتخاب گروه با اسکرول افقی نرم
-          h('div', { style: { maxWidth: '100%', overflowX: 'auto', WebkitOverflowScrolling: 'touch' } },
+          h('div', { style: { maxWidth: '100%', overflowX: 'auto', WebkitOverflowScrolling: 'touch', paddingBlock: 'var(--space-1)' } },
             h(B.SegmentedControl, {
               label: 'انتخاب گروه',
               items: myGroups.map(function (g) {
@@ -220,6 +231,7 @@
             h(B.IconButton, {
               icon: 'ChevronRight',
               flip: true,
+              style: { flex: 'none' },
               label: 'روز قبل',
               disabled: selectedDayN <= 1,
               onClick: function () { setSelectedDayN(function (prev) { return Math.max(1, prev - 1); }); }
@@ -231,7 +243,8 @@
                 gap: 'var(--space-2)',
                 background: 'var(--surface-overlay)',
                 padding: 'var(--space-2) var(--space-4)',
-                borderRadius: 'var(--radius-md)'
+                borderRadius: 'var(--radius-md)',
+                flexWrap: 'wrap'
               }
             },
               h('span', { className: 'heading-xs' },
@@ -244,92 +257,57 @@
             h(B.IconButton, {
               icon: 'ChevronLeft',
               flip: true,
+              style: { flex: 'none' },
               label: 'روز بعد',
               disabled: selectedDayN >= 30,
               onClick: function () { setSelectedDayN(function (prev) { return Math.min(30, prev + 1); }); }
             })
           ),
 
-          // دکمه‌های اکشن اصلی و خروجی‌ها (فقط یک دکمه اصلی مجاز است)
-          h('div', { style: { display: 'flex', alignItems: 'center', gap: 'var(--space-2)', flexWrap: 'wrap' } },
-            saveIndicator && h('span', {
-              className: 'caption',
-              style: { color: 'var(--emerald-400)', display: 'flex', alignItems: 'center', gap: 4 }
-            },
-              h(B.Icon, { name: 'Check', size: 'xs' }),
-              'ذخیره شد'
-            ),
-
-            // خروجی تصویر (ثانویه)
+          // ذخیره کم‌سروصدا + خروجی‌ها + بستن روز (در موبایل این‌ها در نوار پایین‌اند)
+          saveIndicator && h('span', {
+            className: 'caption',
+            style: { color: 'var(--text-success)', display: 'flex', alignItems: 'center', gap: 'var(--space-1)' }
+          },
+            h(B.Icon, { name: 'Check', size: 'xs' }),
+            'ذخیره شد'
+          ),
+          h('div', { className: 'bsh-wide-only', style: { display: 'flex', alignItems: 'center', gap: 'var(--space-2)', flexWrap: 'wrap' } },
             h(B.Button, {
               variant: 'secondary',
               size: 'sm',
-              iconStart: 'Image',
               loading: isGeneratingImage,
               onClick: function () { handleGenerateImage(showFrozen); }
             }, 'خروجی تصویر'),
-
-            // خروجی اکسل (ثانویه)
             h(B.Button, {
               variant: 'secondary',
               size: 'sm',
               iconStart: 'Share2',
               onClick: function () { setExportModalOpen(true); }
             }, 'خروجی Excel'),
-
-            // خروجی هر دو (ثانویه)
             h(B.Button, {
               variant: 'secondary',
               size: 'sm',
-              iconStart: 'FolderArchive',
               loading: isGeneratingImage,
               onClick: function () { handleExportBoth(showFrozen); }
             }, 'خروجی هر دو'),
-
-            // دکمه بستن روز (تنها دکمه اصلی صفحه)
-            isDayClosed ? (
-              h(B.Button, {
-                variant: 'ghost',
-                size: 'sm',
-                onClick: function () {
-                  Store.toggleCloseDay(cohort.id, activeGroup.id, selectedDayN, false);
-                  if (toast) toast.show({ intent: 'info', message: 'روز دوباره باز شد.' });
-                }
-              }, 'باز کردن دوباره روز')
-            ) : (
-              h(B.Button, {
-                variant: 'primary',
-                size: 'sm',
-                iconStart: 'CircleCheck',
-                onClick: function () { setCloseDayModalOpen(true); }
-              }, 'بستن روز')
-            )
+            closeDayButton
           )
         )
       ),
 
-      // ۲. هدر پیشرفت ثبت روزانه (چسبان و شکیل)
-      dayCfg.type === 'main' && h('div', {
-        style: {
-          background: 'var(--surface-raised)',
-          border: '1px solid var(--border-subtle)',
-          borderRadius: 'var(--radius-md)',
-          padding: 'var(--space-3) var(--space-4)',
-          display: 'flex',
-          flexDirection: 'column',
-          gap: 'var(--space-2)'
-        }
-      },
-        h('div', { style: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 'var(--space-2)' } },
-          h('div', { style: { display: 'flex', alignItems: 'center', gap: 'var(--space-2)' } },
+      // ۲. هدر پیشرفت ثبت روزانه
+      dayCfg.type === 'main' && h('div', { className: 'bsh-progress' },
+        h('div', { className: 'bsh-row', style: { justifyContent: 'space-between' } },
+          h('div', { className: 'bsh-row', style: { gap: 'var(--space-2)' } },
             h('span', { className: 'label-md' }, 'پیشرفت ثبت گروه:'),
-            h('span', { className: 'body-md', style: { fontWeight: 700, color: progressPercent === 100 ? 'var(--emerald-400)' : 'var(--text-base)' } },
+            h('span', { className: 'body-md', style: { fontWeight: 700, color: progressPercent === 100 ? 'var(--text-success)' : 'var(--text-default)' } },
               Names.toPersianDigits(recordedMembersCount) + ' از ' + Names.toPersianDigits(totalMembersCount) + ' نفر ثبت شد (' + Names.toPersianDigits(progressPercent) + '٪)'
             )
           ),
-          h('div', { style: { display: 'flex', alignItems: 'center', gap: 'var(--space-3)' } },
-            // سوئیچ نمای کارتی / جدولی
-            h('div', { style: { display: 'flex', background: 'var(--surface-overlay)', borderRadius: 'var(--radius-sm)', padding: 2 } },
+          h('div', { className: 'bsh-row' },
+            // سوئیچ نمای کارتی / جدولی (در موبایل همیشه کارتی است)
+            h('div', { className: 'bsh-wide-only', style: { display: 'flex', background: 'var(--surface-overlay)', borderRadius: 'var(--radius-sm)', padding: 'var(--space-0\\.5)' } },
               h(B.Button, {
                 variant: viewMode === 'cards' ? 'secondary' : 'ghost',
                 size: 'sm',
@@ -348,37 +326,16 @@
             })
           )
         ),
-        // نوار میله‌ای پیشرفت
-        h('div', {
-          style: {
-            width: '100%',
-            height: 6,
-            background: 'var(--surface-overlay)',
-            borderRadius: 'var(--radius-full)',
-            overflow: 'hidden'
-          }
-        },
+        h('div', { className: 'bsh-progress__track', role: 'progressbar', 'aria-valuemin': 0, 'aria-valuemax': 100, 'aria-valuenow': progressPercent, 'aria-label': 'پیشرفت ثبت گروه' },
           h('div', {
-            style: {
-              width: progressPercent + '%',
-              height: '100%',
-              background: progressPercent === 100 ? 'var(--emerald-500)' : 'var(--brand-500)',
-              transition: 'width 0.3s ease'
-            }
+            className: 'bsh-progress__fill' + (progressPercent === 100 ? ' is-complete' : ''),
+            style: { inlineSize: progressPercent + '%' }
           })
         )
       ),
 
       // نوار ابزارهای گروهی
-      dayCfg.type === 'main' && h('div', {
-        style: {
-          display: 'flex',
-          justifyContent: 'flex-start',
-          alignItems: 'center',
-          gap: 'var(--space-2)',
-          flexWrap: 'wrap'
-        }
-      },
+      dayCfg.type === 'main' && h('div', { className: 'bsh-batch-bar' },
         h(B.Button, {
           variant: 'ghost',
           size: 'sm',
@@ -427,55 +384,19 @@
         })
       ),
 
-      // نوار ثابت پایین برای موبایل جهت ثبت آسان با یک دست
-      isSmallScreen && h('div', {
-        style: {
-          position: 'fixed',
-          bottom: 0,
-          left: 0,
-          right: 0,
-          zIndex: 40,
-          background: 'var(--surface-raised)',
-          borderTop: '1px solid var(--border-default)',
-          padding: 'var(--space-2) var(--space-4)',
-          paddingBottom: 'calc(var(--space-2) + env(safe-area-inset-bottom, 0px))',
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          boxShadow: '0 -4px 16px rgba(0,0,0,0.4)'
-        }
-      },
-        h('div', { style: { display: 'flex', gap: 'var(--space-2)' } },
-          h(B.Button, {
-            variant: 'secondary',
-            size: 'sm',
-            iconStart: 'Image',
-            onClick: function () { handleGenerateImage(showFrozen); }
-          }, 'تصویر'),
-          h(B.Button, {
-            variant: 'secondary',
-            size: 'sm',
-            iconStart: 'Share2',
-            onClick: function () { setExportModalOpen(true); }
-          }, 'اکسل')
-        ),
-        isDayClosed ? (
-          h(B.Button, {
-            variant: 'ghost',
-            size: 'sm',
-            onClick: function () {
-              Store.toggleCloseDay(cohort.id, activeGroup.id, selectedDayN, false);
-              if (toast) toast.show({ intent: 'info', message: 'روز باز شد.' });
-            }
-          }, 'باز کردن روز')
-        ) : (
-          h(B.Button, {
-            variant: 'primary',
-            size: 'sm',
-            iconStart: 'CircleCheck',
-            onClick: function () { setCloseDayModalOpen(true); }
-          }, 'بستن روز')
-        )
+      // نوار ثابت پایین فقط در موبایل (با CSS): خروجی‌ها زیر یک منو + تنها دکمهٔ اصلی صفحه
+      h('div', { className: 'bsh-daily-bar' },
+        h(B.Menu, {
+          label: 'خروجی',
+          side: 'top',
+          trigger: h(B.Button, { variant: 'secondary', size: 'sm', iconStart: 'Share2' }, 'خروجی'),
+          items: [
+            { label: 'خروجی تصویر', onSelect: function () { handleGenerateImage(showFrozen); } },
+            { label: 'خروجی Excel', onSelect: function () { setExportModalOpen(true); } },
+            { label: 'خروجی هر دو', onSelect: function () { handleExportBoth(showFrozen); } }
+          ]
+        }),
+        closeDayButton
       ),
 
       // دیالوگ بستن روز
@@ -628,65 +549,42 @@
     return h(B.Card, {
       padding: 'md',
       style: {
-        borderRight: hasRecord ? '4px solid var(--emerald-500)' : '4px solid var(--border-default)',
+        borderInlineStart: 'var(--space-1) solid ' + (hasRecord ? 'var(--border-success)' : 'var(--border-default)'),
         background: 'var(--surface-raised)'
       }
     },
       h('div', { style: { display: 'grid', gap: 'var(--space-3)' } },
         // سطر عنوان کارت: نام، وضعیت، و چیپ امتیاز زنده
-        h('div', { style: { display: 'flex', justifyContent: 'space-between', alignItems: 'center' } },
-          h('div', { style: { display: 'flex', alignItems: 'center', gap: 'var(--space-2)' } },
-            h('span', { className: 'caption', style: { color: 'var(--text-muted)', minWidth: 20 } }, Names.toPersianDigits(rowIdx + 1) + '.'),
+        h('div', { style: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 'var(--space-2)' } },
+          h('div', { style: { display: 'flex', alignItems: 'center', gap: 'var(--space-2)', minInlineSize: 0, flexWrap: 'wrap' } },
+            h('span', { className: 'caption', style: { color: 'var(--text-subtle)', minInlineSize: 'var(--space-5)' } }, Names.toPersianDigits(rowIdx + 1) + '.'),
             h('span', { className: 'body-md', style: { fontWeight: 700 } }, p.name),
             p.status === 'frozen' && h(B.Badge, { intent: 'info', emphasis: 'subtle' }, 'فریز'),
             p.status === 'left' && h(B.Badge, { intent: 'neutral', emphasis: 'subtle' }, 'خارج')
           ),
-          h('div', {
-            style: {
-              background: hasRecord ? 'var(--emerald-950)' : 'var(--surface-overlay)',
-              color: hasRecord ? 'var(--emerald-400)' : 'var(--text-muted)',
-              border: '1px solid ' + (hasRecord ? 'var(--emerald-800)' : 'var(--border-subtle)'),
-              padding: '2px 8px',
-              borderRadius: 'var(--radius-sm)',
-              fontWeight: 700,
-              fontSize: '13px'
-            }
-          }, dayScoreVal)
+          h('div', { className: 'bsh-score-chip', 'data-recorded': hasRecord ? 'true' : 'false' }, dayScoreVal)
         ),
 
         // بخش ۱: عادت‌های انجام‌شده با دکمه‌های بزرگ لمسی
         h('div', { style: { display: 'flex', flexDirection: 'column', gap: 'var(--space-1)' } },
           h('div', { style: { display: 'flex', justifyContent: 'space-between', alignItems: 'center' } },
-            h('span', { className: 'caption', style: { color: 'var(--text-muted)' } }, 'عادت‌های انجام‌شده:'),
-            h('span', { className: 'caption', style: { color: 'var(--text-muted)' } },
+            h('span', { className: 'caption', style: { color: 'var(--text-subtle)' } }, 'عادت‌های انجام‌شده:'),
+            h('span', { className: 'caption', style: { color: 'var(--text-subtle)' } },
               habitCount != null ? ('سقف: ' + Names.toPersianDigits(habitCount) + ' عادت') : 'تعیین‌نشده'
             )
           ),
           habitCount == null ? (
-            h('div', { className: 'caption', style: { color: 'var(--text-muted)', padding: 'var(--space-1) 0' } }, 'تعداد عادت این فرد تعیین نشده است.')
+            h('div', { className: 'caption', style: { color: 'var(--text-subtle)', padding: 'var(--space-1) 0' } }, 'تعداد عادت این فرد تعیین نشده است.')
           ) : (
-            h('div', { style: { display: 'flex', gap: 'var(--space-2)', flexWrap: 'wrap' } },
+            h('div', { className: 'bsh-opts' },
               habitOptions.map(function (opt) {
                 var isSelected = doneVal === opt;
                 return h('button', {
                   key: opt,
                   type: 'button',
-                  onClick: function () { onCellChange(p.id, 'done', isSelected ? null : opt); },
-                  style: {
-                    minWidth: 44,
-                    minHeight: 44,
-                    flex: 1,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    borderRadius: 'var(--radius-md)',
-                    border: '1px solid ' + (isSelected ? 'var(--brand-500)' : 'var(--border-default)'),
-                    background: isSelected ? 'var(--brand-500)' : 'var(--surface-overlay)',
-                    color: isSelected ? '#ffffff' : 'var(--text-base)',
-                    fontWeight: 700,
-                    cursor: 'pointer',
-                    fontSize: 16
-                  }
+                  className: 'bsh-opt',
+                  'aria-pressed': isSelected,
+                  onClick: function () { onCellChange(p.id, 'done', isSelected ? null : opt); }
                 }, Names.toPersianDigits(opt));
               })
             )
@@ -695,46 +593,23 @@
 
         // بخش ۲: کار سخت
         dayCfg.hardLevels > 0 && h('div', { style: { display: 'flex', flexDirection: 'column', gap: 'var(--space-1)' } },
-          h('span', { className: 'caption', style: { color: 'var(--text-muted)' } }, 'سطح کار سخت (سقف ' + Names.toPersianDigits(dayCfg.hardLevels) + '):'),
-          h('div', { style: { display: 'flex', gap: 'var(--space-2)' } },
+          h('span', { className: 'caption', style: { color: 'var(--text-subtle)' } }, 'سطح کار سخت (سقف ' + Names.toPersianDigits(dayCfg.hardLevels) + '):'),
+          h('div', { className: 'bsh-opts' },
             hardOptions.map(function (lvl) {
               var isSelected = hardVal === lvl;
               return h('button', {
                 key: lvl,
                 type: 'button',
-                onClick: function () { onCellChange(p.id, 'hard', isSelected ? null : lvl); },
-                style: {
-                  minWidth: 44,
-                  minHeight: 44,
-                  flex: 1,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  borderRadius: 'var(--radius-md)',
-                  border: '1px solid ' + (isSelected ? 'var(--emerald-500)' : 'var(--border-default)'),
-                  background: isSelected ? 'var(--emerald-600)' : 'var(--surface-overlay)',
-                  color: isSelected ? '#ffffff' : 'var(--text-base)',
-                  fontWeight: 600,
-                  cursor: 'pointer',
-                  fontSize: 15
-                }
+                className: 'bsh-opt bsh-opt--hard',
+                'aria-pressed': isSelected,
+                onClick: function () { onCellChange(p.id, 'hard', isSelected ? null : lvl); }
               }, lvl === 0 ? '۰ (انجام نداد)' : ('سطح ' + Names.toPersianDigits(lvl)));
             })
           )
         ),
 
         // بخش ۳: مأموریت ویژه
-        dayCfg.specialMission && h('div', {
-          style: {
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            background: 'var(--surface-overlay)',
-            padding: 'var(--space-2) var(--space-3)',
-            borderRadius: 'var(--radius-md)',
-            minHeight: 44
-          }
-        },
+        dayCfg.specialMission && h('div', { className: 'bsh-special-row' },
           h('span', { className: 'body-sm', style: { fontWeight: 500 } }, 'مأموریت ویژه انجام شد'),
           h(B.Switch, {
             checked: specialVal === 1,
@@ -788,13 +663,13 @@
     return h('div', {
       className: 'bsh-scoring-table-wrap bsh-table-scroll-container',
       style: {
-        border: '1px solid var(--border-subtle)',
+        border: 'var(--border-width-thin) solid var(--border-subtle)',
         borderRadius: 'var(--radius-md)'
       }
     },
       h('table', {
         className: 'bsh-table',
-        style: { borderCollapse: 'collapse', width: '100%', minWidth: 720 }
+        style: { borderCollapse: 'collapse', width: '100%', minWidth: 'var(--container-md)' }
       },
         h('thead', null,
           h('tr', null,
@@ -802,8 +677,7 @@
             h('th', {
               className: 'label-sm bsh-sticky-right',
               style: {
-                background: 'var(--surface-raised)',
-                minWidth: 170
+                minWidth: 'calc(var(--space-12) * 3.5)'
               }
             }, 'نام و نام خانوادگی'),
             h('th', { className: 'label-sm is-num', style: { textAlign: 'center', width: 110 } }, 'عادت‌های انتخابی'),
@@ -862,39 +736,37 @@
 
     return h('tr', null,
       // ردیف
-      h('td', { className: 'body-sm is-num', style: { textAlign: 'center', color: 'var(--text-muted)' } },
+      h('td', { className: 'body-sm is-num', style: { textAlign: 'center', color: 'var(--text-subtle)' } },
         Names.toPersianDigits(rowIdx + 1)
       ),
       // نام چسبان
       h('td', {
         className: 'body-sm bsh-sticky-right',
         style: {
-          background: 'var(--surface-raised)',
           fontWeight: 600,
-          borderLeft: '1px solid var(--border-subtle)'
+          borderInlineEnd: 'var(--border-width-thin) solid var(--border-subtle)'
         }
       },
         p.name,
-        p.status === 'frozen' && h('span', { className: 'caption', style: { color: 'var(--sky-400)', marginRight: 4 } }, '(فریز)'),
-        p.status === 'left' && h('span', { className: 'caption', style: { color: 'var(--neutral-400)', marginRight: 4 } }, '(خارج)')
+        p.status === 'frozen' && h('span', { className: 'caption', style: { color: 'var(--text-info)', marginInlineStart: 'var(--space-1)' } }, '(فریز)'),
+        p.status === 'left' && h('span', { className: 'caption', style: { color: 'var(--text-subtle)', marginInlineStart: 'var(--space-1)' } }, '(خارج)')
       ),
       // عادت‌های انتخابی
       h('td', { className: 'body-sm is-num', style: { textAlign: 'center' } },
         p.habitCount != null
           ? Names.toPersianDigits(p.habitCount) + ' عادت'
-          : h('span', { className: 'caption', style: { color: 'var(--text-muted)' } }, '— (تعیین نشده)')
+          : h('span', { className: 'caption', style: { color: 'var(--text-subtle)' } }, '— (تعیین نشده)')
       ),
       // عادت‌های انجام‌شده
       h('td', { style: { textAlign: 'center' } },
         isHabitLocked ? (
-          h('span', { className: 'caption', style: { color: 'var(--text-muted)' } }, '—')
+          h('span', { className: 'caption', style: { color: 'var(--text-subtle)' } }, '—')
         ) : (
           h('input', {
             ref: function (el) { inputRefs.current[rowIdx + '_done'] = el; },
             type: 'text',
             inputMode: 'numeric',
-            className: 'bsh-field__input body-md',
-            style: { width: 56, height: 38, textAlign: 'center', margin: '0 auto', padding: '4px' },
+            className: 'bsh-field__input bsh-cell-input body-md',
             value: doneVal !== '' ? Names.toPersianDigits(doneVal) : '',
             placeholder: '—',
             onChange: function (e) {
@@ -929,14 +801,13 @@
       // کار سخت
       h('td', { style: { textAlign: 'center' } },
         dayCfg.hardLevels === 0 ? (
-          h('span', { className: 'caption', style: { color: 'var(--text-muted)' } }, 'ندارد')
+          h('span', { className: 'caption', style: { color: 'var(--text-subtle)' } }, 'ندارد')
         ) : (
           h('input', {
             ref: function (el) { inputRefs.current[rowIdx + '_hard'] = el; },
             type: 'text',
             inputMode: 'numeric',
-            className: 'bsh-field__input body-md',
-            style: { width: 56, height: 38, textAlign: 'center', margin: '0 auto', padding: '4px' },
+            className: 'bsh-field__input bsh-cell-input body-md',
             value: hardVal !== '' ? Names.toPersianDigits(hardVal) : '',
             placeholder: '—',
             onChange: function (e) {
@@ -971,7 +842,7 @@
       // مأموریت ویژه
       h('td', { style: { textAlign: 'center' } },
         !dayCfg.specialMission ? (
-          h('span', { className: 'caption', style: { color: 'var(--text-muted)' } }, 'ندارد')
+          h('span', { className: 'caption', style: { color: 'var(--text-subtle)' } }, 'ندارد')
         ) : (
           h(B.Checkbox, {
             checked: specialVal === 1,
@@ -987,7 +858,7 @@
         style: {
           textAlign: 'center',
           fontWeight: 600,
-          color: dayScoreVal === '—' ? 'var(--text-muted)' : 'var(--emerald-400)'
+          color: dayScoreVal === '—' ? 'var(--text-subtle)' : 'var(--text-success)'
         }
       }, dayScoreVal)
     );

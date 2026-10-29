@@ -9,6 +9,7 @@
   var SupportApp = root.SupportApp || (root.SupportApp = {});
   var Names = SupportApp.Names || {};
 
+  var SCHEMA_VERSION = 1;
   var STORAGE_KEY = 'bsh_support_app_state_v1';
   var TAB_CHANNEL_NAME = 'bsh_support_tab_sync';
   var currentTabId = 'tab_' + Math.random().toString(36).slice(2, 9);
@@ -83,6 +84,167 @@
         });
       });
       return data;
+    }
+    return data;
+  }
+
+  function deepClone(obj) {
+    return JSON.parse(JSON.stringify(obj));
+  }
+
+  function isPlainObject(v) {
+    return !!v && typeof v === 'object' && !Array.isArray(v);
+  }
+
+  /**
+   * اعتبارسنجی فایل بکاپ. هیچ تغییری روی ورودی نمی‌دهد.
+   * خروجی: { ok: true, data } (کپی عمیق و مهاجرت‌شده) یا { ok: false, error } با پیام فارسی ساده
+   */
+  function validateBackup(raw) {
+    if (!isPlainObject(raw)) {
+      return { ok: false, error: 'این فایل، فایل بکاپ برنامه نیست.' };
+    }
+    if (raw.schemaVersion !== undefined &&
+        (typeof raw.schemaVersion !== 'number' || raw.schemaVersion < 1 || raw.schemaVersion > SCHEMA_VERSION)) {
+      return { ok: false, error: 'نسخهٔ این فایل با برنامه سازگار نیست. شاید با نسخهٔ جدیدتری ساخته شده است.' };
+    }
+    if (!Array.isArray(raw.cohorts)) {
+      return { ok: false, error: 'در این فایل فهرست دوره‌ها پیدا نشد.' };
+    }
+    for (var i = 0; i < raw.cohorts.length; i++) {
+      var c = raw.cohorts[i];
+      var label = 'دورهٔ شمارهٔ ' + (i + 1);
+      if (!isPlainObject(c) || typeof c.id !== 'string' || !c.id) {
+        return { ok: false, error: label + ' شناسه ندارد یا خراب است.' };
+      }
+      if (typeof c.name !== 'string' || !c.name.trim()) {
+        return { ok: false, error: label + ' نام ندارد.' };
+      }
+      label = 'دورهٔ «' + c.name + '»';
+      if (!Array.isArray(c.groups)) return { ok: false, error: label + ': فهرست گروه‌ها خراب است.' };
+      if (!Array.isArray(c.participants)) return { ok: false, error: label + ': فهرست افراد خراب است.' };
+      if (!isPlainObject(c.records)) return { ok: false, error: label + ': اطلاعات ثبت روزانه خراب است.' };
+      if (!Array.isArray(c.days)) return { ok: false, error: label + ': فهرست روزها خراب است.' };
+      for (var gi = 0; gi < c.groups.length; gi++) {
+        if (!isPlainObject(c.groups[gi]) || typeof c.groups[gi].id !== 'string') {
+          return { ok: false, error: label + ': یکی از گروه‌ها خراب است.' };
+        }
+      }
+      for (var pi = 0; pi < c.participants.length; pi++) {
+        var p = c.participants[pi];
+        if (!isPlainObject(p) || typeof p.id !== 'string' || typeof p.name !== 'string') {
+          return { ok: false, error: label + ': اطلاعات یکی از افراد خراب است.' };
+        }
+      }
+    }
+    return { ok: true, data: migrate(deepClone(raw)) };
+  }
+
+  function sameCohortKey(a, b) {
+    return String(a.name || '').trim() === String(b.name || '').trim() &&
+      String(a.startDate || '') === String(b.startDate || '');
+  }
+
+  /**
+   * پیدا کردن دورهٔ موجود که با دورهٔ ورودی یکی است
+   * (هم‌شناسه، یا هم‌نام و هم‌تاریخ شروع). خروجی: اندیس یا -1
+   */
+  function findConflictIndex(cohorts, incoming) {
+    var i;
+    for (i = 0; i < cohorts.length; i++) {
+      if (cohorts[i].id === incoming.id) return i;
+    }
+    for (i = 0; i < cohorts.length; i++) {
+      if (sameCohortKey(cohorts[i], incoming)) return i;
+    }
+    return -1;
+  }
+
+  function newCohortId() {
+    return 'cohort_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6);
+  }
+
+  function copyName(cohorts, baseName) {
+    var fa = Names.toPersianDigits || String;
+    var n = 2;
+    var name;
+    do {
+      name = baseName + ' ـ' + fa(n);
+      n++;
+    } while (cohorts.some(function (c) { return c.name === name; }));
+    return name;
+  }
+
+  /**
+   * تابع خالص: دوره‌های ورودی را به وضعیت فعلی اضافه می‌کند. ورودی‌ها را تغییر نمی‌دهد.
+   * هر دوره همیشه «کامل» ادغام می‌شود (گروه‌ها، افراد و رکوردهایش با هم)، نه تکه‌تکه.
+   *
+   * options:
+   *   selected  : { [اندیس دورهٔ ورودی]: false } برای نادیده‌گرفتن (پیش‌فرض: همه انتخاب‌اند)
+   *   decisions : { [اندیس]: 'skip' | 'replace' | 'copy' } برای دوره‌های تکراری (پیش‌فرض: skip)
+   *   groupMine : { [اندیس]: { [شناسه گروه]: true/false } } برای تغییر «گروه من/دیگران»
+   *   newId     : تابع تولید شناسهٔ دورهٔ جدید (برای آزمون)
+   *
+   * خروجی: { state, report: { added, replaced, copied, skipped } } (فهرست نام دوره‌ها)
+   */
+  function mergeCohorts(currentState, incomingCohorts, options) {
+    options = options || {};
+    var selected = options.selected || {};
+    var decisions = options.decisions || {};
+    var groupMine = options.groupMine || {};
+    var makeId = options.newId || newCohortId;
+
+    var next = deepClone(currentState);
+    var report = { added: [], replaced: [], copied: [], skipped: [] };
+
+    (incomingCohorts || []).forEach(function (raw, idx) {
+      if (selected[idx] === false) return;
+      var inc = deepClone(raw);
+
+      var mineMap = groupMine[idx];
+      if (mineMap) {
+        inc.groups.forEach(function (g) {
+          if (mineMap[g.id] !== undefined) g.mine = !!mineMap[g.id];
+        });
+      }
+
+      var at = findConflictIndex(next.cohorts, inc);
+      if (at === -1) {
+        next.cohorts.push(inc);
+        report.added.push(inc.name);
+        return;
+      }
+
+      var decision = decisions[idx] || 'skip';
+      if (decision === 'replace') {
+        next.cohorts[at] = inc;
+        report.replaced.push(inc.name);
+      } else if (decision === 'copy') {
+        inc.id = makeId();
+        while (next.cohorts.some(function (c) { return c.id === inc.id; })) inc.id = makeId();
+        inc.name = copyName(next.cohorts, inc.name);
+        next.cohorts.push(inc);
+        report.copied.push(inc.name);
+      } else {
+        report.skipped.push(inc.name);
+      }
+    });
+
+    if (!next.activeCohortId && next.cohorts.length) {
+      next.activeCohortId = next.cohorts[0].id;
+    }
+    return { state: next, report: report };
+  }
+
+  /**
+   * ساخت دادهٔ فایل بکاپ؛ با cohortId فقط همان دوره، وگرنه همهٔ دوره‌ها
+   */
+  function buildBackupData(fromState, cohortId) {
+    var data = deepClone(fromState);
+    data.exportedAt = new Date().toISOString();
+    if (cohortId) {
+      data.cohorts = data.cohorts.filter(function (c) { return c.id === cohortId; });
+      data.activeCohortId = data.cohorts[0] ? data.cohorts[0].id : null;
     }
     return data;
   }
@@ -547,14 +709,27 @@
    * جایگزینی کامل داده‌ها از بکاپ
    */
   function restoreState(backupData) {
-    if (!backupData || typeof backupData !== 'object') {
-      throw new Error('فایل بکاپ نامعتبر است.');
-    }
-    var migrated = migrate(backupData);
-    migrated.lastBackupAt = new Date().toISOString();
-    state = migrated;
+    var v = validateBackup(backupData);
+    if (!v.ok) throw new Error(v.error);
+    var restored = v.data;
+    restored.lastBackupAt = new Date().toISOString();
+    state = restored;
     saveImmediately();
     notifyListeners({ type: 'state_restored' });
+  }
+
+  /**
+   * افزودن دوره‌های فایل بکاپ به داده‌های فعلی (گزینه‌ها: mergeCohorts)
+   */
+  function mergeFromBackup(backupData, options) {
+    var v = validateBackup(backupData);
+    if (!v.ok) throw new Error(v.error);
+    var result = mergeCohorts(state, v.data.cohorts, options);
+    var merged = result.state;
+    state = merged;
+    saveImmediately();
+    notifyListeners({ type: 'state_merged' });
+    return result.report;
   }
 
   SupportApp.Store = {
@@ -581,6 +756,11 @@
     isBackupOverdue: isBackupOverdue,
     clearAllData: clearAllData,
     restoreState: restoreState,
+    mergeFromBackup: mergeFromBackup,
+    mergeCohorts: mergeCohorts,
+    findConflictIndex: findConflictIndex,
+    validateBackup: validateBackup,
+    buildBackupData: buildBackupData,
     getMultiTabWarning: function () { return multiTabConflict; },
     clearMultiTabWarning: function () { multiTabConflict = false; },
     getQuotaError: function () { return hasQuotaError; }

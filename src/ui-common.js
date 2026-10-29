@@ -37,6 +37,51 @@
   }
 
   /**
+   * دانلود یک آبجکت به صورت فایل JSON
+   */
+  function downloadJson(filename, data) {
+    var blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(function () { URL.revokeObjectURL(url); }, 2000);
+  }
+
+  function todayStr() {
+    return new Date().toISOString().slice(0, 10);
+  }
+
+  /**
+   * بکاپ همهٔ دوره‌ها
+   */
+  function downloadAllBackup() {
+    var data = Store.buildBackupData(Store.getState());
+    downloadJson('support-backup-' + Names.sanitizeFilename('همه-دوره‌ها') + '-' + todayStr() + '.json', data);
+    Store.recordBackupTime();
+  }
+
+  /**
+   * بکاپ فقط یک دوره
+   */
+  function downloadCohortBackup(cohort) {
+    if (!cohort) return;
+    var data = Store.buildBackupData(Store.getState(), cohort.id);
+    downloadJson('support-backup-دوره-' + Names.sanitizeFilename(cohort.name) + '-' + todayStr() + '.json', data);
+    Store.recordBackupTime();
+  }
+
+  /**
+   * نسخهٔ احتیاطی از وضعیت فعلی، پیش از جایگزینی کامل (زمان آخرین بکاپ را عوض نمی‌کند)
+   */
+  function downloadBeforeRestoreBackup() {
+    downloadJson('support-before-restore-' + todayStr() + '.json', Store.buildBackupData(Store.getState()));
+  }
+
+  /**
    * نوار بالای صفحه (Header)
    * انتخابگر دوره، وضعیت آخرین بکاپ، منوی ابزار
    */
@@ -57,31 +102,29 @@
       };
     });
 
+    var backupStatusText = 'آخرین بکاپ: ' + formatRelativeBackupTime(state.lastBackupAt);
+
     var menuItems = [
+      {
+        label: backupStatusText,
+        disabled: true
+      },
+      { divider: true },
       {
         label: 'ورود از اکسل / CSV',
         icon: 'Inbox',
         onSelect: onOpenImportWizard
       },
       {
-        label: 'دانلود بکاپ کامل (JSON)',
+        label: 'دانلود بکاپ این دوره',
         icon: 'Copy',
-        onSelect: function () {
-          var data = Store.getState();
-          var activeName = activeCohort ? activeCohort.name : 'همه';
-          var dateStr = new Date().toISOString().slice(0, 10);
-          var filename = 'support-backup-' + Names.sanitizeFilename(activeName) + '-' + dateStr + '.json';
-          var blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-          var url = URL.createObjectURL(blob);
-          var a = document.createElement('a');
-          a.href = url;
-          a.download = filename;
-          document.body.appendChild(a);
-          a.click();
-          document.body.removeChild(a);
-          setTimeout(function () { URL.revokeObjectURL(url); }, 2000);
-          Store.recordBackupTime();
-        }
+        disabled: !activeCohort,
+        onSelect: function () { downloadCohortBackup(activeCohort); }
+      },
+      {
+        label: 'دانلود بکاپ همهٔ دوره‌ها',
+        icon: 'Copy',
+        onSelect: downloadAllBackup
       },
       {
         label: 'بازگردانی از فایل بکاپ',
@@ -101,17 +144,15 @@
       }
     ];
 
-    var backupStatusText = 'آخرین بکاپ: ' + formatRelativeBackupTime(state.lastBackupAt);
 
     return h('header', {
       className: 'bsh-header',
       style: {
         background: 'var(--surface-raised)',
-        borderBottom: '1px solid var(--border-subtle)',
+        borderBottom: 'var(--border-width-thin) solid var(--border-subtle)',
         padding: 'var(--space-3) var(--space-4)',
         position: 'sticky',
-        top: 0,
-        zIndex: 20
+        top: 0
       }
     },
       h('div', {
@@ -126,12 +167,18 @@
         }
       },
         // بخش راست: برند و انتخاب دوره
-        h('div', { style: { display: 'flex', alignItems: 'center', gap: 'var(--space-3)', flexWrap: 'wrap' } },
+        h('div', { className: 'bsh-header__brand', style: { display: 'flex', alignItems: 'center', gap: 'var(--space-3)', flexWrap: 'wrap' } },
           h('div', { style: { display: 'flex', alignItems: 'center', gap: 'var(--space-2)' } },
-            h(B.Icon, { name: 'Flame', size: 'lg', className: 'text-brand' }),
+            (SupportApp.Brand && SupportApp.Brand.markWhite)
+              ? h('img', {
+                src: SupportApp.Brand.markWhite,
+                alt: 'لوگوی بوشیدو',
+                style: { height: 'var(--logo-min)', width: 'auto', display: 'block', marginInlineEnd: 'var(--space-1)' }
+              })
+              : h(B.Icon, { name: 'Flame', size: 'lg', className: 'text-brand' }),
             h('span', { className: 'heading-xs' }, 'پشتیبان بوشیدو')
           ),
-          cohorts.length > 0 && h('div', { style: { minWidth: 160 } },
+          cohorts.length > 0 && h('div', { className: 'bsh-header__cohort' },
             h(B.Select, {
               size: 'sm',
               options: cohortOptions,
@@ -147,8 +194,8 @@
         // بخش چپ: وضعیت بکاپ و منوی ابزار
         h('div', { style: { display: 'flex', alignItems: 'center', gap: 'var(--space-3)' } },
           h('span', {
-            className: 'caption',
-            style: { color: 'var(--text-muted)', whiteSpace: 'nowrap' }
+            className: 'caption bsh-backup-status',
+            style: { color: 'var(--text-subtle)', whiteSpace: 'nowrap' }
           }, backupStatusText),
           h(B.Menu, {
             trigger: h(B.Button, {
@@ -156,6 +203,7 @@
               size: 'sm',
               iconStart: 'Settings'
             }, 'ابزارها'),
+            align: 'end',
             items: menuItems
           })
         )
@@ -163,38 +211,32 @@
     );
   }
 
+  var BANNER_SNOOZE_KEY = 'bsh_backup_banner_snoozed';
+
+  function isBannerSnoozed() {
+    try { return sessionStorage.getItem(BANNER_SNOOZE_KEY) === '1'; } catch (e) { return false; }
+  }
+
   /**
-   * بنر هشدار نیاز به بکاپ
+   * بنر هشدار نیاز به بکاپ (قابل بستن تا بعد؛ در موبایل جمع‌وجور)
    */
   function BackupReminderBanner(props) {
-    var overdue = Store.isBackupOverdue();
-    if (!overdue) return null;
+    var [snoozed, setSnoozed] = root.React.useState(isBannerSnoozed());
+    if (snoozed || !Store.isBackupOverdue()) return null;
 
-    return h('div', { style: { maxWidth: 1024, margin: 'var(--space-3) auto 0 auto', padding: '0 var(--space-4)' } },
+    return h('div', { className: 'bsh-banner-wrap bsh-banner' },
       h(B.Alert, {
         intent: 'warning',
         title: 'یادآوری تهیه پشتیبان',
+        onClose: function () {
+          try { sessionStorage.setItem(BANNER_SNOOZE_KEY, '1'); } catch (e) {}
+          setSnoozed(true);
+        },
         action: h(B.Button, {
           size: 'sm',
-          variant: 'primary',
-          onClick: function () {
-            var data = Store.getState();
-            var activeCohort = Store.getActiveCohort();
-            var activeName = activeCohort ? activeCohort.name : 'داده‌ها';
-            var dateStr = new Date().toISOString().slice(0, 10);
-            var filename = 'support-backup-' + Names.sanitizeFilename(activeName) + '-' + dateStr + '.json';
-            var blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-            var url = URL.createObjectURL(blob);
-            var a = document.createElement('a');
-            a.href = url;
-            a.download = filename;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            setTimeout(function () { URL.revokeObjectURL(url); }, 2000);
-            Store.recordBackupTime();
-          }
-        }, 'دانلود بکاپ (JSON)')
+          variant: 'secondary',
+          onClick: downloadAllBackup
+        }, 'دانلود بکاپ همهٔ دوره‌ها')
       }, 'اگر حافظه یا تاریخچه مرورگر پاک شود، اطلاعات از بین می‌رود. لطفاً فایل پشتیبان دریافت کنید.')
     );
   }
@@ -206,7 +248,7 @@
     var hasConflict = Store.getMultiTabWarning();
     if (!hasConflict) return null;
 
-    return h('div', { style: { maxWidth: 1024, margin: 'var(--space-3) auto 0 auto', padding: '0 var(--space-4)' } },
+    return h('div', { className: 'bsh-banner-wrap' },
       h(B.Alert, {
         intent: 'danger',
         title: 'هشدار باز بودن همزمان چند تب',
@@ -224,6 +266,7 @@
 
   SupportApp.UICommon = {
     formatRelativeBackupTime: formatRelativeBackupTime,
+    downloadBeforeRestoreBackup: downloadBeforeRestoreBackup,
     Header: Header,
     BackupReminderBanner: BackupReminderBanner,
     MultiTabWarningBanner: MultiTabWarningBanner

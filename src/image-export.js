@@ -97,6 +97,7 @@
         rawName: p.name,
         status: p.status,
         habitsText: habitsText,
+        hasRecord: !!hasRecord,
         hardText: hardText,
         specialText: specialText,
         dayScore: dayScore,
@@ -122,31 +123,54 @@
   }
 
   /**
-   * خواندن رنگ‌های تمیز از متغیرهای CSS توکن‌ها با فال‌بک تم تیره
+   * مقادیر پیش‌فرض توکن‌ها؛ فقط وقتی tokens.css بارگذاری نشده (مثلاً خارج از مرورگر) استفاده می‌شود.
    */
-  function getThemeColors() {
-    var computed = typeof window !== 'undefined' && window.getComputedStyle ? window.getComputedStyle(document.documentElement) : null;
-    function getVal(varName, fallback) {
-      if (!computed) return fallback;
-      var val = computed.getPropertyValue(varName);
-      if (!val || !val.trim()) return fallback;
-      return val.trim();
-    }
+  var TOKEN_FALLBACK = {
+    '--surface-page': '#09090b', '--surface-raised': '#18181b',
+    '--text-default': '#f4f4f5', '--text-subtle': '#a1a1aa',
+    '--text-success': '#6ee7b7', '--text-warning': '#fcd34d',
+    '--icon-success': '#34d399',
+    '--border-subtle': 'rgba(255,255,255,0.08)', '--border-default': 'rgba(255,255,255,0.12)',
+    '--bg-neutral-subtle': 'rgba(255,255,255,0.08)',
+    '--font-sans': "'Vazirmatn', Tahoma, sans-serif"
+  };
 
+  /**
+   * خواندن توکن‌های دیزاین سیستم از CSS (رنگ، اندازه، فونت) برای رسم روی بوم
+   */
+  function getTokens() {
+    var computed = typeof window !== 'undefined' && window.getComputedStyle ? window.getComputedStyle(document.documentElement) : null;
+    function raw(name) {
+      var v = computed ? computed.getPropertyValue(name) : '';
+      return v && v.trim() ? v.trim() : '';
+    }
+    function color(name) { return raw(name) || TOKEN_FALLBACK[name]; }
+    function px(name, fallbackPx) {
+      var n = parseFloat(raw(name));
+      return isNaN(n) ? fallbackPx : n;
+    }
     return {
-      bgPage: getVal('--surface-page', '#09090b'),
-      bgRaised: getVal('--surface-raised', '#18181b'),
-      bgOverlay: getVal('--surface-overlay', '#27272a'),
-      bgRowAlt: '#121215',
-      bgRowHeader: '#1e1e24',
-      textBase: getVal('--text-base', '#fafafa'),
-      textMuted: getVal('--text-muted', '#a1a1aa'),
-      border: getVal('--border-subtle', '#27272a'),
-      borderStrong: getVal('--border-default', '#3f3f46'),
-      brand: getVal('--brand-500', '#e11d48'),
-      brandSubtle: '#4c0519',
-      success: getVal('--emerald-400', '#34d399'),
-      warning: getVal('--amber-400', '#fbbf24')
+      font: raw('--font-sans') || TOKEN_FALLBACK['--font-sans'],
+      page: color('--surface-page'),
+      raised: color('--surface-raised'),
+      text: color('--text-default'),
+      subtle: color('--text-subtle'),
+      success: color('--text-success'),
+      warning: color('--text-warning'),
+      bar: color('--icon-success'),
+      track: color('--bg-neutral-subtle'),
+      tint: color('--bg-neutral-subtle'),
+      border: color('--border-subtle'),
+      borderStrong: color('--border-default'),
+      s1: px('--space-1', 4), s2: px('--space-2', 8), s3: px('--space-3', 12), s4: px('--space-4', 16),
+      s6: px('--space-6', 24), s8: px('--space-8', 32), s12: px('--space-12', 48),
+      s16: px('--space-16', 64), s20: px('--space-20', 80), s24: px('--space-24', 96),
+      rContainer: px('--radius-container', 16), rFull: px('--radius-full', 9999),
+      logoMin: px('--logo-min', 32),
+      f14: px('--font-size-14', 14), f20: px('--font-size-20', 20), f24: px('--font-size-24', 24),
+      f30: px('--font-size-30', 30), f36: px('--font-size-36', 36),
+      lhSnug: px('--line-height-snug', 1.4),
+      wRegular: px('--font-weight-regular', 400), wSemibold: px('--font-weight-semibold', 600), wBold: px('--font-weight-bold', 700)
     };
   }
 
@@ -158,14 +182,58 @@
       return Promise.resolve();
     }
     return Promise.all([
-      document.fonts.load('400 28px Vazirmatn'),
-      document.fonts.load('700 28px Vazirmatn'),
+      document.fonts.load('400 30px Vazirmatn'),
+      document.fonts.load('600 30px Vazirmatn'),
       document.fonts.load('700 36px Vazirmatn')
     ]).then(function () {
       return true;
     }).catch(function (e) {
       console.warn('Font loading check:', e);
       return true; // ادامه با قلم‌های سیستم در صورت شکست
+    });
+  }
+
+  /**
+   * نسبت ابعاد یک SVG از روی viewBox یا width/height (بدون کشیدن لوگو)
+   */
+  function svgRatio(dataUri, img) {
+    try {
+      var comma = dataUri.indexOf(',');
+      var head = dataUri.slice(0, comma);
+      var body = dataUri.slice(comma + 1);
+      var svg = /;base64/.test(head) ? atob(body) : decodeURIComponent(body);
+      var vb = svg.match(/viewBox\s*=\s*["']\s*[-\d.]+[\s,]+[-\d.]+[\s,]+([\d.]+)[\s,]+([\d.]+)/);
+      if (vb && parseFloat(vb[2]) > 0) return parseFloat(vb[1]) / parseFloat(vb[2]);
+      var w = svg.match(/<svg[^>]*\swidth\s*=\s*["']([\d.]+)/);
+      var hh = svg.match(/<svg[^>]*\sheight\s*=\s*["']([\d.]+)/);
+      if (w && hh && parseFloat(hh[1]) > 0) return parseFloat(w[1]) / parseFloat(hh[1]);
+    } catch (e) {}
+    return img && img.naturalHeight ? img.naturalWidth / img.naturalHeight : 1;
+  }
+
+  var brandImageCache = {};
+
+  /**
+   * بارگذاری لوگوها از SupportApp.Brand (data URI، تا بوم آلوده نشود). اگر نبود، بدون لوگو ادامه می‌دهیم.
+   */
+  function loadBrandImages() {
+    var Brand = SupportApp.Brand || {};
+    function load(key) {
+      var src = Brand[key];
+      if (!src || typeof Image === 'undefined') return Promise.resolve(null);
+      if (brandImageCache[src]) return Promise.resolve(brandImageCache[src]);
+      return new Promise(function (resolve) {
+        var img = new Image();
+        img.onload = function () {
+          brandImageCache[src] = { img: img, ratio: svgRatio(src, img) };
+          resolve(brandImageCache[src]);
+        };
+        img.onerror = function () { resolve(null); };
+        img.src = src;
+      });
+    }
+    return Promise.all([load('lockupWhite'), load('markWhite')]).then(function (r) {
+      return { lockup: r[0], mark: r[1] };
     });
   }
 
@@ -181,251 +249,317 @@
   }
 
   /**
-   * شکستن هوشمندانه متن طولانی نام بدون خط سه‌نقطه (...)
+   * خلاصهٔ گروه برای ردیف بالای تصویر (بدون رتبه‌بندی)
    */
-  function wrapNameText(ctx, text, maxWidth, initialFontSize) {
-    ctx.font = '600 ' + initialFontSize + 'px Vazirmatn, Tahoma, sans-serif';
-    var textWidth = ctx.measureText(text).width;
-    if (textWidth <= maxWidth) {
-      return { lines: [text], fontSize: initialFontSize };
-    }
+  function getGroupSummary(rows) {
+    var active = rows.filter(function (r) { return r.status !== 'frozen' && r.status !== 'left'; });
+    var registered = active.filter(function (r) { return r.dayScore != null; });
+    var perfect = registered.filter(function (r) { return r.dayMax > 0 && r.dayScore === r.dayMax; });
+    var avg = active.length
+      ? Math.round(active.reduce(function (sum, r) { return sum + (r.percent || 0); }, 0) / active.length)
+      : 0;
+    return { activeCount: active.length, registeredCount: registered.length, avgPercent: avg, perfectCount: perfect.length };
+  }
 
-    // کاهش اندازه قلم تا ۲۲ پیکسل
-    for (var sz = initialFontSize - 2; sz >= 22; sz -= 2) {
-      ctx.font = '600 ' + sz + 'px Vazirmatn, Tahoma, sans-serif';
-      if (ctx.measureText(text).width <= maxWidth) {
-        return { lines: [text], fontSize: sz };
-      }
-    }
+  function roundRectPath(ctx, x, y, w, hgt, r) {
+    r = Math.min(r, w / 2, hgt / 2);
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.lineTo(x + w - r, y);
+    ctx.arcTo(x + w, y, x + w, y + r, r);
+    ctx.lineTo(x + w, y + hgt - r);
+    ctx.arcTo(x + w, y + hgt, x + w - r, y + hgt, r);
+    ctx.lineTo(x + r, y + hgt);
+    ctx.arcTo(x, y + hgt, x, y + hgt - r, r);
+    ctx.lineTo(x, y + r);
+    ctx.arcTo(x, y, x + r, y, r);
+    ctx.closePath();
+  }
 
-    // در صورت طولانی بودن زیاد، تقسیم به دو سطر
+  /**
+   * کوچک کردن قلم تا متن در عرض مجاز جا شود (حداقل minSize)
+   */
+  function fitFont(ctx, T, text, maxWidth, size, minSize, weight) {
+    var sz = size;
+    ctx.font = weight + ' ' + sz + 'px ' + T.font;
+    while (sz > minSize && ctx.measureText(text).width > maxWidth) {
+      sz -= 1;
+      ctx.font = weight + ' ' + sz + 'px ' + T.font;
+    }
+    return sz;
+  }
+
+  /**
+   * نام بلند: اول کوچک کردن قلم، بعد شکستن به دو سطر
+   */
+  function wrapNameText(ctx, T, text, maxWidth, size, minSize) {
+    var sz = fitFont(ctx, T, text, maxWidth, size, minSize, T.wSemibold);
+    if (ctx.measureText(text).width <= maxWidth) return { lines: [text], fontSize: sz };
     var words = text.split(/\s+/);
-    if (words.length <= 1) {
-      return { lines: [text], fontSize: 22 };
-    }
-
+    if (words.length <= 1) return { lines: [text], fontSize: sz };
     var mid = Math.ceil(words.length / 2);
-    var line1 = words.slice(0, mid).join(' ');
-    var line2 = words.slice(mid).join(' ');
-    return { lines: [line1, line2], fontSize: 22 };
+    return { lines: [words.slice(0, mid).join(' '), words.slice(mid).join(' ')], fontSize: minSize };
+  }
+
+  function isDash(text) {
+    return text === 'ثبت‌نشده' || text === 'ندارد';
   }
 
   /**
    * رسم یک بخش از گزارش روی Canvas و تولید Blob و DataURL
+   * فقط توکن‌های دیزاین سیستم برای رنگ و اندازه (به‌جز عرض ۱۰۸۰ و مقیاس ۲ که استاندارد خروجی‌اند)
    */
-  function renderSingleCanvasPart(reportData, partRows, partIndex, totalParts) {
-    var colors = getThemeColors();
-    var scale = 2; // ضریب مقیاس ۲ برای خروجی بسیار شارپ و باکیفیت
+  function renderSingleCanvasPart(reportData, partRows, partIndex, totalParts, brand) {
+    var T = getTokens();
+    brand = brand || {};
+    var scale = 2;
     var width = 1080;
-    var rowHeight = 72;
-    var headerRowHeight = 76;
-    var topBannerHeight = 160;
-    var footerHeight = 56;
+    var dayCfg = reportData.dayCfg || {};
+    var showHard = dayCfg.hardLevels > 0;
+    var showSpecial = !!dayCfg.specialMission;
 
+    var padX = T.s8;
+    var tableX = T.s4;
+    var tableW = width - 2 * tableX;
+    var rowHeight = T.s20;
+    var headRowH = T.s16;
+
+    // ارتفاع بلوک عنوان: سه سطر
+    var l1 = Math.round(T.f36 * T.lhSnug);
+    var l2 = Math.round(T.f24 * T.lhSnug);
+    var l3 = Math.round(T.f20 * T.lhSnug);
+    var titleBlockH = l1 + l2 + l3;
+    var lockupH = T.s12;
+    var headerH = T.s8 + Math.max(titleBlockH, lockupH) + T.s6;
+    var summaryH = T.s24;
+    var footerH = T.s20;
     var rowsCount = Math.max(1, partRows.length);
-    var height = topBannerHeight + headerRowHeight + (rowsCount * rowHeight) + footerHeight;
+    var tableH = headRowH + rowsCount * rowHeight;
+    var height = headerH + T.s6 + summaryH + T.s6 + tableH + T.s4 + footerH;
 
     var canvas = document.createElement('canvas');
     canvas.width = width * scale;
     canvas.height = height * scale;
-
     var ctx = canvas.getContext('2d');
     ctx.scale(scale, scale);
+    ctx.direction = 'rtl';
+    ctx.textBaseline = 'middle';
 
-    // پیش‌زمینه کل بوم
-    ctx.fillStyle = colors.bgPage;
+    function setFont(weight, size) { ctx.font = weight + ' ' + size + 'px ' + T.font; }
+    function drawLogo(entry, x, y, hgt) {
+      if (!entry) return 0;
+      var w = hgt * entry.ratio;
+      ctx.drawImage(entry.img, x, y, w, hgt);
+      return w;
+    }
+
+    ctx.fillStyle = T.page;
     ctx.fillRect(0, 0, width, height);
 
-    // ۱. هدر بوم
-    ctx.fillStyle = colors.bgRaised;
-    ctx.fillRect(0, 0, width, topBannerHeight);
+    // ۱. هدر: متن در سمت شروع (راست)، لوگو در سمت پایان (چپ)
+    var blockTop = T.s8;
+    var blockH = Math.max(titleBlockH, lockupH);
+    var textTop = blockTop + (blockH - titleBlockH) / 2;
+    var lockupW = brand.lockup ? lockupH * brand.lockup.ratio : 0;
+    var textMaxW = width - 2 * padX - (lockupW ? lockupW + T.s6 : 0);
 
-    // خط نشانگر برند بوشیدو در بالای بوم
-    ctx.fillStyle = colors.brand;
-    ctx.fillRect(0, 0, width, 6);
+    ctx.textAlign = 'right';
+    var partSuffix = totalParts > 1 ? ' · بخش ' + Names.toPersianDigits(partIndex + 1) + ' از ' + Names.toPersianDigits(totalParts) : '';
+    var groupTitle = reportData.groupName;
+    fitFont(ctx, T, groupTitle, textMaxW, T.f36, T.f24, T.wBold);
+    ctx.fillStyle = T.text;
+    ctx.fillText(groupTitle, width - padX, textTop + l1 / 2);
 
-    ctx.direction = 'rtl';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
+    var sub = (reportData.cohortName ? reportData.cohortName + ' · ' : '') +
+      'روز ' + Names.toPersianDigits(reportData.dayN) + ' · ' + reportData.dayShamsi + partSuffix;
+    fitFont(ctx, T, sub, textMaxW, T.f24, T.f20, T.wRegular);
+    ctx.fillStyle = T.subtle;
+    ctx.fillText(sub, width - padX, textTop + l1 + l2 / 2);
 
-    // عنوان اصلی
-    var titleSuffix = totalParts > 1 ? ' — بخش ' + Names.toPersianDigits(partIndex + 1) + ' از ' + Names.toPersianDigits(totalParts) : '';
-    var titleText = 'بوت‌کمپ بوشیدو — ' + reportData.cohortName + ' — ' + reportData.groupName + titleSuffix;
-    ctx.font = '700 34px Vazirmatn, Tahoma, sans-serif';
-    ctx.fillStyle = colors.textBase;
-    ctx.fillText(titleText, width / 2, 45);
+    var statusLabel = reportData.isClosed ? '● نهایی (روز بسته شده)' : '○ پیش‌نویس (روز هنوز بسته نشده)';
+    setFont(T.wRegular, T.f20);
+    ctx.fillStyle = reportData.isClosed ? T.success : T.warning;
+    ctx.fillText(statusLabel, width - padX, textTop + l1 + l2 + l3 / 2);
 
-    // زیرعنوان روز و تاریخ شمسی و وضعیت
-    var subtitleText = 'گزارش روز ' + Names.toPersianDigits(reportData.dayN) + ' (' + reportData.dayShamsi + ')';
-    ctx.font = '600 24px Vazirmatn, Tahoma, sans-serif';
-    ctx.fillStyle = colors.textMuted;
-    ctx.fillText(subtitleText, width / 2, 85);
+    if (brand.lockup) {
+      drawLogo(brand.lockup, padX, blockTop + (blockH - lockupH) / 2, lockupH);
+    }
 
-    // نشان وضعیت (بسته شده / پیش‌نویس)
-    var statusLabel = reportData.isClosed ? '● وضعیت: نهایی (روز بسته شده)' : '○ وضعیت: پیش‌نویس (روز هنوز بسته نشده)';
-    ctx.font = '500 20px Vazirmatn, Tahoma, sans-serif';
-    ctx.fillStyle = reportData.isClosed ? colors.success : colors.warning;
-    ctx.fillText(statusLabel, width / 2, 120);
-
-    // خط جداکننده زیر هدر
-    ctx.strokeStyle = colors.border;
+    // خط جداکننده
+    ctx.strokeStyle = T.borderStrong;
     ctx.lineWidth = 1;
     ctx.beginPath();
-    ctx.moveTo(0, topBannerHeight);
-    ctx.lineTo(width, topBannerHeight);
+    ctx.moveTo(padX, headerH - 0.5);
+    ctx.lineTo(width - padX, headerH - 0.5);
     ctx.stroke();
 
-    // ستون‌های جدول
-    // عرض کل: 1080
-    // ردیف: 70 | نام: 260 | عادت‌ها: 140 | کار سخت: 130 | مأموریت: 120 | امتیاز امروز: 150 | مجموع: 130 | درصد: 80
-    var columns = [
-      { id: 'rowNum', title: 'ردیف', width: 70, align: 'center' },
-      { id: 'name', title: 'نام و نام خانوادگی', width: 260, align: 'right' },
-      { id: 'habits', title: 'عادت‌ها', width: 140, align: 'center' },
-      { id: 'hard', title: 'کار سخت', width: 130, align: 'center' },
-      { id: 'special', title: 'مأموریت', width: 120, align: 'center' },
-      { id: 'dayScore', title: 'امتیاز امروز', width: 150, align: 'center' },
-      { id: 'totalScore', title: 'مجموع', width: 130, align: 'center' },
-      { id: 'percent', title: 'درصد', width: 80, align: 'center' }
+    // ۲. ردیف خلاصه
+    var sum = getGroupSummary(reportData.rows);
+    var gap = T.s3;
+    var cardW = (width - 2 * tableX - 2 * gap) / 3;
+    var cardY = headerH + T.s6;
+    var cards = [
+      { value: Names.toPersianDigits(sum.registeredCount) + ' از ' + Names.toPersianDigits(sum.activeCount), label: 'ثبت‌شده امروز' },
+      { value: Names.toPersianDigits(sum.avgPercent) + '٪', label: 'میانگین درصد گروه' },
+      { value: Names.toPersianDigits(sum.perfectCount) + ' نفر', label: 'همهٔ امتیاز امروز را گرفتند' }
     ];
-
-    // ۲. سرستون‌های جدول
-    var tableTop = topBannerHeight;
-    ctx.fillStyle = colors.bgRowHeader;
-    ctx.fillRect(0, tableTop, width, headerRowHeight);
-
-    var currentX = width; // شروع از راست به چپ در RTL
-    ctx.strokeStyle = colors.borderStrong;
-    ctx.lineWidth = 1;
-
-    columns.forEach(function (col) {
-      var nextX = currentX - col.width;
-
-      // خط عمودی چپ ستون
-      ctx.beginPath();
-      ctx.moveTo(nextX, tableTop);
-      ctx.lineTo(nextX, tableTop + headerRowHeight);
+    cards.forEach(function (card, i) {
+      var cx = width - tableX - (i + 1) * cardW - i * gap;
+      roundRectPath(ctx, cx, cardY, cardW, summaryH, T.rContainer);
+      ctx.fillStyle = T.raised;
+      ctx.fill();
+      ctx.strokeStyle = T.border;
       ctx.stroke();
-
-      // متن سرستون
-      ctx.font = '700 24px Vazirmatn, Tahoma, sans-serif';
-      ctx.fillStyle = colors.textBase;
-      ctx.direction = 'rtl';
       ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      var textCenterX = currentX - (col.width / 2);
-      ctx.fillText(col.title, textCenterX, tableTop + (headerRowHeight / 2));
-
-      currentX = nextX;
+      setFont(T.wBold, T.f30);
+      ctx.fillStyle = T.text;
+      ctx.fillText(card.value, cx + cardW / 2, cardY + summaryH * 0.38);
+      fitFont(ctx, T, card.label, cardW - 2 * T.s3, T.f20, T.f14, T.wRegular);
+      ctx.fillStyle = T.subtle;
+      ctx.fillText(card.label, cx + cardW / 2, cardY + summaryH * 0.74);
     });
 
-    // خط زیر سرستون
-    ctx.beginPath();
-    ctx.moveTo(0, tableTop + headerRowHeight);
-    ctx.lineTo(width, tableTop + headerRowHeight);
-    ctx.stroke();
+    // ۳. جدول
+    var cols = [{ id: 'rowNum', title: 'ردیف', width: T.s12 + T.s1 + T.s1 }];
+    cols.push({ id: 'name', title: 'نام و نام خانوادگی', width: 0 });
+    cols.push({ id: 'habits', title: 'عادت‌ها', width: 110 });
+    if (showHard) cols.push({ id: 'hard', title: 'کار سخت', width: 120 });
+    if (showSpecial) cols.push({ id: 'special', title: 'مأموریت', width: 100 });
+    cols.push({ id: 'dayScore', title: 'امتیاز امروز', width: 150 });
+    cols.push({ id: 'totalScore', title: 'مجموع', width: 140 });
+    cols.push({ id: 'percent', title: 'درصد', width: 130 });
+    var fixedW = cols.reduce(function (sum2, c) { return sum2 + c.width; }, 0);
+    cols.forEach(function (c) { if (c.id === 'name') c.width = tableW - fixedW; });
 
-    // ۳. سطرهای داده
-    var startY = tableTop + headerRowHeight;
+    var tableTop = cardY + summaryH + T.s6;
+    ctx.save();
+    roundRectPath(ctx, tableX, tableTop, tableW, tableH, T.rContainer);
+    ctx.clip();
+
+    ctx.fillStyle = T.tint;
+    ctx.fillRect(tableX, tableTop, tableW, headRowH);
+    var x = width - tableX;
+    cols.forEach(function (col) {
+      setFont(T.wSemibold, T.f20);
+      ctx.fillStyle = T.subtle;
+      ctx.textAlign = col.id === 'name' ? 'right' : 'center';
+      var hx = col.id === 'name' ? x - T.s4 : x - col.width / 2;
+      ctx.fillText(col.title, hx, tableTop + headRowH / 2);
+      x -= col.width;
+    });
 
     partRows.forEach(function (row, rIdx) {
-      var rowY = startY + (rIdx * rowHeight);
+      var rowY = tableTop + headRowH + rIdx * rowHeight;
+      var midY = rowY + rowHeight / 2;
+      if (rIdx % 2 === 1) {
+        ctx.fillStyle = T.raised;
+        ctx.fillRect(tableX, rowY, tableW, rowHeight);
+      }
+      var unregistered = row.dayScore == null;
 
-      // رنگ متناوب پس‌زمینه سطر
-      ctx.fillStyle = (rIdx % 2 === 0) ? colors.bgPage : colors.bgRaised;
-      ctx.fillRect(0, rowY, width, rowHeight);
-
-      // رسم ستون‌ها
-      var colX = width;
-      columns.forEach(function (col) {
-        var nextColX = colX - col.width;
-
-        // خط عمودی
-        ctx.strokeStyle = colors.border;
-        ctx.beginPath();
-        ctx.moveTo(nextColX, rowY);
-        ctx.lineTo(nextColX, rowY + rowHeight);
-        ctx.stroke();
-
-        ctx.direction = 'rtl';
-        ctx.textBaseline = 'middle';
-
+      var cx = width - tableX;
+      cols.forEach(function (col) {
+        var center = cx - col.width / 2;
+        ctx.textAlign = 'center';
         if (col.id === 'rowNum') {
-          ctx.font = '500 24px Vazirmatn, Tahoma, sans-serif';
-          ctx.fillStyle = colors.textMuted;
-          ctx.textAlign = 'center';
-          ctx.fillText(Names.toPersianDigits(row.rowNum), colX - (col.width / 2), rowY + (rowHeight / 2));
+          setFont(T.wRegular, T.f24);
+          ctx.fillStyle = T.subtle;
+          ctx.fillText(Names.toPersianDigits(row.rowNum), center, midY);
         } else if (col.id === 'name') {
-          var wrapped = wrapNameText(ctx, row.name, col.width - 32, 26);
-          ctx.font = '600 ' + wrapped.fontSize + 'px Vazirmatn, Tahoma, sans-serif';
-          ctx.fillStyle = row.status === 'frozen' ? colors.textMuted : colors.textBase;
+          var wrapped = wrapNameText(ctx, T, row.name, col.width - 2 * T.s4, T.f30, T.f24);
+          setFont(T.wSemibold, wrapped.fontSize);
+          ctx.fillStyle = row.status === 'frozen' || row.status === 'left' ? T.subtle : T.text;
           ctx.textAlign = 'right';
-
-          var textRight = colX - 16;
-          if (wrapped.lines.length === 1) {
-            ctx.fillText(wrapped.lines[0], textRight, rowY + (rowHeight / 2));
+          var tx = cx - T.s4;
+          var lineGap = Math.round(wrapped.fontSize * T.lhSnug / 2);
+          if (wrapped.lines.length === 2) {
+            ctx.fillText(wrapped.lines[0], tx, midY - lineGap);
+            ctx.fillText(wrapped.lines[1], tx, midY + lineGap);
+          } else if (unregistered) {
+            ctx.fillText(wrapped.lines[0], tx, midY - T.s2);
           } else {
-            ctx.fillText(wrapped.lines[0], textRight, rowY + (rowHeight / 2) - 14);
-            ctx.fillText(wrapped.lines[1], textRight, rowY + (rowHeight / 2) + 14);
+            ctx.fillText(wrapped.lines[0], tx, midY);
           }
-        } else if (col.id === 'habits') {
-          ctx.font = '500 24px Vazirmatn, Tahoma, sans-serif';
-          ctx.fillStyle = colors.textBase;
-          ctx.textAlign = 'center';
-          ctx.fillText(row.habitsText, colX - (col.width / 2), rowY + (rowHeight / 2));
-        } else if (col.id === 'hard') {
-          ctx.font = '500 22px Vazirmatn, Tahoma, sans-serif';
-          ctx.fillStyle = row.hardText === 'انجام نداد' ? colors.textMuted : colors.textBase;
-          ctx.textAlign = 'center';
-          ctx.fillText(row.hardText, colX - (col.width / 2), rowY + (rowHeight / 2));
-        } else if (col.id === 'special') {
-          ctx.font = '600 24px Vazirmatn, Tahoma, sans-serif';
-          ctx.fillStyle = row.specialText === '✓' ? colors.success : row.specialText === '✗' ? colors.brand : colors.textMuted;
-          ctx.textAlign = 'center';
-          ctx.fillText(row.specialText, colX - (col.width / 2), rowY + (rowHeight / 2));
-        } else if (col.id === 'dayScore') {
-          ctx.font = '700 26px Vazirmatn, Tahoma, sans-serif';
-          ctx.fillStyle = (row.dayScore != null && row.dayScore > 0) ? colors.success : colors.textMuted;
-          ctx.textAlign = 'center';
-          ctx.fillText(row.dayScoreText, colX - (col.width / 2), rowY + (rowHeight / 2));
-        } else if (col.id === 'totalScore') {
-          ctx.font = '600 24px Vazirmatn, Tahoma, sans-serif';
-          ctx.fillStyle = colors.textBase;
-          ctx.textAlign = 'center';
-          ctx.fillText(row.totalText, colX - (col.width / 2), rowY + (rowHeight / 2));
+          if (unregistered && wrapped.lines.length === 1) {
+            setFont(T.wRegular, T.f14);
+            var tagText = 'ثبت نشده';
+            var tagW = ctx.measureText(tagText).width + 2 * T.s2;
+            var tagH = T.f14 + T.s2;
+            var tagY = midY + T.s3 + T.s1;
+            roundRectPath(ctx, tx - tagW, tagY - tagH / 2, tagW, tagH, T.rFull);
+            ctx.fillStyle = T.tint;
+            ctx.fill();
+            ctx.fillStyle = T.subtle;
+            ctx.textAlign = 'center';
+            ctx.fillText(tagText, tx - tagW / 2, tagY);
+          }
         } else if (col.id === 'percent') {
-          ctx.font = '700 24px Vazirmatn, Tahoma, sans-serif';
-          ctx.fillStyle = colors.brand;
-          ctx.textAlign = 'center';
-          ctx.fillText(row.percentText, colX - (col.width / 2), rowY + (rowHeight / 2));
+          var innerW = col.width - 2 * T.s3;
+          var pct = Math.max(0, Math.min(100, row.percent || 0));
+          setFont(T.wSemibold, T.f24);
+          ctx.fillStyle = T.text;
+          ctx.fillText(row.percentText, center, midY - T.s2);
+          var barY = midY + T.s4 - T.s1;
+          var barX = cx - T.s3 - innerW;
+          roundRectPath(ctx, barX, barY, innerW, T.s2, T.rFull);
+          ctx.fillStyle = T.track;
+          ctx.fill();
+          if (pct > 0) {
+            var fillW = Math.max(T.s2, innerW * pct / 100);
+            roundRectPath(ctx, cx - T.s3 - fillW, barY, fillW, T.s2, T.rFull);
+            ctx.fillStyle = T.bar;
+            ctx.fill();
+          }
+        } else {
+          var text;
+          var weight = T.wRegular;
+          var color = T.text;
+          if (col.id === 'habits') {
+            text = row.habitsText;
+          } else if (col.id === 'hard') {
+            text = isDash(row.hardText) ? '—' : row.hardText;
+            if (row.hardText === 'انجام نداد') color = T.subtle;
+          } else if (col.id === 'special') {
+            text = isDash(row.specialText) ? '—' : row.specialText;
+            color = row.specialText === '✓' ? T.success : T.subtle;
+            weight = T.wSemibold;
+          } else if (col.id === 'dayScore') {
+            text = unregistered ? '—' : row.dayScoreText;
+            weight = T.wBold;
+            if (!unregistered && row.dayMax > 0 && row.dayScore === row.dayMax) color = T.success;
+          } else {
+            text = row.totalText;
+          }
+          if (text === '—') color = T.subtle;
+          fitFont(ctx, T, text, col.width - T.s3, T.f30, T.f24, weight);
+          ctx.fillStyle = color;
+          ctx.fillText(text, center, midY);
         }
-
-        colX = nextColX;
+        cx -= col.width;
       });
-
-      // خط افقی زیر هر سطر
-      ctx.strokeStyle = colors.border;
-      ctx.beginPath();
-      ctx.moveTo(0, rowY + rowHeight);
-      ctx.lineTo(width, rowY + rowHeight);
-      ctx.stroke();
     });
+    ctx.restore();
+    roundRectPath(ctx, tableX, tableTop, tableW, tableH, T.rContainer);
+    ctx.strokeStyle = T.border;
+    ctx.lineWidth = 1;
+    ctx.stroke();
 
-    // ۴. فوتر بوم
-    var footerY = height - footerHeight;
-    ctx.fillStyle = colors.bgRaised;
-    ctx.fillRect(0, footerY, width, footerHeight);
-
-    ctx.font = '500 18px Vazirmatn, Tahoma, sans-serif';
-    ctx.fillStyle = colors.textMuted;
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText('بوت‌کمپ عادت‌سازی بوشیدو — سامانه داخلی مدیریت و پشتیبانی گروه‌ها', width / 2, footerY + (footerHeight / 2));
-
-    // کادر بیرونی کل جدول
-    ctx.strokeStyle = colors.borderStrong;
-    ctx.lineWidth = 2;
-    ctx.strokeRect(1, 1, width - 2, height - 2);
+    // ۴. فوتر: نشان کوچک و نام بوت‌کمپ
+    var footerTop = tableTop + tableH + T.s4;
+    var footerMid = footerTop + footerH / 2;
+    var footText = 'بوت‌کمپ بوشیدو';
+    setFont(T.wRegular, T.f20);
+    var textW = ctx.measureText(footText).width;
+    var markH = T.logoMin;
+    var markW = brand.mark ? markH * brand.mark.ratio : 0;
+    var groupW = textW + (markW ? markW + T.s3 : 0);
+    var startX = (width + groupW) / 2; // لبهٔ راست مجموعه
+    ctx.textAlign = 'right';
+    ctx.fillStyle = T.subtle;
+    ctx.fillText(footText, startX, footerMid);
+    if (brand.mark) {
+      drawLogo(brand.mark, startX - textW - T.s3 - markW, footerMid - markH / 2, markH);
+    }
 
     return new Promise(function (resolve, reject) {
       try {
@@ -451,7 +585,8 @@
    * تولید تصاویر گزارش روز یک گروه (با تکه‌بندی خودکار اگر بیشتر از ۱۵ نفر باشد)
    */
   function generateGroupDayReportImages(cohort, group, dayN, includeFrozen) {
-    return ensureFontsLoaded().then(function () {
+    return Promise.all([ensureFontsLoaded(), loadBrandImages()]).then(function (loaded) {
+      var brand = loaded[1];
       var reportData = getGroupDayReportRows(cohort, group, dayN, includeFrozen);
       var rows = reportData.rows;
 
@@ -463,7 +598,7 @@
       var totalParts = chunks.length;
 
       var promises = chunks.map(function (chunkRows, idx) {
-        return renderSingleCanvasPart(reportData, chunkRows, idx, totalParts).then(function (res) {
+        return renderSingleCanvasPart(reportData, chunkRows, idx, totalParts, brand).then(function (res) {
           var baseFilename = Names.sanitizeFilename(group.name + '_روز-' + dayN);
           var filename = totalParts > 1 ? (baseFilename + '_بخش-' + (idx + 1) + '.png') : (baseFilename + '.png');
           return {
@@ -551,6 +686,7 @@
 
     var [currentPartIdx, setCurrentPartIdx] = root.React.useState(0);
     var [isSharing, setIsSharing] = root.React.useState(false);
+    var [notice, setNotice] = root.React.useState(null); // اعلان داخل دیالوگ (نه toast پایین صفحه)
 
     if (!open || !imagesData || !imagesData.parts || !imagesData.parts.length) return null;
 
@@ -562,11 +698,11 @@
       shareOrDownloadImage(activePart.blob, activePart.filename)
         .then(function () {
           setIsSharing(false);
-          if (toast) toast.show({ intent: 'success', message: 'تصویر ' + activePart.filename + ' آماده شد.' });
+          setNotice({ intent: 'success', message: 'تصویر آماده شد.' });
         })
         .catch(function (err) {
           setIsSharing(false);
-          if (toast) toast.show({ intent: 'danger', message: err.message });
+          setNotice({ intent: 'danger', message: err.message });
         });
     }
 
@@ -576,7 +712,7 @@
           downloadBlob(p.blob, p.filename);
         }, idx * 400);
       });
-      if (toast) toast.show({ intent: 'success', message: Names.toPersianDigits(parts.length) + ' تصویر دانلود شدند.' });
+      setNotice({ intent: 'success', message: Names.toPersianDigits(parts.length) + ' تصویر دانلود شدند.' });
     }
 
     var footer = h('div', {
@@ -593,7 +729,6 @@
         parts.length > 1 && h(B.Button, {
           variant: 'secondary',
           size: 'sm',
-          iconStart: 'Download',
           onClick: handleDownloadAllParts
         }, 'دانلود همه‌ی ' + Names.toPersianDigits(parts.length) + ' بخش'),
         h(B.Button, {
@@ -622,6 +757,7 @@
       size: 'lg'
     },
       h('div', { style: { display: 'grid', gap: 'var(--space-3)', padding: 'var(--space-2) 0' } },
+        notice && h(B.Alert, { intent: notice.intent, onClose: function () { setNotice(null); } }, notice.message),
         // تب‌های بخش‌ها در صورت چندبخشی بودن
         parts.length > 1 && h('div', { style: { display: 'flex', gap: 'var(--space-2)', overflowX: 'auto', paddingBottom: 4 } },
           parts.map(function (p, idx) {
@@ -657,7 +793,6 @@
               maxWidth: 720,
               height: 'auto',
               borderRadius: 'var(--radius-sm)',
-              boxShadow: '0 4px 20px rgba(0,0,0,0.5)',
               display: 'block'
             }
           })
@@ -666,7 +801,7 @@
         h('div', {
           className: 'caption',
           style: {
-            color: 'var(--text-muted)',
+            color: 'var(--text-subtle)',
             display: 'flex',
             justifyContent: 'space-between',
             alignItems: 'center',
@@ -674,7 +809,7 @@
             gap: 'var(--space-2)'
           }
         },
-          h('span', null, 'نام فایل: ' + activePart.filename),
+          h('span', null, 'نام فایل: ', h('bdi', { dir: 'ltr' }, activePart.filename)),
           h('span', null, 'ابعاد: ۲۱۶۰ × ' + activePart.height + ' پیکسل (شارپ ۲x)')
         )
       )
@@ -683,6 +818,7 @@
 
   SupportApp.ImageExport = {
     getGroupDayReportRows: getGroupDayReportRows,
+    getGroupSummary: getGroupSummary,
     generateGroupDayReportImages: generateGroupDayReportImages,
     shareOrDownloadImage: shareOrDownloadImage,
     downloadBlob: downloadBlob,
