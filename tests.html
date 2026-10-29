@@ -15,6 +15,7 @@
   <script src="ds/bundle.js"></script>
   <script src="src/names.js"></script>
   <script src="src/scoring.js"></script>
+  <script src="src/store.js"></script>
   <script src="src/image-export.js"></script>
   <script>
     var h = React.createElement;
@@ -283,6 +284,55 @@
             pass: allOk,
             detail: 'فرد ۱: ' + row1.dayScore + '/' + row1.dayMax + ' (' + row1.percent + '٪) | فرد ۲: ' + row2.dayScore + '/' + row2.dayMax + ' (' + row2.percent + '٪) | فریز: ' + reportWithFrozen.rows.length + ' نفر'
           };
+        }
+      },
+      {
+        id: 17,
+        title: '۱۷. ادغام بکاپ: دورهٔ جدید اضافه می‌شود و دورهٔ تکراری با پیش‌فرض «رد کن» دست نمی‌خورد',
+        run: function () {
+          var mk = function (id, name, date) {
+            return { id: id, name: name, startDate: date, days: [], groups: [{ id: 'g1', name: 'گروه ۱', mine: true }],
+              participants: [{ id: 'p1', name: 'الف', groupId: 'g1' }], records: { p1: { 1: { done: 2 } } } };
+          };
+          var cur = { schemaVersion: 1, activeCohortId: 'a', cohorts: [mk('a', 'مهر', '2026-10-01')] };
+          var incoming = [mk('a', 'مهر', '2026-10-01'), mk('b', 'آبان', '2026-11-01')];
+          var before = JSON.stringify(cur);
+          var r = SupportApp.Store.mergeCohorts(cur, incoming, {});
+          var ok = r.state.cohorts.length === 2 && r.report.added.length === 1 && r.report.skipped.length === 1 &&
+            JSON.stringify(cur) === before;
+          return { pass: ok, detail: 'دوره‌ها: ' + r.state.cohorts.length + ' | اضافه: ' + r.report.added.length + ' | ردشده: ' + r.report.skipped.length };
+        }
+      },
+      {
+        id: 18,
+        title: '۱۸. ادغام بکاپ: «نسخهٔ جدا» شناسه و نام یکتا می‌سازد و افراد و رکوردها کامل کپی می‌شوند؛ «جایگزین» دورهٔ قبلی را کامل عوض می‌کند',
+        run: function () {
+          var mk = function (id, n) {
+            return { id: id, name: 'مهر', startDate: '2026-10-01', days: [], groups: [{ id: 'g1', name: 'گروه ۱', mine: true }],
+              participants: [{ id: 'p1', name: 'الف', groupId: 'g1' }, { id: 'p2', name: 'ب', groupId: 'g1' }],
+              records: { p1: { 1: { done: n } }, p2: { 1: { done: n } } } };
+          };
+          var cur = { schemaVersion: 1, activeCohortId: 'a', cohorts: [mk('a', 1)] };
+          var copy = SupportApp.Store.mergeCohorts(cur, [mk('a', 3)], { decisions: { 0: 'copy' }, newId: function () { return 'new1'; } });
+          var c2 = copy.state.cohorts[1];
+          var okCopy = copy.state.cohorts.length === 2 && c2.id === 'new1' && c2.name !== 'مهر' &&
+            c2.participants.length === 2 && c2.records.p2[1].done === 3 && copy.state.cohorts[0].records.p1[1].done === 1;
+          var rep = SupportApp.Store.mergeCohorts(cur, [mk('zzz', 3)], { decisions: { 0: 'replace' } });
+          var okRep = rep.state.cohorts.length === 1 && rep.state.cohorts[0].records.p1[1].done === 3;
+          return { pass: okCopy && okRep, detail: 'نسخهٔ جدا: ' + c2.name + ' | جایگزینی: ' + (okRep ? 'درست' : 'نادرست') };
+        }
+      },
+      {
+        id: 19,
+        title: '۱۹. ادغام بکاپ: برچسب «گروه من» قابل تغییر است و اعتبارسنجی فایل خراب را بدون تغییر رد می‌کند',
+        run: function () {
+          var inc = [{ id: 'x', name: 'دی', startDate: '2027-01-01', days: [], groups: [{ id: 'g1', name: 'گروه ۱', mine: true }],
+            participants: [], records: {} }];
+          var r = SupportApp.Store.mergeCohorts({ schemaVersion: 1, activeCohortId: null, cohorts: [] }, inc, { groupMine: { 0: { g1: false } } });
+          var okMine = r.state.cohorts[0].groups[0].mine === false && inc[0].groups[0].mine === true;
+          var bad = SupportApp.Store.validateBackup({ schemaVersion: 1, cohorts: [{ id: 'x', name: 'دی', groups: [] }] });
+          var good = SupportApp.Store.validateBackup({ schemaVersion: 1, cohorts: inc });
+          return { pass: okMine && !bad.ok && good.ok, detail: 'مال من: ' + okMine + ' | خراب: ' + bad.error };
         }
       }
     ];

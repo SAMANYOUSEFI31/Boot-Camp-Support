@@ -1,8 +1,0 @@
-{
-  "name": "پشتیبان بوشیدو — ابزار مدیریت و ثبت امتیاز بوت‌کمپ",
-  "description": "ابزار داخلی پشتیبان‌های بوت‌کمپ بوشیدو برای مدیریت گروه‌ها، افراد، ثبت سریع نتایج روزانه و خروجی گزارش‌های استاندارد اکسل.",
-  "requestFramePermissions": [],
-  "majorCapabilities": [
-    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
-  ]
-}

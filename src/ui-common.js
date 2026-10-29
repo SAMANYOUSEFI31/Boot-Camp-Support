@@ -37,6 +37,51 @@
   }
 
   /**
+   * دانلود یک آبجکت به صورت فایل JSON
+   */
+  function downloadJson(filename, data) {
+    var blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(function () { URL.revokeObjectURL(url); }, 2000);
+  }
+
+  function todayStr() {
+    return new Date().toISOString().slice(0, 10);
+  }
+
+  /**
+   * بکاپ همهٔ دوره‌ها
+   */
+  function downloadAllBackup() {
+    var data = Store.buildBackupData(Store.getState());
+    downloadJson('support-backup-' + Names.sanitizeFilename('همه-دوره‌ها') + '-' + todayStr() + '.json', data);
+    Store.recordBackupTime();
+  }
+
+  /**
+   * بکاپ فقط یک دوره
+   */
+  function downloadCohortBackup(cohort) {
+    if (!cohort) return;
+    var data = Store.buildBackupData(Store.getState(), cohort.id);
+    downloadJson('support-backup-دوره-' + Names.sanitizeFilename(cohort.name) + '-' + todayStr() + '.json', data);
+    Store.recordBackupTime();
+  }
+
+  /**
+   * نسخهٔ احتیاطی از وضعیت فعلی، پیش از جایگزینی کامل (زمان آخرین بکاپ را عوض نمی‌کند)
+   */
+  function downloadBeforeRestoreBackup() {
+    downloadJson('support-before-restore-' + todayStr() + '.json', Store.buildBackupData(Store.getState()));
+  }
+
+  /**
    * نوار بالای صفحه (Header)
    * انتخابگر دوره، وضعیت آخرین بکاپ، منوی ابزار
    */
@@ -64,24 +109,15 @@
         onSelect: onOpenImportWizard
       },
       {
-        label: 'دانلود بکاپ کامل (JSON)',
+        label: 'دانلود بکاپ این دوره',
         icon: 'Copy',
-        onSelect: function () {
-          var data = Store.getState();
-          var activeName = activeCohort ? activeCohort.name : 'همه';
-          var dateStr = new Date().toISOString().slice(0, 10);
-          var filename = 'support-backup-' + Names.sanitizeFilename(activeName) + '-' + dateStr + '.json';
-          var blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-          var url = URL.createObjectURL(blob);
-          var a = document.createElement('a');
-          a.href = url;
-          a.download = filename;
-          document.body.appendChild(a);
-          a.click();
-          document.body.removeChild(a);
-          setTimeout(function () { URL.revokeObjectURL(url); }, 2000);
-          Store.recordBackupTime();
-        }
+        disabled: !activeCohort,
+        onSelect: function () { downloadCohortBackup(activeCohort); }
+      },
+      {
+        label: 'دانلود بکاپ همهٔ دوره‌ها',
+        icon: 'Copy',
+        onSelect: downloadAllBackup
       },
       {
         label: 'بازگردانی از فایل بکاپ',
@@ -177,24 +213,8 @@
         action: h(B.Button, {
           size: 'sm',
           variant: 'primary',
-          onClick: function () {
-            var data = Store.getState();
-            var activeCohort = Store.getActiveCohort();
-            var activeName = activeCohort ? activeCohort.name : 'داده‌ها';
-            var dateStr = new Date().toISOString().slice(0, 10);
-            var filename = 'support-backup-' + Names.sanitizeFilename(activeName) + '-' + dateStr + '.json';
-            var blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-            var url = URL.createObjectURL(blob);
-            var a = document.createElement('a');
-            a.href = url;
-            a.download = filename;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            setTimeout(function () { URL.revokeObjectURL(url); }, 2000);
-            Store.recordBackupTime();
-          }
-        }, 'دانلود بکاپ (JSON)')
+          onClick: downloadAllBackup
+        }, 'دانلود بکاپ همهٔ دوره‌ها')
       }, 'اگر حافظه یا تاریخچه مرورگر پاک شود، اطلاعات از بین می‌رود. لطفاً فایل پشتیبان دریافت کنید.')
     );
   }
@@ -224,6 +244,7 @@
 
   SupportApp.UICommon = {
     formatRelativeBackupTime: formatRelativeBackupTime,
+    downloadBeforeRestoreBackup: downloadBeforeRestoreBackup,
     Header: Header,
     BackupReminderBanner: BackupReminderBanner,
     MultiTabWarningBanner: MultiTabWarningBanner
