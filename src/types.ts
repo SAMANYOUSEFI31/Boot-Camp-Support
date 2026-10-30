@@ -52,6 +52,8 @@ export interface Cohort {
   groups: Group[];
   participants: Participant[];
   records: Records;
+  /** نسخهٔ قاعدهٔ امتیاز این دوره (فعلاً فقط ثبت می‌شود؛ حساب بر اساس آن نیست) */
+  scoringVersion?: number;
 }
 
 export interface AppState {
@@ -65,7 +67,13 @@ export interface AppState {
 
 export type MergeDecision = 'skip' | 'replace' | 'copy';
 
+import type { MergePlan, MergeStats } from './merge-groups';
+
 export interface MergeOptions {
+  /** { [اندیس دورهٔ فایل]: شناسهٔ دورهٔ فعلی } ← ادغام در آن دوره؛ بدون ورودی یعنی دورهٔ جدا (رد/جایگزین/نسخهٔ جدا) */
+  targets?: Record<number, string | null>;
+  /** برنامهٔ ادغام هر دورهٔ فایل (پیش‌فرض: defaultPlan) */
+  plans?: Record<number, MergePlan>;
   selected?: Record<number, boolean>;
   decisions?: Record<number, MergeDecision>;
   groupMine?: Record<number, Record<string, boolean>>;
@@ -75,6 +83,8 @@ export interface MergeOptions {
 }
 
 export interface MergeReport {
+  /** دوره‌هایی که در یک دورهٔ موجود ادغام شدند */
+  merged: { name: string; into: string; stats: MergeStats }[];
   added: string[];
   replaced: string[];
   copied: string[];

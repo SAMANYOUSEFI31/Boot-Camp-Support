@@ -129,22 +129,38 @@ function GroupsTab(props: { cohort: Cohort; toast?: Toast }) {
               paddingBlock: 'var(--space-1)'
             }}
           >
-            <B.SegmentedControl
-              label="انتخاب گروه"
-              items={visibleGroups.map(function (g) {
-                const count = (cohort.participants || []).filter(function (p) {
-                  return p.groupId === g.id;
-                }).length;
-                return {
-                  id: g.id,
-                  label: g.name + ' (' + Names.toPersianDigits(count) + ' نفر)'
-                };
-              })}
-              value={activeGroup ? activeGroup.id : ''}
-              onChange={function (id) {
-                setSelectedGroupId(id);
-              }}
-            />
+            {visibleGroups.length > 5 ? (
+              <B.Select
+                label="گروه"
+                options={visibleGroups.map(function (g) {
+                  const count = (cohort.participants || []).filter(function (p) {
+                    return p.groupId === g.id;
+                  }).length;
+                  return { value: g.id, label: g.name + ' (' + Names.toPersianDigits(count) + ' نفر)' };
+                })}
+                value={activeGroup ? activeGroup.id : ''}
+                onChange={function (e) {
+                  setSelectedGroupId(e.target.value);
+                }}
+              />
+            ) : (
+              <B.SegmentedControl
+                label="انتخاب گروه"
+                items={visibleGroups.map(function (g) {
+                  const count = (cohort.participants || []).filter(function (p) {
+                    return p.groupId === g.id;
+                  }).length;
+                  return {
+                    id: g.id,
+                    label: g.name + ' (' + Names.toPersianDigits(count) + ' نفر)'
+                  };
+                })}
+                value={activeGroup ? activeGroup.id : ''}
+                onChange={function (id) {
+                  setSelectedGroupId(id);
+                }}
+              />
+            )}
           </div>
           {activeGroup && (
             <GroupDetailsView

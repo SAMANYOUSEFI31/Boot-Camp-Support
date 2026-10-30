@@ -268,16 +268,29 @@ export function DailyScoringTab(props: { cohort: Cohort; toast?: Toast }) {
               paddingBlock: 'var(--space-1)'
             }}
           >
-            <B.SegmentedControl
-              label="انتخاب گروه"
-              items={myGroups.map(function (g) {
-                return { id: g.id, label: g.name };
-              })}
-              value={activeGroup.id}
-              onChange={function (id) {
-                setSelectedGroupId(id);
-              }}
-            />
+            {myGroups.length > 5 ? (
+              <B.Select
+                label="گروه"
+                options={myGroups.map(function (g) {
+                  return { value: g.id, label: g.name };
+                })}
+                value={activeGroup.id}
+                onChange={function (e) {
+                  setSelectedGroupId(e.target.value);
+                }}
+              />
+            ) : (
+              <B.SegmentedControl
+                label="انتخاب گروه"
+                items={myGroups.map(function (g) {
+                  return { id: g.id, label: g.name };
+                })}
+                value={activeGroup.id}
+                onChange={function (id) {
+                  setSelectedGroupId(id);
+                }}
+              />
+            )}
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
             <B.IconButton

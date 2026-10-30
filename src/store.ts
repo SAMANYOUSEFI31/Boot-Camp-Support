@@ -4,6 +4,7 @@
  */
 
 import { Names } from './names';
+import { defaultPlan, findMergeTarget, mergeIntoCohort } from './merge-groups';
 import type {
   AppState,
   Cohort,
@@ -18,6 +19,8 @@ import type {
 } from './types';
 
 const SCHEMA_VERSION = 2;
+/** نسخهٔ قاعدهٔ امتیاز (سند مرجع ۱.۲)؛ هر دوره با نسخهٔ خودش ثبت می‌شود */
+const SCORING_VERSION = 1;
 const STORAGE_KEY = 'bsh_support_app_state_v1';
 const TAB_CHANNEL_NAME = 'bsh_support_tab_sync';
 const currentTabId = 'tab_' + Math.random().toString(36).slice(2, 9);
@@ -84,6 +87,7 @@ interface LooseCohort {
   participants?: Participant[];
   records?: Cohort['records'];
   archived?: boolean;
+  scoringVersion?: number;
 }
 interface LooseState {
   schemaVersion?: number;
@@ -104,6 +108,7 @@ function migrate(input: unknown): AppState {
       if (!Array.isArray(c.participants)) c.participants = [];
       if (!c.records || typeof c.records !== 'object') c.records = {};
       if (c.archived === undefined) c.archived = false;
+      if (c.scoringVersion === undefined) c.scoringVersion = SCORING_VERSION;
       c.groups.forEach(function (g) {
         if (!Array.isArray(g.closedDays)) g.closedDays = [];
         if (g.mine === undefined) g.mine = true;
@@ -243,9 +248,10 @@ function mergeCohorts(
   const groupMine = options.groupMine || {};
   const rename = options.rename || {};
   const makeId = options.newId || newCohortId;
+  const makeGroupId = options.newId ? (prefix: string) => prefix + '_' + options.newId!() : undefined;
 
   const next = deepClone(currentState);
-  const report: MergeReport = { added: [], replaced: [], copied: [], skipped: [] };
+  const report: MergeReport = { merged: [], added: [], replaced: [], copied: [], skipped: [] };
 
   (incomingCohorts || []).forEach(function (raw: Cohort, idx: number) {
     if (selected[idx] === false) return;
@@ -259,6 +265,21 @@ function mergeCohorts(
       inc.groups.forEach(function (g: Group) {
         if (mineMap[g.id] !== undefined) g.mine = !!mineMap[g.id];
       });
+    }
+
+    // ادغام در یک دورهٔ موجود (چند پشتیبان، یک دید کلی)
+    const targetId = (options as MergeOptions).targets ? (options as MergeOptions).targets![idx] : null;
+    if (targetId) {
+      const ti = next.cohorts.findIndex(function (c) {
+        return c.id === targetId;
+      });
+      if (ti !== -1) {
+        const plan = ((options as MergeOptions).plans || {})[idx] || defaultPlan(next.cohorts[ti], inc);
+        const res = mergeIntoCohort(next.cohorts[ti], inc, plan, makeGroupId);
+        next.cohorts[ti] = res.cohort;
+        report.merged.push({ name: inc.name, into: next.cohorts[ti].name, stats: res.stats });
+        return;
+      }
     }
 
     const at = findConflictIndex(next.cohorts, inc);
@@ -496,6 +517,7 @@ function createCohort(params?: CreateCohortParams): Cohort {
     name: name,
     startDate: startDate,
     archived: false,
+    scoringVersion: SCORING_VERSION,
     days: days,
     groups: groups,
     participants: participants,
@@ -901,6 +923,7 @@ export const Store = {
   mergeFromBackup: mergeFromBackup,
   mergeCohorts: mergeCohorts,
   findConflictIndex: findConflictIndex,
+  findMergeTarget: findMergeTarget,
   validateBackup: validateBackup,
   buildBackupData: buildBackupData,
   getMultiTabWarning: function () {
