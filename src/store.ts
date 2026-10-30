@@ -77,35 +77,48 @@ function createInitialState(): AppState {
 /**
  * تابع مهاجرت داده‌های قدیمی به نسخه‌های جدید
  */
-// داده‌های ورودی (localStorage یا فایل) قابل‌اعتماد نیستند؛ تا قبل از اعتبارسنجی any است
-function migrate(data: any): AppState {
-  if (!data || typeof data !== 'object') {
+// شکل «شاید ناقص» داده‌ای که از حافظه یا فایل می‌آید و هنوز مهاجرت نشده
+interface LooseCohort {
+  days?: DayConfig[];
+  groups?: Partial<Group>[];
+  participants?: Participant[];
+  records?: Cohort['records'];
+  archived?: boolean;
+}
+interface LooseState {
+  schemaVersion?: number;
+  cohorts?: LooseCohort[];
+}
+
+function migrate(input: unknown): AppState {
+  if (!input || typeof input !== 'object') {
     return createInitialState();
   }
+  const data = input as LooseState;
   const version = data.schemaVersion || 1;
   if (version === 1) {
     if (!Array.isArray(data.cohorts)) data.cohorts = [];
-    data.cohorts.forEach(function (c: any) {
+    data.cohorts.forEach(function (c) {
       if (!c.days || !c.days.length) c.days = createDefaultDays();
       if (!Array.isArray(c.groups)) c.groups = [];
       if (!Array.isArray(c.participants)) c.participants = [];
       if (!c.records || typeof c.records !== 'object') c.records = {};
       if (c.archived === undefined) c.archived = false;
-      c.groups.forEach(function (g: any) {
+      c.groups.forEach(function (g) {
         if (!Array.isArray(g.closedDays)) g.closedDays = [];
         if (g.mine === undefined) g.mine = true;
       });
     });
-    return data;
+    return data as AppState;
   }
-  return data;
+  return data as AppState;
 }
 
 function deepClone<T>(obj: T): T {
   return JSON.parse(JSON.stringify(obj));
 }
 
-function isPlainObject(v: unknown): v is Record<string, any> {
+function isPlainObject(v: unknown): v is Record<string, unknown> {
   return !!v && typeof v === 'object' && !Array.isArray(v);
 }
 
@@ -113,7 +126,7 @@ function isPlainObject(v: unknown): v is Record<string, any> {
  * اعتبارسنجی فایل بکاپ. هیچ تغییری روی ورودی نمی‌دهد.
  * خروجی: { ok: true, data } (کپی عمیق و مهاجرت‌شده) یا { ok: false, error } با پیام فارسی ساده
  */
-function validateBackup(raw: any): ValidateResult {
+function validateBackup(raw: unknown): ValidateResult {
   if (!isPlainObject(raw)) {
     return { ok: false, error: 'این فایل، فایل بکاپ برنامه نیست.' };
   }
@@ -127,7 +140,7 @@ function validateBackup(raw: any): ValidateResult {
     return { ok: false, error: 'در این فایل فهرست دوره‌ها پیدا نشد.' };
   }
   for (let i = 0; i < raw.cohorts.length; i++) {
-    const c = raw.cohorts[i];
+    const c: unknown = raw.cohorts[i];
     let label = 'دورهٔ شمارهٔ ' + (i + 1);
     if (!isPlainObject(c) || typeof c.id !== 'string' || !c.id) {
       return { ok: false, error: label + ' شناسه ندارد یا خراب است.' };
@@ -141,12 +154,13 @@ function validateBackup(raw: any): ValidateResult {
     if (!isPlainObject(c.records)) return { ok: false, error: label + ': اطلاعات ثبت روزانه خراب است.' };
     if (!Array.isArray(c.days)) return { ok: false, error: label + ': فهرست روزها خراب است.' };
     for (let gi = 0; gi < c.groups.length; gi++) {
-      if (!isPlainObject(c.groups[gi]) || typeof c.groups[gi].id !== 'string') {
+      const g: unknown = c.groups[gi];
+      if (!isPlainObject(g) || typeof g.id !== 'string') {
         return { ok: false, error: label + ': یکی از گروه‌ها خراب است.' };
       }
     }
     for (let pi = 0; pi < c.participants.length; pi++) {
-      const p = c.participants[pi];
+      const p: unknown = c.participants[pi];
       if (!isPlainObject(p) || typeof p.id !== 'string' || typeof p.name !== 'string') {
         return { ok: false, error: label + ': اطلاعات یکی از افراد خراب است.' };
       }

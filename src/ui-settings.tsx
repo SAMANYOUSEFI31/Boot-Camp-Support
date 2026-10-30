@@ -430,6 +430,4 @@ function SettingsTab(props: { cohort: Cohort; toast?: Toast }) {
   );
 }
 
-export const UISettings = {
-  SettingsTab: SettingsTab
-};
+export { SettingsTab };

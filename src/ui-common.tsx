@@ -316,10 +316,10 @@ function MultiTabWarningBanner() {
   );
 }
 
-export const UICommon = {
-  formatRelativeBackupTime: formatRelativeBackupTime,
-  downloadBeforeRestoreBackup: downloadBeforeRestoreBackup,
-  Header: Header,
-  BackupReminderBanner: BackupReminderBanner,
-  MultiTabWarningBanner: MultiTabWarningBanner
+export {
+  formatRelativeBackupTime,
+  downloadBeforeRestoreBackup,
+  Header,
+  BackupReminderBanner,
+  MultiTabWarningBanner
 };

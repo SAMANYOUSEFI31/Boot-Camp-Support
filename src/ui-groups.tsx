@@ -1176,6 +1176,4 @@ function HabitCountConfirmDialog(props: {
   );
 }
 
-export const UIGroups = {
-  GroupsTab: GroupsTab
-};
+export { GroupsTab };
