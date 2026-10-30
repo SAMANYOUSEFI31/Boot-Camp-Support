@@ -7,15 +7,25 @@ import { useEffect, useState, type ChangeEvent } from 'react';
 import { B } from './bushido';
 import { Names } from './names';
 import { errorMessage } from './errors';
+import { Store } from './store';
 import { Importer, type GroupConfig, type ImportFile, type ImportReport } from './importer';
 import type { Cohort, Toast } from './types';
 
 /**
  * ویزارد ۴ مرحله‌ای ورود از اکسل / CSV
  */
-function ImportWizardModal(props: { open: boolean; cohort: Cohort; onClose: () => void; toast?: Toast }) {
+interface ImportWizardModalProps {
+  open: boolean;
+  cohorts: Cohort[];
+  activeCohortId: string | null;
+  onClose: () => void;
+  toast?: Toast;
+}
+
+function ImportWizardModal(props: ImportWizardModalProps) {
   const open = props.open;
-  const cohort = props.cohort;
+  const cohorts = props.cohorts;
+  const activeCohortId = props.activeCohortId;
   const onClose = props.onClose;
   const toast = props.toast;
 
@@ -23,6 +33,11 @@ function ImportWizardModal(props: { open: boolean; cohort: Cohort; onClose: () =
   const [filesData, setFilesData] = useState<ImportFile[]>([]);
   const [analyzedReport, setAnalyzedReport] = useState<ImportReport | null>(null);
   const [groupConfigMap, setGroupConfigMap] = useState<Record<string, GroupConfig>>({}); // { [groupId]: { name, mine, selected } }
+  // مقصد ورود: یک دورهٔ موجود، یا ساخت دورهٔ تازه (نام پیش‌فرض از نام فایل)
+  const [target, setTarget] = useState<'existing' | 'new'>('existing');
+  const [targetCohortId, setTargetCohortId] = useState('');
+  const [newName, setNewName] = useState('');
+  const [newStartDate, setNewStartDate] = useState<Date>(new Date());
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
 
@@ -33,6 +48,10 @@ function ImportWizardModal(props: { open: boolean; cohort: Cohort; onClose: () =
         setFilesData([]);
         setAnalyzedReport(null);
         setGroupConfigMap({});
+        setTarget('existing');
+        setTargetCohortId('');
+        setNewName('');
+        setNewStartDate(new Date());
         setLoading(false);
         setErrorMsg('');
       }
@@ -41,6 +60,25 @@ function ImportWizardModal(props: { open: boolean; cohort: Cohort; onClose: () =
   );
 
   if (!open) return null;
+
+  // پیش‌فرض مقصد: اگر نام فایل با دوره‌ای یکی بود همان؛ وگرنه دورهٔ فعال؛ وگرنه ساخت دورهٔ تازه
+  function initTarget(files: ImportFile[]) {
+    const primary = files.find((f) => f.detectedType === 'grouping_table') || files[0];
+    const guess = Names.cohortNameFromFileName(primary ? primary.fileName : '');
+    const same = cohorts.find((c) => c.name.trim() === guess);
+    const fallback = cohorts.find((c) => c.id === activeCohortId) || cohorts[0];
+    setNewName(guess);
+    if (same) {
+      setTarget('existing');
+      setTargetCohortId(same.id);
+    } else if (fallback) {
+      setTarget('existing');
+      setTargetCohortId(fallback.id);
+    } else {
+      setTarget('new');
+      setTargetCohortId('');
+    }
+  }
 
   // ۱. پردازش فایل‌های آپلود شده
   function handleFilesChosen(e: ChangeEvent<HTMLInputElement>) {
@@ -80,6 +118,7 @@ function ImportWizardModal(props: { open: boolean; cohort: Cohort; onClose: () =
           };
         });
 
+        initTarget(parsedFiles);
         setFilesData(parsedFiles);
         setAnalyzedReport(analysis);
         setGroupConfigMap(initialGroupConfig);
@@ -122,6 +161,7 @@ function ImportWizardModal(props: { open: boolean; cohort: Cohort; onClose: () =
         };
       });
 
+      initTarget(sampleFiles);
       setFilesData(sampleFiles);
       setAnalyzedReport(analysis);
       setGroupConfigMap(initialGroupConfig);
@@ -133,15 +173,37 @@ function ImportWizardModal(props: { open: boolean; cohort: Cohort; onClose: () =
     }
   }
 
+  // دورهٔ مقصد نهایی (موجود یا تازه) برای نمایش در مرحلهٔ ۴
+  const targetCohort = cohorts.find((c) => c.id === targetCohortId) || null;
+  const targetLabel =
+    target === 'new' ? newName.trim() + ' (دورهٔ تازه)' : targetCohort ? targetCohort.name : '';
+
   // نهایی‌سازی و اعمال ادغام
   function handleFinalApply() {
     if (!analyzedReport) return;
     try {
-      Importer.applyImport(cohort.id, analyzedReport, groupConfigMap);
+      let cohortId = targetCohortId;
+      if (target === 'new') {
+        const trimmed = newName.trim();
+        if (!trimmed) {
+          setErrorMsg('نام دورهٔ تازه را بنویسید.');
+          setStep(2);
+          return;
+        }
+        cohortId = Store.createCohort({
+          name: trimmed,
+          startDate: newStartDate.toISOString().slice(0, 10)
+        }).id;
+      } else if (!cohortId) {
+        setErrorMsg('دورهٔ مقصد را انتخاب کنید.');
+        setStep(2);
+        return;
+      }
+      Importer.applyImport(cohortId, analyzedReport, groupConfigMap);
       if (toast) {
         toast.show({
           intent: 'success',
-          message: 'اطلاعات با موفقیت به دوره وارد و ادغام شدند.'
+          message: 'اطلاعات به دورهٔ «' + targetLabel.replace(' (دورهٔ تازه)', '') + '» وارد شد.'
         });
       }
       onClose();
@@ -169,9 +231,11 @@ function ImportWizardModal(props: { open: boolean; cohort: Cohort; onClose: () =
       description="ورود گروه‌ها و افراد با رعایت کامل حریم خصوصی و تطبیق خودکار مغایرت‌ها."
       size="lg"
     >
-      <div style={{ display: 'grid', gap: 'var(--space-4)', padding: 'var(--space-2) 0' }}>
+      <div className="bsh-stack" style={{ padding: 'var(--space-2) 0' }}>
         {errorMsg && <B.Alert intent="danger">{errorMsg}</B.Alert>}
-        <div style={{ display: 'flex', gap: 'var(--space-2)', marginBottom: 'var(--space-2)' }}>
+        <div
+          style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-2)', marginBottom: 'var(--space-2)' }}
+        >
           {[
             { s: 1, label: '۱. انتخاب فایل' },
             { s: 2, label: '۲. پیش‌نمایش گروه‌ها' },
@@ -186,7 +250,7 @@ function ImportWizardModal(props: { open: boolean; cohort: Cohort; onClose: () =
           })}
         </div>
         {step === 1 && (
-          <div style={{ display: 'grid', gap: 'var(--space-4)' }}>
+          <div className="bsh-stack">
             <B.Card padding="lg" style={{ textAlign: 'center', border: '2px dashed var(--border-subtle)' }}>
               <B.Icon
                 name="Inbox"
@@ -237,12 +301,58 @@ function ImportWizardModal(props: { open: boolean; cohort: Cohort; onClose: () =
           </div>
         )}
         {step === 2 && analyzedReport && (
-          <div style={{ display: 'grid', gap: 'var(--space-4)' }}>
+          <div className="bsh-stack">
+            <B.Card padding="md">
+              <div className="bsh-stack" style={{ gap: 'var(--space-3)' }}>
+                <B.RadioGroup
+                  legend="این فایل مال کدام دوره است؟"
+                  name="import-target"
+                  orientation="vertical"
+                  value={target}
+                  onChange={function (v) {
+                    setTarget(v as 'existing' | 'new');
+                  }}
+                  options={[
+                    { value: 'existing', label: 'افزودن به یک دورهٔ موجود', disabled: cohorts.length === 0 },
+                    { value: 'new', label: 'ساخت دورهٔ تازه با این فایل' }
+                  ]}
+                />
+                {target === 'existing' ? (
+                  <B.Select
+                    label="دورهٔ مقصد"
+                    options={cohorts.map(function (c) {
+                      return { value: c.id, label: c.name };
+                    })}
+                    value={targetCohortId}
+                    onChange={function (e) {
+                      setTargetCohortId(e.target.value);
+                    }}
+                  />
+                ) : (
+                  <div className="bsh-stack" style={{ gap: 'var(--space-3)' }}>
+                    <B.TextField
+                      label="نام دوره (از نام فایل؛ قابل تغییر)"
+                      value={newName}
+                      onChange={function (e) {
+                        setNewName(e.target.value);
+                      }}
+                    />
+                    <B.DatePicker
+                      label="تاریخ شروع دوره"
+                      value={newStartDate}
+                      onChange={function (d) {
+                        setNewStartDate(d);
+                      }}
+                    />
+                  </div>
+                )}
+              </div>
+            </B.Card>
             <B.Alert intent="info">
               نام گروه‌ها را در صورت نیاز ویرایش کنید. گروه‌هایی که تیک «مال من است» ندارند، اصلاً وارد برنامه
               نمی‌شوند.
             </B.Alert>
-            <div style={{ display: 'grid', gap: 'var(--space-3)' }}>
+            <div className="bsh-stack" style={{ gap: 'var(--space-3)' }}>
               {analyzedReport.groups.map(function (g) {
                 const cfg = groupConfigMap[g.id] || { name: g.name, mine: true, selected: true };
                 const membersOfGroup = analyzedReport.participants.filter(function (p) {
@@ -325,7 +435,7 @@ function ImportWizardModal(props: { open: boolean; cohort: Cohort; onClose: () =
           </div>
         )}
         {step === 3 && analyzedReport && (
-          <div style={{ display: 'grid', gap: 'var(--space-4)' }}>
+          <div className="bsh-stack">
             <div className="title">گزارش مغایرت‌ها و بررسی انطباق داده‌ها:</div>
             {analyzedReport.inconsistencies.length === 0 ? (
               <B.Alert intent="success" title="داده‌ها کاملاً منطبق هستند">
@@ -381,14 +491,14 @@ function ImportWizardModal(props: { open: boolean; cohort: Cohort; onClose: () =
           </div>
         )}
         {step === 4 && analyzedReport && (
-          <div style={{ display: 'grid', gap: 'var(--space-4)' }}>
+          <div className="bsh-stack">
             <B.Alert intent="info" title="قاعده ادغام بوشیدو">
               افراد موجود در دوره دستکاری نمی‌شوند و فقط آیدی تلگرام خالی آنها تکمیل می‌گردد. افراد جدید به
               گروه‌ها اضافه می‌شوند و هیچ رکوردی حذف نخواهد شد.
             </B.Alert>
             <B.Card padding="md">
               <div className="title" style={{ marginBottom: 'var(--space-2)' }}>
-                {'آماده اعمال در دوره: ' + cohort.name}
+                {'آماده اعمال در دوره: ' + targetLabel}
               </div>
               <p className="body-sm" style={{ color: 'var(--text-subtle)' }}>
                 با کلیک روی تأیید، اعضا و گروه‌های مشخص‌شده به دوره اضافه می‌شوند و یک نسخه پشتیبان در حافظه

@@ -69,6 +69,8 @@ export interface MergeOptions {
   selected?: Record<number, boolean>;
   decisions?: Record<number, MergeDecision>;
   groupMine?: Record<number, Record<string, boolean>>;
+  /** نام تازه برای دورهٔ ورودی (پیش از بررسی تکراری‌بودن) */
+  rename?: Record<number, string>;
   newId?: () => string;
 }
 

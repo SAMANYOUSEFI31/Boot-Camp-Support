@@ -114,7 +114,22 @@ function sanitizeFilename(filename: unknown): string {
     .trim();
 }
 
+/**
+ * نام طبیعی دوره از نام فایل: بدون پسوند، با فاصله به‌جای _ و -
+ * مثلاً «دوره-آبان_۱۴۰۵.xlsx» ← «دوره آبان ۱۴۰۵»
+ */
+function cohortNameFromFileName(fileName: unknown): string {
+  return String(fileName || '')
+    .replace(/\.(xlsx|xls|csv|json|numbers)$/i, '')
+    .replace(/^support-backup-/i, '')
+    .replace(/-\d{4}-\d{2}-\d{2}$/, '')
+    .replace(/[_-]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
 export const Names = {
+  cohortNameFromFileName: cohortNameFromFileName,
   toLatinDigits: toLatinDigits,
   toPersianDigits: toPersianDigits,
   normalizeName: normalizeName,
