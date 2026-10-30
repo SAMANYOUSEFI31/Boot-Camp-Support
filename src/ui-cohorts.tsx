@@ -327,6 +327,14 @@ function RestoreBackupModal(props: { open: boolean; onClose: () => void; toast?:
     setter(next);
   }
 
+  function setAllMine(idx: number, groups: { id: string }[], value: boolean) {
+    const inner: Record<string, boolean> = {};
+    groups.forEach(function (g) {
+      inner[g.id] = value;
+    });
+    setIn(setGroupMine, groupMine, idx, inner);
+  }
+
   function setMine(idx: number, groupId: string, value: boolean) {
     const inner = Object.assign({}, groupMine[idx]);
     inner[groupId] = value;
@@ -450,6 +458,26 @@ function RestoreBackupModal(props: { open: boolean; onClose: () => void; toast?:
           )}
           {isSelected && groupsCount > 0 && (
             <div style={{ display: 'grid', gap: 'var(--space-1)' }}>
+              <div style={{ display: 'flex', gap: 'var(--space-2)', flexWrap: 'wrap' }}>
+                <B.Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={function () {
+                    setAllMine(i, c.groups, true);
+                  }}
+                >
+                  همه را بزن
+                </B.Button>
+                <B.Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={function () {
+                    setAllMine(i, c.groups, false);
+                  }}
+                >
+                  همه را بردار
+                </B.Button>
+              </div>
               {c.groups.map(function (g) {
                 const members = c.participants.filter(function (p) {
                   return p.groupId === g.id;

@@ -179,6 +179,17 @@ function ImportWizardModal(props: ImportWizardModalProps) {
     target === 'new' ? newName.trim() + ' (دورهٔ تازه)' : targetCohort ? targetCohort.name : '';
 
   // نهایی‌سازی و اعمال ادغام
+  // «مال من است» برای همهٔ گروه‌ها یکجا
+  function setAllMine(value: boolean) {
+    if (!analyzedReport) return;
+    const updated = Object.assign({}, groupConfigMap);
+    analyzedReport.groups.forEach(function (g) {
+      const cfg = updated[g.id] || { name: g.name, mine: true, selected: true };
+      updated[g.id] = Object.assign({}, cfg, { mine: value });
+    });
+    setGroupConfigMap(updated);
+  }
+
   function handleFinalApply() {
     if (!analyzedReport) return;
     try {
@@ -352,6 +363,26 @@ function ImportWizardModal(props: ImportWizardModalProps) {
               نام گروه‌ها را در صورت نیاز ویرایش کنید. گروه‌هایی که تیک «مال من است» ندارند، اصلاً وارد برنامه
               نمی‌شوند.
             </B.Alert>
+            <div style={{ display: 'flex', gap: 'var(--space-2)', flexWrap: 'wrap' }}>
+              <B.Button
+                variant="ghost"
+                size="sm"
+                onClick={function () {
+                  setAllMine(true);
+                }}
+              >
+                همه را بزن
+              </B.Button>
+              <B.Button
+                variant="ghost"
+                size="sm"
+                onClick={function () {
+                  setAllMine(false);
+                }}
+              >
+                همه را بردار
+              </B.Button>
+            </div>
             <div className="bsh-stack" style={{ gap: 'var(--space-3)' }}>
               {analyzedReport.groups.map(function (g) {
                 const cfg = groupConfigMap[g.id] || { name: g.name, mine: true, selected: true };
