@@ -221,6 +221,7 @@ function copyName(cohorts: Cohort[], baseName: string): string {
  *   selected  : { [اندیس دورهٔ ورودی]: false } برای نادیده‌گرفتن (پیش‌فرض: همه انتخاب‌اند)
  *   decisions : { [اندیس]: 'skip' | 'replace' | 'copy' } برای دوره‌های تکراری (پیش‌فرض: skip)
  *   groupMine : { [اندیس]: { [شناسه گروه]: true/false } } برای تغییر «گروه من/دیگران»
+ *   rename    : { [اندیس]: 'نام تازه' } برای عوض‌کردن نام دورهٔ ورودی
  *   newId     : تابع تولید شناسهٔ دورهٔ جدید (برای آزمون)
  *
  * خروجی: { state, report: { added, replaced, copied, skipped } } (فهرست نام دوره‌ها)
@@ -234,6 +235,7 @@ function mergeCohorts(
   const selected = options.selected || {};
   const decisions = options.decisions || {};
   const groupMine = options.groupMine || {};
+  const rename = options.rename || {};
   const makeId = options.newId || newCohortId;
 
   const next = deepClone(currentState);
@@ -242,6 +244,9 @@ function mergeCohorts(
   (incomingCohorts || []).forEach(function (raw: Cohort, idx: number) {
     if (selected[idx] === false) return;
     const inc = deepClone(raw);
+
+    const newName = (rename[idx] || '').trim();
+    if (newName) inc.name = newName;
 
     const mineMap = groupMine[idx];
     if (mineMap) {
@@ -269,7 +274,8 @@ function mergeCohorts(
         })
       )
         inc.id = makeId();
-      inc.name = copyName(next.cohorts, inc.name);
+      // پسوند «ـ۲» فقط وقتی لازم است که نام از قبل گرفته شده باشد
+      if (next.cohorts.some((c) => c.name === inc.name)) inc.name = copyName(next.cohorts, inc.name);
       next.cohorts.push(inc);
       report.copied.push(inc.name);
     } else {

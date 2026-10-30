@@ -65,10 +65,6 @@ function MainApp() {
           setCohortModalOpen(true);
         }}
         onOpenImportWizard={function () {
-          if (!activeCohort) {
-            toast.show({ intent: 'warning', message: 'ابتدا یک دوره بسازید.' });
-            return;
-          }
           setImportWizardOpen(true);
         }}
         onOpenRestoreModal={function () {
@@ -97,6 +93,9 @@ function MainApp() {
             }}
             onRestoreBackup={function () {
               setRestoreModalOpen(true);
+            }}
+            onImport={function () {
+              setImportWizardOpen(true);
             }}
           />
         ) : (
@@ -138,10 +137,11 @@ function MainApp() {
           toast={toast}
         />
       )}
-      {importWizardOpen && activeCohort && (
+      {importWizardOpen && (
         <ImportWizardModal
           open={importWizardOpen}
-          cohort={activeCohort}
+          cohorts={appState.cohorts}
+          activeCohortId={activeCohort ? activeCohort.id : null}
           onClose={function () {
             setImportWizardOpen(false);
           }}

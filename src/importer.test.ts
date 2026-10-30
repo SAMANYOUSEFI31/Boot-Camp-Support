@@ -45,3 +45,16 @@ test('بررسی معیارهای پذیرش ورود فایل‌های نمون
   // ۴. پنج نفر فریز شده
   assert.equal(analysis.stats.frozenCount, 5);
 });
+
+test('نام طبیعی دوره از نام فایل', () => {
+  assert.equal(Names.cohortNameFromFileName('دوره-آبان_۱۴۰۵.xlsx'), 'دوره آبان ۱۴۰۵');
+  assert.equal(Names.cohortNameFromFileName('support-backup-دوره-مهر-2026-10-29.json'), 'دوره مهر');
+  assert.equal(Names.cohortNameFromFileName(''), '');
+});
+
+test('فایل بکاپ یا Numbers در ورود اکسل با پیام فارسی رد می‌شود', async () => {
+  const json = new File(['{}'], 'b.json');
+  await assert.rejects(Importer.readFileData(json), /بکاپ/);
+  const numbers = new File(['x'], 'list.numbers');
+  await assert.rejects(Importer.readFileData(numbers), /Numbers/);
+});

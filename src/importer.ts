@@ -107,6 +107,23 @@ function readFileData(file: File): Promise<{ fileName: string; type: 'csv' | 'xl
     const name = file.name.toLowerCase();
     const isCsv = name.endsWith('.csv');
 
+    if (name.endsWith('.json')) {
+      reject(new Error('این فایل، بکاپ است. از «ابزارها ← بازگردانی از فایل بکاپ» استفاده کنید.'));
+      return;
+    }
+    if (name.endsWith('.numbers')) {
+      reject(
+        new Error(
+          'فایل Numbers مستقیم خوانده نمی‌شود. در Numbers از «File ← Export To ← Excel» (یا CSV) خروجی بگیرید و آن را وارد کنید.'
+        )
+      );
+      return;
+    }
+    if (!isCsv && !name.endsWith('.xlsx')) {
+      reject(new Error('فقط فایل اکسل (.xlsx) یا CSV پشتیبانی می‌شود.'));
+      return;
+    }
+
     if (isCsv) {
       const reader = new FileReader();
       reader.onload = function (e) {

@@ -188,9 +188,14 @@ function CohortModal(props: CohortModalProps) {
 /**
  * صفحه خالی در صورت نبود هیچ دوره‌ای
  */
-function EmptyCohortState(props: { onCreateCohort: () => void; onRestoreBackup: () => void }) {
+function EmptyCohortState(props: {
+  onCreateCohort: () => void;
+  onRestoreBackup: () => void;
+  onImport: () => void;
+}) {
   const onCreateCohort = props.onCreateCohort;
   const onRestoreBackup = props.onRestoreBackup;
+  const onImport = props.onImport;
 
   const action = (
     <div style={{ display: 'flex', gap: 'var(--space-3)', flexWrap: 'wrap', justifyContent: 'center' }}>
@@ -199,6 +204,9 @@ function EmptyCohortState(props: { onCreateCohort: () => void; onRestoreBackup: 
       </B.Button>
       <B.Button variant="secondary" iconStart="ExternalLink" onClick={onRestoreBackup}>
         بازگردانی از بکاپ
+      </B.Button>
+      <B.Button variant="secondary" iconStart="Inbox" onClick={onImport}>
+        ورود از اکسل / CSV
       </B.Button>
     </div>
   );
@@ -235,6 +243,7 @@ function RestoreBackupModal(props: { open: boolean; onClose: () => void; toast?:
   const [mode, setMode] = useState('merge');
   const [selected, setSelected] = useState<Record<number, boolean>>({}); // { [اندیس دوره]: bool }
   const [decisions, setDecisions] = useState<Record<number, MergeDecision>>({}); // { [اندیس دوره]: skip|replace|copy }
+  const [names, setNames] = useState<Record<number, string>>({}); // { [اندیس دوره]: نام قابل‌ویرایش }
   const [groupMine, setGroupMine] = useState<Record<number, Record<string, boolean>>>({}); // { [اندیس دوره]: { [شناسه گروه]: bool } }
 
   useEffect(
@@ -247,6 +256,7 @@ function RestoreBackupModal(props: { open: boolean; onClose: () => void; toast?:
         setSelected({});
         setDecisions({});
         setGroupMine({});
+        setNames({});
       }
     },
     [open]
@@ -260,6 +270,13 @@ function RestoreBackupModal(props: { open: boolean; onClose: () => void; toast?:
     setFileName(file.name);
     setErrorMsg('');
     setBackup(null);
+
+    if (/\.(xlsx|xls|csv|numbers)$/i.test(file.name)) {
+      setErrorMsg(
+        'این فایل اکسل یا CSV است، نه بکاپ. برای ورود لیست افراد از «ابزارها ← ورود از اکسل / CSV» استفاده کنید.'
+      );
+      return;
+    }
 
     const reader = new FileReader();
     reader.onload = function (ev) {
@@ -278,6 +295,7 @@ function RestoreBackupModal(props: { open: boolean; onClose: () => void; toast?:
       const sel: Record<number, boolean> = {};
       const dec: Record<number, MergeDecision> = {};
       const mine: Record<number, Record<string, boolean>> = {};
+      const nm: Record<number, string> = {};
       v.data.cohorts.forEach(function (c, i) {
         sel[i] = true;
         dec[i] = 'skip';
@@ -289,6 +307,7 @@ function RestoreBackupModal(props: { open: boolean; onClose: () => void; toast?:
       setSelected(sel);
       setDecisions(dec);
       setGroupMine(mine);
+      setNames(nm);
       setBackup(v.data);
     };
     reader.onerror = function () {
@@ -331,7 +350,8 @@ function RestoreBackupModal(props: { open: boolean; onClose: () => void; toast?:
         const report = Store.mergeFromBackup(backup, {
           selected: selected,
           decisions: decisions,
-          groupMine: groupMine
+          groupMine: groupMine,
+          rename: names
         });
         const parts = [];
         if (report.added.length) parts.push(Names.toPersianDigits(report.added.length) + ' دوره اضافه شد');
@@ -367,7 +387,9 @@ function RestoreBackupModal(props: { open: boolean; onClose: () => void; toast?:
   function renderCohortCard(c: Cohort, i: number) {
     const groupsCount = c.groups.length;
     const peopleCount = c.participants.length;
-    const conflict = isMerge && Store.findConflictIndex(currentCohorts, c) !== -1;
+    const shownName = names[i] !== undefined ? names[i] : c.name;
+    const conflict =
+      isMerge && Store.findConflictIndex(currentCohorts, { ...c, name: shownName.trim() || c.name }) !== -1;
     const isSelected = !!selected[i];
 
     return (
@@ -380,6 +402,28 @@ function RestoreBackupModal(props: { open: boolean; onClose: () => void; toast?:
               setIn(setSelected, selected, i, e.target.checked);
             }}
           />
+          {isSelected && (
+            <div style={{ display: 'flex', gap: 'var(--space-2)', alignItems: 'flex-end', flexWrap: 'wrap' }}>
+              <div style={{ flex: 1, minInlineSize: 0 }}>
+                <B.TextField
+                  label="نام دوره (قابل تغییر)"
+                  value={shownName}
+                  onChange={function (e) {
+                    setIn(setNames, names, i, e.target.value);
+                  }}
+                />
+              </div>
+              <B.Button
+                variant="ghost"
+                size="sm"
+                onClick={function () {
+                  setIn(setNames, names, i, Names.cohortNameFromFileName(fileName) || c.name);
+                }}
+              >
+                نام فایل
+              </B.Button>
+            </div>
+          )}
           <div className="caption" style={{ color: 'var(--text-subtle)' }}>
             {Names.toPersianDigits(groupsCount) +
               ' گروه · ' +
