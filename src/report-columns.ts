@@ -10,6 +10,7 @@
  */
 
 import { Names } from './names';
+import { SCORING_RULES } from './copy';
 import { Scoring } from './scoring';
 import type { Cohort, DayConfig, Group, Participant, ParticipantStatus, DayRecord } from './types';
 
@@ -185,7 +186,7 @@ export const REPORT_COLUMNS: ReportColumn[] = [
   },
   {
     id: 'dayScore',
-    title: 'امتیاز امروز',
+    title: 'امتیاز این روز',
     kind: 'text',
     excelWidth: 14,
     imageWidth: 140,
@@ -203,7 +204,7 @@ export const REPORT_COLUMNS: ReportColumn[] = [
   },
   {
     id: 'total',
-    title: 'مجموع تا امروز',
+    title: 'مجموع تا این روز',
     imageTitle: 'مجموع',
     kind: 'text',
     excelWidth: 16,
@@ -227,9 +228,9 @@ export const REPORT_COLUMNS: ReportColumn[] = [
 
 /** متن قاعده‌های امتیاز برای سطر یادآور شیت اکسل */
 export function scoringRules(dayCfg: DayConfig): string[] {
-  const rules = ['هر عادت ۱ امتیاز', 'روز استاندارد (همهٔ عادت‌ها) ۲ امتیاز'];
-  if (dayCfg.hardLevels > 0) rules.push('کار سخت سطح ۱ تا ' + fa(dayCfg.hardLevels) + ' امتیاز');
-  rules.push('گزارش هدف ۲ امتیاز');
+  const rules = [SCORING_RULES.habit.short, SCORING_RULES.standardDay.short];
+  if (dayCfg.hardLevels > 0) rules.push(SCORING_RULES.hard.short(fa(dayCfg.hardLevels)));
+  rules.push(SCORING_RULES.goal.short);
   return rules;
 }
 

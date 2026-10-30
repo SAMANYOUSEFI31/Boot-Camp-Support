@@ -33,6 +33,7 @@ export interface BushidoLib {
   Dialog: C<D.DialogProps>;
   EmptyState: C<D.EmptyStateProps>;
   Menu: C<D.MenuProps>;
+  Popover: C<D.PopoverProps>;
   Table: C<D.TableProps>;
   DatePicker: C<D.DatePickerProps>;
   ToastProvider: C<D.ToastProviderProps>;

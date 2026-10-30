@@ -108,19 +108,19 @@ function readFileData(file: File): Promise<{ fileName: string; type: 'csv' | 'xl
     const isCsv = name.endsWith('.csv');
 
     if (name.endsWith('.json')) {
-      reject(new Error('این فایل، بکاپ است. از «ابزارها ← بازگردانی از فایل بکاپ» استفاده کنید.'));
+      reject(new Error('این فایل بکاپ است. از «ابزارها ← بازگردانی بکاپ» استفاده کن.'));
       return;
     }
     if (name.endsWith('.numbers')) {
       reject(
         new Error(
-          'فایل Numbers مستقیم خوانده نمی‌شود. در Numbers از «File ← Export To ← Excel» (یا CSV) خروجی بگیرید و آن را وارد کنید.'
+          'فایل Numbers مستقیم خوانده نمی‌شود. در Numbers از «File ← Export To ← Excel» (یا CSV) خروجی بگیر و آن را وارد کن.'
         )
       );
       return;
     }
     if (!isCsv && !name.endsWith('.xlsx')) {
-      reject(new Error('فقط فایل اکسل (.xlsx) یا CSV پشتیبانی می‌شود.'));
+      reject(new Error('فقط فایل Excel (.xlsx) یا CSV را می‌شود وارد کرد.'));
       return;
     }
 
@@ -150,7 +150,9 @@ function readFileData(file: File): Promise<{ fileName: string; type: 'csv' | 'xl
               .then(function () {
                 const ws = wb.worksheets[0];
                 if (!ws) {
-                  return reject(new Error('هیچ برگه فعالی در فایل اکسل یافت نشد.'));
+                  return reject(
+                    new Error('در فایل Excel برگه‌ای پیدا نشد. فایل را باز کن، ذخیره کن و دوباره امتحان کن.')
+                  );
                 }
                 const rows: RawRows = [];
                 ws.eachRow({ includeEmpty: false }, function (row: any) {
@@ -553,7 +555,7 @@ function applyImport(
     return c.id === cohortId;
   });
   if (!cohort) {
-    throw new Error('دوره فعال یافت نشد.');
+    throw new Error('دوره‌ای انتخاب نشده. اول یک دوره بساز یا انتخاب کن.');
   }
 
   // ذخیره کپی در حافظه برای Undo

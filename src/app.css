@@ -245,3 +245,31 @@ th.bsh-sticky-right { z-index: calc(var(--layer-raised) + 1); }
 .bsh-header__cohort .bsh-select__input { inline-size: 100%; min-inline-size: 0; }
 .bsh-banner .bsh-alert__action .bsh-btn { white-space: normal; }
 .bsh-banner .bsh-alert__content { min-inline-size: 0; }
+
+/* ---------- راهنمای ⓘ (HelpHint) ---------- */
+.bsh-help { display: inline-flex; vertical-align: middle; }
+.bsh-help.is-corner { position: absolute; inset-block-start: 0; inset-inline-end: 0; }
+.bsh-help__btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-1);
+  min-inline-size: var(--touch-target-min);
+  min-block-size: var(--touch-target-min);
+  margin-block: calc(var(--space-3) * -1);
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-pill);
+  background: transparent;
+  color: var(--text-subtle);
+  font: inherit;
+  cursor: pointer;
+}
+.bsh-help__btn.has-label { padding-inline: var(--space-2); }
+.bsh-help__btn:hover { color: var(--text-default); background: var(--bg-neutral-subtle); }
+.bsh-help__btn:focus-visible { outline: var(--focus-width) solid var(--border-focus); outline-offset: var(--focus-offset); }
+.bsh-help__panel { display: grid; gap: var(--space-2); text-align: start; }
+.bsh-help__panel p, .bsh-help__panel ul { margin: 0; }
+.bsh-help__panel ul { padding-inline-start: var(--space-4); display: grid; gap: var(--space-1); }
+.bsh-field-wrap { position: relative; }
+.bsh-help-row { display: flex; flex-wrap: wrap; gap: var(--space-1) var(--space-3); align-items: center; }

@@ -5,6 +5,7 @@
 
 import { useState } from 'react';
 import { B } from '../bushido';
+import { HelpHint } from '../help-hint';
 import { Names } from '../names';
 import { Excel } from '../excel';
 import { errorMessage } from '../errors';
@@ -42,7 +43,7 @@ export function ExcelGroupDayExportModal(props: ExcelExportModalProps) {
     Excel.exportGroupDayReport(cohort, group, dayN, includeFrozen)
       .then(function () {
         setLoading(false);
-        if (toast) toast.show({ intent: 'success', message: 'فایل اکسل با موفقیت دانلود شد.' });
+        if (toast) toast.show({ intent: 'success', message: 'Excel دانلود شد.' });
         onClose();
       })
       .catch(function (err) {
@@ -57,7 +58,7 @@ export function ExcelGroupDayExportModal(props: ExcelExportModalProps) {
         انصراف
       </B.Button>
       <B.Button variant="primary" loading={loading} onClick={handleDownload}>
-        دانلود فایل اکسل
+        دانلود Excel
       </B.Button>
     </div>
   );
@@ -66,24 +67,28 @@ export function ExcelGroupDayExportModal(props: ExcelExportModalProps) {
     <B.Dialog
       open={open}
       onClose={onClose}
-      title={'دانلود اکسل گزارش روز ' + Names.toPersianDigits(dayN) + ' — ' + group.name}
-      description="این فایل برای اشتراک‌گذاری در گروه تلگرام طراحی شده و هیچ اطلاعات خصوصی ندارد."
+      title={'دانلود Excel روز ' + Names.toPersianDigits(dayN) + ' — ' + group.name}
+      description="فقط نام و امتیاز در فایل است؛ آیدی تلگرام نیست."
       footer={footer}
       size="sm"
     >
       <div style={{ display: 'grid', gap: 'var(--space-3)', padding: 'var(--space-2) 0' }}>
         {!isDayClosed && (
-          <B.Alert intent="warning" title="روز هنوز بسته نشده است">
-            این روز هنوز بسته نشده و گزارش با برچسب «پیش‌نویس» تولید خواهد شد. آیا ادامه می‌دهید؟
+          <B.Alert intent="warning" title="روز هنوز بسته نشده">
+            گزارش با برچسب «پیش‌نویس» ساخته می‌شود. اگر نهایی می‌خواهی، اول روز را ببند.
           </B.Alert>
         )}
         <B.Checkbox
-          label="افراد فریز‌شده و خارج‌شده هم در گزارش بیایند"
+          label="فریز و خارج‌شده‌ها هم در فایل بیایند"
           checked={includeFrozen}
           onChange={function (e) {
             setIncludeFrozen(e.target.checked);
           }}
         />
+        <div className="bsh-help-row">
+          <HelpHint help="exportFrozen" visibleLabel />
+          <HelpHint help="exportDaily" visibleLabel />
+        </div>
       </div>
     </B.Dialog>
   );

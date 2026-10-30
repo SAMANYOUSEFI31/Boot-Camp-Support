@@ -10,6 +10,8 @@ import { Scoring } from './scoring';
 import type { Cohort, Group, Participant, Toast } from './types';
 import type { TableProps } from '../ds/components';
 import { Store } from './store';
+import { HelpHint } from './help-hint';
+import { calculateCurrentDayNumber } from './daily/DailyScoringTab';
 
 /**
  * تب اصلی مدیریت گروه‌ها و افراد
@@ -72,7 +74,7 @@ function GroupsTab(props: { cohort: Cohort; toast?: Toast }) {
   return (
     <div className="bsh-stack bsh-stack--lg">
       <div className="bsh-row">
-        <h2 className="heading-md">مدیریت گروه‌ها و اعضا</h2>
+        <h2 className="heading-md">گروه‌ها و افراد</h2>
         <B.Button
           variant="primary"
           iconStart="Plus"
@@ -85,23 +87,24 @@ function GroupsTab(props: { cohort: Cohort; toast?: Toast }) {
         </B.Button>
         <div className="bsh-row__end">
           <B.Switch
-            label="نمایش همه گروه‌ها (شامل گروه‌های دیگران)"
+            label="نمایش همه گروه‌ها"
             checked={showAllGroups}
             onChange={function (e) {
               setShowAllGroups(e.target.checked);
             }}
           />
+          <HelpHint help="mine" />
         </div>
       </div>
       {visibleGroups.length === 0 ? (
         <B.Card padding="lg">
           <B.EmptyState
             icon="Inbox"
-            title="هیچ گروهی یافت نشد"
+            title="گروهی نیست"
             description={
               showAllGroups
-                ? 'هنوز گروهی در این دوره تعریف نشده است.'
-                : 'هیچ گروهی با علامت «مال من است» وجود ندارد. «نمایش همه» را بزنید یا گروه جدید بسازید.'
+                ? 'هنوز گروهی نساخته‌ای. اولین گروه را بساز.'
+                : 'گروه منی نیست. «نمایش همه گروه‌ها» را روشن کن یا گروه تازه بساز.'
             }
             action={
               <B.Button
@@ -111,7 +114,7 @@ function GroupsTab(props: { cohort: Cohort; toast?: Toast }) {
                   setGroupModalOpen(true);
                 }}
               >
-                افزودن اولین گروه
+                ساخت اولین گروه
               </B.Button>
             }
           />
@@ -281,7 +284,12 @@ function GroupDetailsView(props: GroupDetailsViewProps) {
     return true;
   });
 
-  const summary = Scoring.groupSummary(cohort, group, 8, true);
+  // «امروز» = روز جاریِ دوره (نه یک روز ثابت)
+  const todayN = calculateCurrentDayNumber(cohort.startDate);
+  const todayCfg = (cohort.days || []).find(function (d) {
+    return d.n === todayN;
+  });
+  const summary = Scoring.groupSummary(cohort, group, todayN, true);
 
   // ستون‌های جدول اعضا
   const columns: TableProps['columns'] = [
@@ -309,7 +317,7 @@ function GroupDetailsView(props: GroupDetailsViewProps) {
             )}
             {row.status === 'left' && (
               <B.Badge intent="neutral" emphasis="subtle">
-                خارج شده
+                خارج‌شده
               </B.Badge>
             )}
           </div>
@@ -330,12 +338,12 @@ function GroupDetailsView(props: GroupDetailsViewProps) {
     },
     {
       key: 'habitCount',
-      label: 'تعداد عادت‌ها',
+      label: 'تعداد عادت',
       numeric: true,
       render: function (row) {
         // سلول ویرایش سریع با انتخاب ۱ تا ۴
         const options = [
-          { value: '', label: 'تعیین نشده' },
+          { value: '', label: 'تعیین‌نشده' },
           { value: '1', label: '۱ عادت' },
           { value: '2', label: '۲ عادت' },
           { value: '3', label: '۳ عادت' },
@@ -364,7 +372,7 @@ function GroupDetailsView(props: GroupDetailsViewProps) {
     },
     {
       key: 'actions',
-      label: 'عملیات',
+      label: 'اقدام',
       render: function (row) {
         return (
           <div style={{ display: 'flex', gap: 'var(--space-2)' }}>
@@ -412,13 +420,16 @@ function GroupDetailsView(props: GroupDetailsViewProps) {
               گروه دیگران
             </B.Badge>
           )}
-          <span className="caption" style={{ color: 'var(--text-subtle)' }}>
-            {'امروز: ' + Names.toPersianDigits(summary.unrecordedTodayCount) + ' نفر هنوز ثبت نشده‌اند'}
-          </span>
+          {todayCfg && todayCfg.type === 'main' && (
+            <span className="caption" style={{ color: 'var(--text-subtle)' }}>
+              {'امروز ' + Names.toPersianDigits(summary.unrecordedTodayCount) + ' نفر ثبت‌نشده'}
+            </span>
+          )}
+          <HelpHint help="mine" />
         </div>
         <div style={{ display: 'flex', gap: 'var(--space-2)', flexWrap: 'wrap' }}>
           <B.Button variant="secondary" size="sm" iconStart="Plus" onClick={onAddPaste}>
-            افزودن با پیست لیست
+            افزودن افراد با لیست
           </B.Button>
           <B.Button
             variant="ghost"
@@ -428,7 +439,7 @@ function GroupDetailsView(props: GroupDetailsViewProps) {
               onEditGroup(group);
             }}
           >
-            تنظیمات گروه
+            ویرایش گروه
           </B.Button>
           <B.Button
             variant="danger"
@@ -445,8 +456,8 @@ function GroupDetailsView(props: GroupDetailsViewProps) {
       <div className="bsh-row" style={{ justifyContent: 'space-between' }}>
         <B.Tabs
           items={[
-            { id: 'members', label: 'لیست اعضا (' + Names.toPersianDigits(members.length) + ' نفر)' },
-            { id: 'matrix', label: 'نمای کلی پیشرفت (ماتریس ۲۱ روزه)' }
+            { id: 'members', label: 'افراد (' + Names.toPersianDigits(members.length) + ' نفر)' },
+            { id: 'matrix', label: 'پیشرفت روزها' }
           ]}
           value={viewMode}
           onChange={function (id) {
@@ -461,13 +472,15 @@ function GroupDetailsView(props: GroupDetailsViewProps) {
                 { value: 'all', label: 'همه وضعیت‌ها' },
                 { value: 'active', label: 'فقط فعال' },
                 { value: 'frozen', label: 'فقط فریز' },
-                { value: 'left', label: 'فقط خارج شده' }
+                { value: 'left', label: 'فقط خارج‌شده' }
               ]}
               value={statusFilter}
               onChange={function (e) {
                 setStatusFilter(e.target.value);
               }}
             />
+            <HelpHint help="frozen" />
+            <HelpHint help="habitCount" />
           </div>
         )}
       </div>
@@ -475,17 +488,17 @@ function GroupDetailsView(props: GroupDetailsViewProps) {
         members.length === 0 ? (
           <B.EmptyState
             icon="User"
-            title="عضوی در این گروه نیست"
-            description="می‌توانید با پیست کردن لیست اسامی، اعضای گروه را وارد کنید."
+            title="فردی در این گروه نیست"
+            description="اسم‌ها را کپی و بچسبان؛ هر خط یک نفر."
             action={
               <B.Button variant="secondary" onClick={onAddPaste}>
-                افزودن اعضا
+                افزودن افراد
               </B.Button>
             }
           />
         ) : (
           <B.Table
-            caption={'لیست اعضای ' + group.name}
+            caption={'افراد گروه ' + group.name}
             columns={columns}
             rows={members.map(function (m, idx) {
               return Object.assign({}, m, { rowNum: idx + 1 });
@@ -516,8 +529,8 @@ function GroupMatrixView(props: { cohort: Cohort; group: Group; members: Partici
     return (
       <B.EmptyState
         icon="ChartColumn"
-        title="عضوی برای نمایش ماتریس وجود ندارد"
-        description="ابتدا به این گروه عضو اضافه کنید."
+        title="فردی برای نمایش نیست"
+        description="اول به این گروه فرد اضافه کن."
       />
     );
   }
@@ -549,7 +562,7 @@ function GroupMatrixView(props: { cohort: Cohort; group: Group; members: Partici
                 minWidth: 'calc(var(--space-16) * 2.5)'
               }}
             >
-              نام فرد
+              نام
             </th>
             {mainDays.map(function (d) {
               const isClosed = closedDays.indexOf(d.n) !== -1;
@@ -566,7 +579,7 @@ function GroupMatrixView(props: { cohort: Cohort; group: Group; members: Partici
                     padding: 'var(--space-2)'
                   }}
                 >
-                  <div>{'ر' + Names.toPersianDigits(d.n)}</div>
+                  <div>{'روز ' + Names.toPersianDigits(d.n)}</div>
                   <div className="caption" style={{ color: 'var(--text-subtle)' }}>
                     {shamsi}
                   </div>
@@ -703,7 +716,7 @@ function GroupModal(props: {
   const handleSave = () => {
     const trimmed = name.trim();
     if (!trimmed) {
-      setErrorMsg('نام گروه الزامی است.');
+      setErrorMsg('نام گروه را بنویس.');
       return;
     }
 
@@ -712,7 +725,7 @@ function GroupModal(props: {
         name: trimmed,
         mine: isMine
       });
-      if (toast) toast.show({ intent: 'success', message: 'گروه به‌روزرسانی شد.' });
+      if (toast) toast.show({ intent: 'success', message: 'گروه ذخیره شد.' });
     } else {
       Store.addGroup(cohort.id, {
         name: trimmed,
@@ -738,7 +751,7 @@ function GroupModal(props: {
     <B.Dialog
       open={open}
       onClose={onClose}
-      title={isEdit ? 'ویرایش گروه' : 'افزودن گروه جدید'}
+      title={isEdit ? 'ویرایش گروه' : 'گروه تازه'}
       footer={footer}
       size="sm"
     >
@@ -753,12 +766,15 @@ function GroupModal(props: {
           required={true}
         />
         <B.Switch
-          label="این گروه مال من است (مسئولیت من است)"
+          label="گروه من (خودم پشتیبانش هستم)"
           checked={isMine}
           onChange={function (e) {
             setIsMine(e.target.checked);
           }}
         />
+        <div className="bsh-help-row">
+          <HelpHint help="mine" visibleLabel />
+        </div>
       </div>
     </B.Dialog>
   );
@@ -791,7 +807,7 @@ function DeleteGroupAlert(props: {
     if (toast)
       toast.show({
         intent: 'danger',
-        message: 'گروه و ' + Names.toPersianDigits(count) + ' عضو آن پاک شدند.'
+        message: 'گروه و ' + Names.toPersianDigits(count) + ' فرد آن حذف شد.'
       });
     onClose();
   };
@@ -802,7 +818,7 @@ function DeleteGroupAlert(props: {
         انصراف
       </B.Button>
       <B.Button variant="danger-bold" onClick={handleConfirmDelete}>
-        حذف گروه و اعضا
+        حذف گروه و افراد
       </B.Button>
     </div>
   );
@@ -813,9 +829,9 @@ function DeleteGroupAlert(props: {
       onClose={onClose}
       title={'حذف ' + group.name}
       description={
-        'آیا از حذف این گروه اطمینان دارید؟ با حذف گروه، تمام ' +
+        'گروه و ' +
         Names.toPersianDigits(count) +
-        ' عضو این گروه و رکوردهای آنها نیز حذف خواهند شد.'
+        ' فرد آن، با همهٔ امتیازهایشان حذف می‌شود. برگشت ندارد؛ اگر لازم است اول بکاپ بگیر.'
       }
       footer={footer}
       size="sm"
@@ -865,7 +881,7 @@ function PasteParticipantsModal(props: {
       })
       .filter(Boolean);
     if (!lines.length) {
-      setErrorMsg('هیچ نامی وارد نشده است.');
+      setErrorMsg('نامی ننوشته‌ای. اسم‌ها را بنویس یا بچسبان.');
       return;
     }
 
@@ -903,15 +919,15 @@ function PasteParticipantsModal(props: {
     <B.Dialog
       open={open}
       onClose={onClose}
-      title={'افزودن اعضا به ' + group.name}
-      description="نام افراد را وارد کنید (هر خط یک نفر). می‌توانید آیدی تلگرام را هم در ادامه نام بگذارید."
+      title={'افزودن افراد به ' + group.name}
+      description="هر خط یک نفر. آیدی تلگرام را می‌توانی بعد از نام بنویسی."
       footer={footer}
       size="md"
     >
       <div style={{ display: 'grid', gap: 'var(--space-4)', padding: 'var(--space-2) 0' }}>
         {errorMsg && <B.Alert intent="danger">{errorMsg}</B.Alert>}
         <B.Textarea
-          label="لیست اسامی (هر خط یک نفر)"
+          label="لیست افراد"
           placeholder={'علی رضایی @ali_rez\nسارا احمدی\nرضا کاظمی'}
           rows={6}
           value={text}
@@ -919,19 +935,22 @@ function PasteParticipantsModal(props: {
             setText(e.target.value);
           }}
         />
-        <B.Select
-          label="تعداد عادت‌های اولیه برای این افراد"
-          options={[
-            { value: '1', label: '۱ عادت' },
-            { value: '2', label: '۲ عادت' },
-            { value: '3', label: '۳ عادت' },
-            { value: '4', label: '۴ عادت' }
-          ]}
-          value={habitCount}
-          onChange={function (e) {
-            setHabitCount(e.target.value);
-          }}
-        />
+        <div className="bsh-field-wrap">
+          <B.Select
+            label="تعداد عادت این افراد"
+            options={[
+              { value: '1', label: '۱ عادت' },
+              { value: '2', label: '۲ عادت' },
+              { value: '3', label: '۳ عادت' },
+              { value: '4', label: '۴ عادت' }
+            ]}
+            value={habitCount}
+            onChange={function (e) {
+              setHabitCount(e.target.value);
+            }}
+          />
+          <HelpHint help="habitCount" corner />
+        </div>
       </div>
     </B.Dialog>
   );
@@ -983,7 +1002,7 @@ function ParticipantModal(props: {
   const handleSave = () => {
     const trimmed = name.trim();
     if (!trimmed) {
-      setErrorMsg('نام نمی‌تواند خالی باشد.');
+      setErrorMsg('نام را بنویس.');
       return;
     }
 
@@ -1032,7 +1051,7 @@ function ParticipantModal(props: {
           }}
         />
         <B.Select
-          label="گروه اختصاص‌یافته"
+          label="گروه"
           options={allGroups.map(function (g) {
             return { value: g.id, label: g.name };
           })}
@@ -1041,32 +1060,38 @@ function ParticipantModal(props: {
             setGroupId(e.target.value);
           }}
         />
-        <B.Select
-          label="وضعیت فرد"
-          options={[
-            { value: 'active', label: 'فعال' },
-            { value: 'frozen', label: 'فریز شده' },
-            { value: 'left', label: 'خارج شده' }
-          ]}
-          value={status}
-          onChange={function (e) {
-            setStatus(e.target.value);
-          }}
-        />
-        <B.Select
-          label="تعداد عادت‌ها (۱ تا ۴)"
-          options={[
-            { value: '', label: 'تعیین نشده' },
-            { value: '1', label: '۱ عادت' },
-            { value: '2', label: '۲ عادت' },
-            { value: '3', label: '۳ عادت' },
-            { value: '4', label: '۴ عادت' }
-          ]}
-          value={habitCount}
-          onChange={function (e) {
-            setHabitCount(e.target.value);
-          }}
-        />
+        <div className="bsh-field-wrap">
+          <B.Select
+            label="وضعیت فرد"
+            options={[
+              { value: 'active', label: 'فعال' },
+              { value: 'frozen', label: 'فریز' },
+              { value: 'left', label: 'خارج‌شده' }
+            ]}
+            value={status}
+            onChange={function (e) {
+              setStatus(e.target.value);
+            }}
+          />
+          <HelpHint help="frozen" corner />
+        </div>
+        <div className="bsh-field-wrap">
+          <B.Select
+            label="تعداد عادت (۱ تا ۴)"
+            options={[
+              { value: '', label: 'تعیین‌نشده' },
+              { value: '1', label: '۱ عادت' },
+              { value: '2', label: '۲ عادت' },
+              { value: '3', label: '۳ عادت' },
+              { value: '4', label: '۴ عادت' }
+            ]}
+            value={habitCount}
+            onChange={function (e) {
+              setHabitCount(e.target.value);
+            }}
+          />
+          <HelpHint help="habitCount" corner />
+        </div>
       </div>
     </B.Dialog>
   );
@@ -1112,7 +1137,7 @@ function DeleteParticipantAlert(props: {
       open={open}
       onClose={onClose}
       title={'حذف ' + participant.name}
-      description="آیا از حذف این فرد از دوره اطمینان دارید؟ تمام رکوردهای ثبت‌شده او نیز حذف خواهند شد."
+      description="فرد با همهٔ امتیازهایش حذف می‌شود و برگشت ندارد. اگر فقط می‌خواهی از گزارش‌ها کنار برود، وضعیتش را «فریز» یا «خارج‌شده» کن."
       footer={footer}
       size="sm"
       alert={true}
@@ -1143,7 +1168,7 @@ function HabitCountConfirmDialog(props: {
 
   const handleConfirm = () => {
     Store.updateParticipant(cohort.id, p.id, { habitCount: newCount });
-    if (toast) toast.show({ intent: 'success', message: 'تعداد عادت‌های ' + p.name + ' تغییر یافت.' });
+    if (toast) toast.show({ intent: 'success', message: 'تعداد عادت ' + p.name + ' عوض شد.' });
     onClose();
   };
 
@@ -1153,7 +1178,7 @@ function HabitCountConfirmDialog(props: {
         انصراف
       </B.Button>
       <B.Button variant="primary" onClick={handleConfirm}>
-        تأیید تغییر
+        تغییر بده
       </B.Button>
     </div>
   );
@@ -1162,13 +1187,13 @@ function HabitCountConfirmDialog(props: {
     <B.Dialog
       open={open}
       onClose={onClose}
-      title={'تغییر تعداد عادت‌های ' + p.name}
+      title={'تغییر تعداد عادت ' + p.name}
       description={
-        'تعداد عادت‌ها برای کل دوره تعیین می‌شود. آیا مطمئنید که می‌خواهید آن را از ' +
+        'تعداد عادت برای کل دوره است. با تغییر از ' +
         Names.toPersianDigits(p.habitCount) +
         ' به ' +
         (newCount != null ? Names.toPersianDigits(newCount) : 'تعیین‌نشده') +
-        ' تغییر دهید؟ این کار محاسبات حداکثر امتیاز را تغییر می‌دهد.'
+        '، حداکثر امتیاز روزهای قبل هم دوباره حساب می‌شود.'
       }
       footer={footer}
       size="sm"

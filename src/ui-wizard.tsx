@@ -5,6 +5,7 @@
 
 import { useEffect, useState, type ChangeEvent } from 'react';
 import { B } from './bushido';
+import { HelpHint } from './help-hint';
 import { Names } from './names';
 import { errorMessage } from './errors';
 import { Store } from './store';
@@ -127,7 +128,7 @@ function ImportWizardModal(props: ImportWizardModalProps) {
       })
       .catch(function (err) {
         setLoading(false);
-        setErrorMsg('خطا در پردازش فایل: ' + errorMessage(err));
+        setErrorMsg('فایل خوانده نشد: ' + errorMessage(err) + ' فایل دیگری را امتحان کن.');
       });
   }
 
@@ -169,7 +170,7 @@ function ImportWizardModal(props: ImportWizardModalProps) {
       setStep(2);
     } catch (err) {
       setLoading(false);
-      setErrorMsg('خطا در بارگذاری نمونه: ' + errorMessage(err));
+      setErrorMsg('نمونه بارگذاری نشد: ' + errorMessage(err));
     }
   }
 
@@ -197,7 +198,7 @@ function ImportWizardModal(props: ImportWizardModalProps) {
       if (target === 'new') {
         const trimmed = newName.trim();
         if (!trimmed) {
-          setErrorMsg('نام دورهٔ تازه را بنویسید.');
+          setErrorMsg('نام دورهٔ تازه را بنویس.');
           setStep(2);
           return;
         }
@@ -206,7 +207,7 @@ function ImportWizardModal(props: ImportWizardModalProps) {
           startDate: newStartDate.toISOString().slice(0, 10)
         }).id;
       } else if (!cohortId) {
-        setErrorMsg('دورهٔ مقصد را انتخاب کنید.');
+        setErrorMsg('دورهٔ مقصد را انتخاب کن.');
         setStep(2);
         return;
       }
@@ -219,7 +220,7 @@ function ImportWizardModal(props: ImportWizardModalProps) {
       }
       onClose();
     } catch (err) {
-      setErrorMsg('خطا در اعمال: ' + errorMessage(err));
+      setErrorMsg('ورود انجام نشد: ' + errorMessage(err));
     }
   }
 
@@ -227,10 +228,10 @@ function ImportWizardModal(props: ImportWizardModalProps) {
   function handleRollback() {
     const ok = Importer.rollbackLastImport();
     if (ok) {
-      if (toast) toast.show({ intent: 'info', message: 'آخرین ورود با موفقیت بازگردانده شد.' });
+      if (toast) toast.show({ intent: 'info', message: 'آخرین ورود برگردانده شد.' });
       onClose();
     } else {
-      if (toast) toast.show({ intent: 'danger', message: 'نسخه پشتیبانی برای بازگردانی وجود ندارد.' });
+      if (toast) toast.show({ intent: 'danger', message: 'ورودی برای برگرداندن نیست.' });
     }
   }
 
@@ -238,8 +239,8 @@ function ImportWizardModal(props: ImportWizardModalProps) {
     <B.Dialog
       open={open}
       onClose={onClose}
-      title={'ویزارد ورود اطلاعات از اکسل / CSV (مرحله ' + Names.toPersianDigits(step) + ' از ۴)'}
-      description="ورود گروه‌ها و افراد با رعایت کامل حریم خصوصی و تطبیق خودکار مغایرت‌ها."
+      title={'ورود افراد از Excel یا CSV (مرحلهٔ ' + Names.toPersianDigits(step) + ' از ۴)'}
+      description="گروه‌ها و افراد را از فایل وارد کن. فقط نام، گروه و آیدی تلگرام خوانده می‌شود."
       size="lg"
     >
       <div className="bsh-stack" style={{ padding: 'var(--space-2) 0' }}>
@@ -248,10 +249,10 @@ function ImportWizardModal(props: ImportWizardModalProps) {
           style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-2)', marginBottom: 'var(--space-2)' }}
         >
           {[
-            { s: 1, label: '۱. انتخاب فایل' },
-            { s: 2, label: '۲. پیش‌نمایش گروه‌ها' },
-            { s: 3, label: '۳. گزارش ناهمخوانی‌ها' },
-            { s: 4, label: '۴. تأیید نهایی' }
+            { s: 1, label: '۱. فایل' },
+            { s: 2, label: '۲. گروه‌ها' },
+            { s: 3, label: '۳. ناهمخوانی‌ها' },
+            { s: 4, label: '۴. ورود' }
           ].map(function (st) {
             return (
               <B.Tag key={st.s} selected={step === st.s}>
@@ -262,6 +263,9 @@ function ImportWizardModal(props: ImportWizardModalProps) {
         </div>
         {step === 1 && (
           <div className="bsh-stack">
+            <div className="bsh-help-row">
+              <HelpHint help="importStep1" visibleLabel />
+            </div>
             <B.Card padding="lg" style={{ textAlign: 'center', border: '2px dashed var(--border-subtle)' }}>
               <B.Icon
                 name="Inbox"
@@ -269,9 +273,9 @@ function ImportWizardModal(props: ImportWizardModalProps) {
                 className="text-brand"
                 style={{ margin: '0 auto var(--space-2)' }}
               />
-              <h3 className="heading-xs">فایل یا فایل‌های اکسل (.xlsx) یا .csv را انتخاب کنید</h3>
+              <h3 className="heading-xs">فایل Excel (.xlsx) یا CSV را انتخاب کن</h3>
               <p className="body-sm" style={{ color: 'var(--text-subtle)', margin: 'var(--space-2) 0' }}>
-                می‌توانید «جدول گروه‌بندی»، «لیست ثبت‌نامی» یا هر دو را همزمان انتخاب نمایید.
+                «جدول گروه‌بندی»، «لیست ثبت‌نامی» یا هر دو را با هم انتخاب کن.
               </p>
               <input
                 type="file"
@@ -292,9 +296,9 @@ function ImportWizardModal(props: ImportWizardModalProps) {
                 }}
               >
                 <div>
-                  <div className="title">بارگذاری فایل‌های نمونه آزمون پذیرش</div>
+                  <div className="title">فایل‌های نمونه</div>
                   <div className="caption" style={{ color: 'var(--text-subtle)' }}>
-                    شامل ۵ گروه با ۸۵ نفر، مغایرت سمیه سعدی، ۳ نفر بدون گروه و ۵ فریز شده.
+                    برای امتحان: ۵ گروه با ۸۵ نفر، یک ناهمخوانی، ۳ نفر بدون گروه و ۵ فریز.
                   </div>
                 </div>
                 <B.Button variant="secondary" loading={loading} onClick={handleLoadSampleFiles}>
@@ -305,7 +309,7 @@ function ImportWizardModal(props: ImportWizardModalProps) {
             {Importer.hasRollbackAvailable() && (
               <div style={{ display: 'flex', justifyContent: 'flex-start' }}>
                 <B.Button variant="ghost" iconStart="ArrowLeft" onClick={handleRollback}>
-                  بازگردانی آخرین ورود (Undo)
+                  برگرداندن آخرین ورود
                 </B.Button>
               </div>
             )}
@@ -313,6 +317,10 @@ function ImportWizardModal(props: ImportWizardModalProps) {
         )}
         {step === 2 && analyzedReport && (
           <div className="bsh-stack">
+            <div className="bsh-help-row">
+              <HelpHint help="importStep2" visibleLabel />
+              <HelpHint help="mine" visibleLabel />
+            </div>
             <B.Card padding="md">
               <div className="bsh-stack" style={{ gap: 'var(--space-3)' }}>
                 <B.RadioGroup
@@ -324,8 +332,8 @@ function ImportWizardModal(props: ImportWizardModalProps) {
                     setTarget(v as 'existing' | 'new');
                   }}
                   options={[
-                    { value: 'existing', label: 'افزودن به یک دورهٔ موجود', disabled: cohorts.length === 0 },
-                    { value: 'new', label: 'ساخت دورهٔ تازه با این فایل' }
+                    { value: 'existing', label: 'اضافه به دوره‌ای که هست', disabled: cohorts.length === 0 },
+                    { value: 'new', label: 'ساخت دورهٔ تازه' }
                   ]}
                 />
                 {target === 'existing' ? (
@@ -360,8 +368,8 @@ function ImportWizardModal(props: ImportWizardModalProps) {
               </div>
             </B.Card>
             <B.Alert intent="info">
-              نام گروه‌ها را در صورت نیاز ویرایش کنید. گروه‌هایی که تیک «مال من است» ندارند، اصلاً وارد برنامه
-              نمی‌شوند.
+              نام هر گروه را اصلاح کن. گروهی که تیکش را برداری وارد نمی‌شود. گروهی که «گروه من» نباشد،
+              به‌عنوان گروه دیگران وارد می‌شود.
             </B.Alert>
             <div style={{ display: 'flex', gap: 'var(--space-2)', flexWrap: 'wrap' }}>
               <B.Button
@@ -416,7 +424,7 @@ function ImportWizardModal(props: ImportWizardModalProps) {
                       />
                       <div>
                         <B.TextField
-                          label={'نام گروه (تعداد: ' + Names.toPersianDigits(membersOfGroup.length) + ' نفر)'}
+                          label={'نام گروه (' + Names.toPersianDigits(membersOfGroup.length) + ' نفر)'}
                           value={cfg.name}
                           onChange={function (e) {
                             const updated = Object.assign({}, groupConfigMap);
@@ -428,11 +436,11 @@ function ImportWizardModal(props: ImportWizardModalProps) {
                           className="caption"
                           style={{ color: 'var(--text-subtle)', marginTop: 'var(--space-1)' }}
                         >
-                          {'نمونه اعضا: ' + (firstNames || 'بدون عضو')}
+                          {'نمونه: ' + (firstNames || 'بدون فرد')}
                         </div>
                       </div>
                       <B.Switch
-                        label="مال من است"
+                        label="گروه من"
                         checked={cfg.mine}
                         onChange={function (e) {
                           const updated = Object.assign({}, groupConfigMap);
@@ -452,7 +460,7 @@ function ImportWizardModal(props: ImportWizardModalProps) {
                   setStep(1);
                 }}
               >
-                مرحله قبل
+                قبلی
               </B.Button>
               <B.Button
                 variant="primary"
@@ -460,17 +468,20 @@ function ImportWizardModal(props: ImportWizardModalProps) {
                   setStep(3);
                 }}
               >
-                مشاهده گزارش ناهمخوانی‌ها
+                ادامه: ناهمخوانی‌ها
               </B.Button>
             </div>
           </div>
         )}
         {step === 3 && analyzedReport && (
           <div className="bsh-stack">
-            <div className="title">گزارش مغایرت‌ها و بررسی انطباق داده‌ها:</div>
+            <div className="bsh-help-row">
+              <HelpHint help="importStep3" visibleLabel />
+            </div>
+            <div className="title">ناهمخوانی‌ها</div>
             {analyzedReport.inconsistencies.length === 0 ? (
-              <B.Alert intent="success" title="داده‌ها کاملاً منطبق هستند">
-                هیچ ناهمخوانی یا تکراری مشاهده نشد.
+              <B.Alert intent="success" title="ناهمخوانی پیدا نشد">
+                نام تکراری هم نیست.
               </B.Alert>
             ) : (
               <div style={{ display: 'grid', gap: 'var(--space-2)' }}>
@@ -488,17 +499,14 @@ function ImportWizardModal(props: ImportWizardModalProps) {
             <B.Card padding="md">
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 'var(--space-2)' }}>
                 <B.Stat
-                  label="کل افراد در فایل‌ها"
+                  label="افراد فایل"
                   value={Names.toPersianDigits(analyzedReport.stats.totalParticipants) + ' نفر'}
                 />
                 <B.Stat
-                  label="افراد فریز شده"
+                  label="افراد فریز"
                   value={Names.toPersianDigits(analyzedReport.stats.frozenCount) + ' نفر'}
                 />
-                <B.Stat
-                  label="تعداد تکراری‌ها"
-                  value={Names.toPersianDigits(analyzedReport.duplicates.length)}
-                />
+                <B.Stat label="نام تکراری" value={Names.toPersianDigits(analyzedReport.duplicates.length)} />
               </div>
             </B.Card>
             <div style={{ display: 'flex', justifyContent: 'space-between' }}>
@@ -508,7 +516,7 @@ function ImportWizardModal(props: ImportWizardModalProps) {
                   setStep(2);
                 }}
               >
-                مرحله قبل
+                قبلی
               </B.Button>
               <B.Button
                 variant="primary"
@@ -516,24 +524,26 @@ function ImportWizardModal(props: ImportWizardModalProps) {
                   setStep(4);
                 }}
               >
-                رفتن به تأیید نهایی
+                ادامه: ورود
               </B.Button>
             </div>
           </div>
         )}
         {step === 4 && analyzedReport && (
           <div className="bsh-stack">
-            <B.Alert intent="info" title="قاعده ادغام بوشیدو">
-              افراد موجود در دوره دستکاری نمی‌شوند و فقط آیدی تلگرام خالی آنها تکمیل می‌گردد. افراد جدید به
-              گروه‌ها اضافه می‌شوند و هیچ رکوردی حذف نخواهد شد.
+            <div className="bsh-help-row">
+              <HelpHint help="importStep4" visibleLabel />
+            </div>
+            <B.Alert intent="info" title="چه اتفاقی می‌افتد؟">
+              افراد تازه اضافه می‌شوند. فرد موجود (با همان نام) عوض نمی‌شود؛ فقط آیدی تلگرام خالی‌اش پر می‌شود
+              و اگر فایل فریزش کرده باشد، فریز می‌شود. چیزی حذف نمی‌شود.
             </B.Alert>
             <B.Card padding="md">
               <div className="title" style={{ marginBottom: 'var(--space-2)' }}>
-                {'آماده اعمال در دوره: ' + targetLabel}
+                {'ورود به دورهٔ: ' + targetLabel}
               </div>
               <p className="body-sm" style={{ color: 'var(--text-subtle)' }}>
-                با کلیک روی تأیید، اعضا و گروه‌های مشخص‌شده به دوره اضافه می‌شوند و یک نسخه پشتیبان در حافظه
-                ذخیره می‌گردد تا در صورت تمایل امکان Undo داشته باشید.
+                بعد از ورود، تا وقتی صفحه را نبسته‌ای می‌توانی «برگرداندن آخرین ورود» را بزنی.
               </p>
             </B.Card>
             <div style={{ display: 'flex', justifyContent: 'space-between' }}>
@@ -543,10 +553,10 @@ function ImportWizardModal(props: ImportWizardModalProps) {
                   setStep(3);
                 }}
               >
-                مرحله قبل
+                قبلی
               </B.Button>
               <B.Button variant="primary" onClick={handleFinalApply}>
-                تأیید و اعمال اطلاعات
+                وارد کن
               </B.Button>
             </div>
           </div>

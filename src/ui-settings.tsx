@@ -5,6 +5,7 @@
 
 import { useState } from 'react';
 import { B } from './bushido';
+import { HelpHint } from './help-hint';
 import { Names } from './names';
 import { Store } from './store';
 import type { Cohort, DayConfig, Toast } from './types';
@@ -63,7 +64,7 @@ function SettingsTab(props: { cohort: Cohort; toast?: Toast }) {
     if (toast)
       toast.show({
         intent: 'success',
-        message: 'تنظیمات از روز ' + Names.toPersianDigits(dayN - 1) + ' کپی شد.'
+        message: 'روز ' + Names.toPersianDigits(dayN) + ' مثل روز قبلش شد.'
       });
   }
 
@@ -72,7 +73,11 @@ function SettingsTab(props: { cohort: Cohort; toast?: Toast }) {
     const end = parseInt(rangeEnd, 10);
     const hard = parseInt(rangeHard, 10);
     if (isNaN(start) || isNaN(end) || start > end || start < 1 || end > 30) {
-      if (toast) toast.show({ intent: 'danger', message: 'بازه روزها نامعتبر است.' });
+      if (toast)
+        toast.show({
+          intent: 'danger',
+          message: 'بازه درست نیست. «از» و «تا» را بین ۱ و ۳۰ بنویس و «از» را کوچک‌تر یا مساوی «تا» بگذار.'
+        });
       return;
     }
 
@@ -103,22 +108,22 @@ function SettingsTab(props: { cohort: Cohort; toast?: Toast }) {
     Store.clearAllData();
     setDangerModalOpen(false);
     setDangerConfirmText('');
-    if (toast) toast.show({ intent: 'danger', message: 'تمام داده‌های برنامه پاک شدند.' });
+    if (toast) toast.show({ intent: 'danger', message: 'همهٔ داده‌ها پاک شد.' });
     window.location.reload();
   }
 
   return (
     <div className="bsh-stack bsh-stack--lg">
       <div>
-        <h2 className="heading-md">تنظیمات دوره و سیستم</h2>
+        <h2 className="heading-md">تنظیمات</h2>
         <p className="body-sm" style={{ color: 'var(--text-subtle)' }}>
-          پیکربندی روزهای ۳۰‌گانه دوره فعال، پشتیبان‌گیری، تست‌ها و پاکسازی حافظه.
+          نوع و کار سخت هر روز دوره، آرشیو و پاک کردن داده‌ها.
         </p>
       </div>
       <B.Tabs
         items={[
-          { id: 'days', label: 'تنظیمات روزها (۳۰ روز)' },
-          { id: 'danger', label: 'منطقه‌ی خطر و مدیریت داده‌ها' }
+          { id: 'days', label: 'روزهای دوره' },
+          { id: 'danger', label: 'آرشیو و منطقهٔ خطر' }
         ]}
         value={subTab}
         onChange={function (id) {
@@ -129,11 +134,16 @@ function SettingsTab(props: { cohort: Cohort; toast?: Toast }) {
         <div style={{ display: 'grid', gap: 'var(--space-4)' }}>
           <B.Card padding="md">
             <div className="title" style={{ marginBottom: 'var(--space-2)' }}>
-              اعمال سریع به بازه‌ای از روزها
+              تنظیم سریع چند روز
             </div>
             <p className="caption" style={{ color: 'var(--text-subtle)', marginBlockEnd: 'var(--space-3)' }}>
               گزارش هدف هر روز ۲ امتیاز و اختیاری است.
             </p>
+            <div className="bsh-help-row" style={{ marginBlockEnd: 'var(--space-3)' }}>
+              <HelpHint help="dayTypes" visibleLabel />
+              <HelpHint help="hardLevel" visibleLabel />
+              <HelpHint help="scoring" visibleLabel />
+            </div>
             <div
               style={{
                 display: 'grid',
@@ -159,12 +169,12 @@ function SettingsTab(props: { cohort: Cohort; toast?: Toast }) {
                 }}
               />
               <B.Select
-                label="سطح کار سخت"
+                label="بیشترین سطح کار سخت"
                 options={[
-                  { value: '0', label: 'بدون کار سخت (۰)' },
-                  { value: '1', label: '۱ سطح' },
-                  { value: '2', label: '۲ سطح' },
-                  { value: '3', label: '۳ سطح' }
+                  { value: '0', label: 'بدون کار سخت' },
+                  { value: '1', label: 'تا سطح ۱' },
+                  { value: '2', label: 'تا سطح ۲' },
+                  { value: '3', label: 'تا سطح ۳' }
                 ]}
                 value={rangeHard}
                 onChange={function (e) {
@@ -173,7 +183,7 @@ function SettingsTab(props: { cohort: Cohort; toast?: Toast }) {
               />
               <div>
                 <B.Button variant="secondary" onClick={handleApplyToRange}>
-                  اعمال به بازه
+                  اعمال روی این روزها
                 </B.Button>
               </div>
             </div>
@@ -238,10 +248,10 @@ function SettingsTab(props: { cohort: Cohort; toast?: Toast }) {
                           size="sm"
                           disabled={d.type !== 'main'}
                           options={[
-                            { value: '0', label: 'بدون کار سخت (۰)' },
-                            { value: '1', label: '۱ سطح' },
-                            { value: '2', label: '۲ سطح' },
-                            { value: '3', label: '۳ سطح' }
+                            { value: '0', label: 'بدون کار سخت' },
+                            { value: '1', label: 'تا سطح ۱' },
+                            { value: '2', label: 'تا سطح ۲' },
+                            { value: '3', label: 'تا سطح ۳' }
                           ]}
                           value={String(d.hardLevels != null ? d.hardLevels : 3)}
                           onChange={function (e) {
@@ -258,7 +268,7 @@ function SettingsTab(props: { cohort: Cohort; toast?: Toast }) {
                               handleCopyFromPrev(d.n);
                             }}
                           >
-                            کپی از روز قبل
+                            مثل روز قبل کن
                           </B.Button>
                         )}
                       </td>
@@ -283,10 +293,11 @@ function SettingsTab(props: { cohort: Cohort; toast?: Toast }) {
               }}
             >
               <div>
-                <div className="title">آرشیو کردن این دوره</div>
+                <div className="title">
+                  آرشیو کردن این دوره <HelpHint help="archive" />
+                </div>
                 <p className="body-sm" style={{ color: 'var(--text-subtle)' }}>
-                  با آرشیو کردن دوره، ثبت روزانه برای آن قفل و فقط‌خواندنی می‌شود، اما امکان دریافت گزارش اکسل
-                  باقی می‌ماند.
+                  دورهٔ آرشیو در فهرست دوره‌ها برچسب «آرشیو» می‌گیرد. ثبت و گزارش‌ها همچنان کار می‌کنند.
                 </p>
               </div>
               <B.Switch
@@ -314,9 +325,9 @@ function SettingsTab(props: { cohort: Cohort; toast?: Toast }) {
               }}
             >
               <div>
-                <div className="title">آزمون‌های صحت محاسبات</div>
+                <div className="title">بررسی محاسبات</div>
                 <p className="body-sm" style={{ color: 'var(--text-subtle)' }}>
-                  بررسی ۱۵ تست اجباری موتور امتیازدهی در مرورگر.
+                  آزمون‌های محاسبهٔ امتیاز را در همین مرورگر اجرا می‌کند. فقط برای بررسی فنی است.
                 </p>
               </div>
               <B.Button
@@ -326,7 +337,7 @@ function SettingsTab(props: { cohort: Cohort; toast?: Toast }) {
                   window.open('tests.html', '_blank');
                 }}
               >
-                اجرای صفحه تست‌ها
+                اجرای آزمون‌ها
               </B.Button>
             </div>
           </B.Card>
@@ -347,12 +358,12 @@ function SettingsTab(props: { cohort: Cohort; toast?: Toast }) {
             >
               <B.Icon name="OctagonAlert" size="lg" className="text-danger" />
               <h3 className="heading-sm" style={{ color: 'var(--text-danger)' }}>
-                منطقه‌ی خطر: پاک‌کردن همه‌ی داده‌ها
+                پاک کردن همهٔ داده‌ها
               </h3>
+              <HelpHint help="danger" />
             </div>
             <p className="body-sm" style={{ color: 'var(--text-subtle)', marginBottom: 'var(--space-4)' }}>
-              با این کار تمام دوره‌ها، گروه‌ها، افراد و رکوردهای ثبت‌شده در این مرورگر به طور کامل و غیرقابل
-              بازگشت پاک خواهند شد. حتماً قبل از این کار، فایل پشتیبان (بکاپ) دریافت کنید.
+              همهٔ دوره‌ها، گروه‌ها، افراد و امتیازهای این مرورگر پاک می‌شود و برگشت ندارد. اول بکاپ بگیر.
             </p>
             <B.Button
               variant="danger-bold"
@@ -362,7 +373,7 @@ function SettingsTab(props: { cohort: Cohort; toast?: Toast }) {
                 setDangerModalOpen(true);
               }}
             >
-              پاک کردن همه‌ی داده‌ها
+              پاک کردن همهٔ داده‌ها
             </B.Button>
           </B.Card>
         </div>
@@ -373,8 +384,8 @@ function SettingsTab(props: { cohort: Cohort; toast?: Toast }) {
           onClose={function () {
             setDangerModalOpen(false);
           }}
-          title="هشدار: حذف کامل تمام اطلاعات برنامه"
-          description="این عملیات غیرقابل بازگشت است. برای فعال شدن دکمه حذف، عبارت دقیق «پاک کن» را در کادر زیر بنویسید:"
+          title="پاک کردن همهٔ داده‌ها"
+          description="برگشت ندارد. برای روشن شدن دکمه، «پاک کن» را بنویس."
           footer={
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 'var(--space-2)' }}>
               <B.Button
@@ -399,7 +410,7 @@ function SettingsTab(props: { cohort: Cohort; toast?: Toast }) {
         >
           <div style={{ padding: 'var(--space-2) 0' }}>
             <B.TextField
-              label="عبارت تأیید (پاک کن)"
+              label="بنویس: پاک کن"
               value={dangerConfirmText}
               placeholder="پاک کن"
               onChange={function (e) {

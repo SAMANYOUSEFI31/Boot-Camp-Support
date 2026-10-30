@@ -16,7 +16,7 @@ import type { MenuProps } from '../ds/components';
  * مثلاً: «۳ روز پیش»، «امروز»، «دیروز»، «هرگز»
  */
 function formatRelativeBackupTime(isoDate: string | null | undefined): string {
-  if (!isoDate) return 'هرگز بکاپ گرفته نشده';
+  if (!isoDate) return 'هرگز';
   const then = new Date(isoDate).getTime();
   const now = Date.now();
   let diffMs = now - then;
@@ -122,7 +122,7 @@ function Header(props: HeaderProps) {
     },
     { divider: true },
     {
-      label: 'ورود از اکسل / CSV',
+      label: 'ورود افراد از Excel یا CSV',
       icon: 'Inbox',
       onSelect: onOpenImportWizard
     },
@@ -140,7 +140,7 @@ function Header(props: HeaderProps) {
       onSelect: downloadAllBackup
     },
     {
-      label: 'بازگردانی از فایل بکاپ',
+      label: 'بازگردانی بکاپ',
       icon: 'ExternalLink',
       onSelect: onOpenRestoreModal
     },
@@ -153,7 +153,7 @@ function Header(props: HeaderProps) {
       }
     },
     {
-      label: 'مشاهده آزمون‌های موتور محاسبات',
+      label: 'آزمون‌های محاسبه (فنی)',
       icon: 'CircleCheck',
       onSelect: function () {
         window.open('tests.html', '_blank');
@@ -218,7 +218,7 @@ function Header(props: HeaderProps) {
           )}
           {activeCohort && activeCohort.archived && (
             <B.Badge intent="warning" emphasis="subtle">
-              فقط‌خواندنی (آرشیو)
+              آرشیو
             </B.Badge>
           )}
         </div>
@@ -265,7 +265,7 @@ function BackupReminderBanner() {
     <div className="bsh-banner-wrap bsh-banner">
       <B.Alert
         intent="warning"
-        title="یادآوری تهیه پشتیبان"
+        title="وقت بکاپ گرفتن است"
         onClose={function () {
           try {
             sessionStorage.setItem(BANNER_SNOOZE_KEY, '1');
@@ -278,7 +278,7 @@ function BackupReminderBanner() {
           </B.Button>
         }
       >
-        اگر حافظه یا تاریخچه مرورگر پاک شود، اطلاعات از بین می‌رود. لطفاً فایل پشتیبان دریافت کنید.
+        اطلاعات فقط در همین مرورگر ذخیره می‌شود و با پاک‌شدن حافظهٔ مرورگر از بین می‌رود. یک بکاپ دانلود کن.
       </B.Alert>
     </div>
   );
@@ -295,7 +295,7 @@ function MultiTabWarningBanner() {
     <div className="bsh-banner-wrap">
       <B.Alert
         intent="danger"
-        title="هشدار باز بودن همزمان چند تب"
+        title="برنامه در چند تب باز است"
         action={
           <B.Button
             size="sm"
@@ -305,12 +305,12 @@ function MultiTabWarningBanner() {
               window.location.reload();
             }}
           >
-            تازه‌سازی صفحه
+            صفحه را تازه کن
           </B.Button>
         }
       >
-        این برنامه در تب دیگری باز است یا داده‌ها تغییر کرده‌اند. برای جلوگیری از بازنویسی تصادفی اطلاعات، این
-        صفحه را تازه‌سازی کنید.
+        در تب دیگری هم باز است یا داده‌ها تغییر کرده. برای این‌که اطلاعات روی هم نوشته نشود، فقط یک تب را باز
+        نگه دار و این صفحه را تازه کن.
       </B.Alert>
     </div>
   );

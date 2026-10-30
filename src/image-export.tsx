@@ -351,7 +351,7 @@ function renderSingleCanvasPart(
   canvas.width = width * scale;
   canvas.height = height * scale;
   const ctx = canvas.getContext('2d') as CanvasRenderingContext2D;
-  if (!ctx) throw new Error('بوم تصویر در این مرورگر پشتیبانی نمی‌شود.');
+  if (!ctx) throw new Error('این مرورگر نمی‌تواند تصویر بسازد. مرورگر دیگری را امتحان کن.');
   ctx.scale(scale, scale);
   ctx.direction = 'rtl';
   ctx.textBaseline = 'middle';
@@ -422,10 +422,10 @@ function renderSingleCanvasPart(
   const cards = [
     {
       value: Names.toPersianDigits(sum.registeredCount) + ' از ' + Names.toPersianDigits(sum.activeCount),
-      label: 'ثبت‌شده امروز'
+      label: 'ثبت‌شده در این روز'
     },
     { value: Names.toPersianDigits(sum.avgPercent) + '٪', label: 'میانگین درصد گروه' },
-    { value: Names.toPersianDigits(sum.perfectCount) + ' نفر', label: 'همهٔ امتیاز امروز را گرفتند' }
+    { value: Names.toPersianDigits(sum.perfectCount) + ' نفر', label: 'امتیاز کامل گرفتند' }
   ];
   cards.forEach(function (card, i) {
     const cx = width - tableX - (i + 1) * cardW - i * gap;
@@ -516,7 +516,7 @@ function renderSingleCanvasPart(
         }
         if (unregistered && wrapped.lines.length === 1) {
           setFont(T.wRegular, T.f14);
-          const tagText = 'ثبت نشده';
+          const tagText = 'ثبت‌نشده';
           const tagW = ctx.measureText(tagText).width + 2 * T.s2;
           const tagH = T.f14 + T.s2;
           const tagY = midY + T.s3 + T.s1;
@@ -589,7 +589,7 @@ function renderSingleCanvasPart(
           if (blob) {
             resolve({ blob: blob, dataUrl: dataUrl, width: width * scale, height: height * scale });
           } else {
-            reject(new Error('خطا در تبدیل بوم به تصویر PNG'));
+            reject(new Error('تصویر ساخته نشد. دوباره امتحان کن.'));
           }
         }, 'image/png');
       } else {
@@ -616,7 +616,7 @@ function generateGroupDayReportImages(
     const rows = reportData.rows;
 
     if (!rows.length) {
-      throw new Error('عضوی در این گروه برای تولید تصویر گزارش وجود ندارد.');
+      throw new Error('فردی در این گروه نیست. اول افراد را به گروه اضافه کن.');
     }
 
     const chunks = chunkArray(rows, 15);
@@ -672,7 +672,7 @@ function downloadBlob(blob: Blob, filename: string) {
  */
 function shareOrDownloadImage(blob: Blob | null, filename: string): Promise<void> {
   if (!blob) {
-    return Promise.reject(new Error('داده تصویر در دسترس نیست.'));
+    return Promise.reject(new Error('تصویر آماده نیست. دوباره بساز.'));
   }
 
   if (
@@ -736,7 +736,7 @@ function ImagePreviewModal(props: ImagePreviewModalProps) {
     shareOrDownloadImage(activePart.blob, activePart.filename)
       .then(function () {
         setIsSharing(false);
-        setNotice({ intent: 'success', message: 'تصویر آماده شد.' });
+        setNotice({ intent: 'success', message: 'تصویر دانلود یا ارسال شد.' });
       })
       .catch(function (err) {
         setIsSharing(false);
@@ -767,7 +767,7 @@ function ImagePreviewModal(props: ImagePreviewModalProps) {
       <div style={{ display: 'flex', gap: 'var(--space-2)', alignItems: 'center' }}>
         {parts.length > 1 && (
           <B.Button variant="secondary" size="sm" onClick={handleDownloadAllParts}>
-            {'دانلود همه‌ی ' + Names.toPersianDigits(parts.length) + ' بخش'}
+            {'دانلود هر ' + Names.toPersianDigits(parts.length) + ' تصویر'}
           </B.Button>
         )}
         <B.Button variant="ghost" size="sm" onClick={onClose}>
@@ -783,8 +783,8 @@ function ImagePreviewModal(props: ImagePreviewModalProps) {
           onClick={handleShareOrDownloadSingle}
         >
           {typeof navigator !== 'undefined' && 'share' in navigator
-            ? 'اشتراک‌گذاری در تلگرام / دانلود'
-            : 'دانلود تصویر این بخش'}
+            ? 'ارسال یا دانلود تصویر'
+            : 'دانلود تصویر'}
         </B.Button>
       </div>
     </div>
@@ -795,13 +795,13 @@ function ImagePreviewModal(props: ImagePreviewModalProps) {
       open={open}
       onClose={onClose}
       title={
-        'پیش‌نمایش تصویر گزارش — ' +
+        'تصویر گزارش — ' +
         imagesData.reportData.groupName +
         ' (روز ' +
         Names.toPersianDigits(imagesData.reportData.dayN) +
         ')'
       }
-      description="تصویر با استاندارد تلگرام (عرض ۱۰۸۰ پیکسل و کیفیت ۲x) ساخته شده و بدون افت کیفیت قابل ارسال است."
+      description="آمادهٔ فرستادن در تلگرام است. دانلودش کن یا مستقیم بفرست."
       footer={footer}
       size="lg"
     >
@@ -875,7 +875,7 @@ function ImagePreviewModal(props: ImagePreviewModalProps) {
             {'نام فایل: '}
             <bdi dir="ltr">{activePart.filename}</bdi>
           </span>
-          <span>{'ابعاد: ۲۱۶۰ × ' + activePart.height + ' پیکسل (شارپ ۲x)'}</span>
+          <span>{'اندازه: ۲۱۶۰ × ' + Names.toPersianDigits(activePart.height) + ' پیکسل'}</span>
         </div>
       </div>
     </B.Dialog>
