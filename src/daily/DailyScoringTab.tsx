@@ -11,7 +11,7 @@ import { Excel } from '../excel';
 import { errorMessage } from '../errors';
 import { ImageExport, ImagePreviewModal, type ImagesData } from '../image-export';
 import type { Cohort, DayConfig, DayRecord, Group, Toast } from '../types';
-import type { CellChange } from './types';
+import type { CellChange, HabitToggle } from './types';
 import { DailyScoringCardView } from './ParticipantCards';
 import { DailyScoringTable } from './ScoringTable';
 import { ExcelGroupDayExportModal } from './ExcelExportModal';
@@ -155,6 +155,12 @@ export function DailyScoringTab(props: { cohort: Cohort; toast?: Toast; onGoToGr
     const patch: Partial<DayRecord> = {};
     patch[field] = value;
     Store.recordDaily(cohort.id, pId, selectedDayN, patch);
+    triggerSaveIndicator();
+  };
+
+  // لمس یک عادت مشخص (انجام شد/نشد)
+  const handleHabitToggle: HabitToggle = function (pId, index) {
+    Store.toggleHabit(cohort.id, pId, selectedDayN, index);
     triggerSaveIndicator();
   };
 
@@ -556,6 +562,7 @@ export function DailyScoringTab(props: { cohort: Cohort; toast?: Toast; onGoToGr
           dayCfg={dayCfg}
           members={members}
           onCellChange={handleCellChange}
+          onHabitToggle={handleHabitToggle}
           toast={toast}
         />
       ) : (
@@ -565,6 +572,7 @@ export function DailyScoringTab(props: { cohort: Cohort; toast?: Toast; onGoToGr
           dayCfg={dayCfg}
           members={members}
           onCellChange={handleCellChange}
+          onHabitToggle={handleHabitToggle}
           toast={toast}
         />
       )}

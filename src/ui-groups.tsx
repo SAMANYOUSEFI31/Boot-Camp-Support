@@ -11,6 +11,8 @@ import type { Cohort, Group, Participant, Toast } from './types';
 import type { TableProps } from '../ds/components';
 import { Store } from './store';
 import { HelpHint } from './help-hint';
+import { HabitNameFields } from './ui-habit-names';
+import { cleanHabitNames, habitLabel, hasHabitNames } from './habits';
 import { calculateCurrentDayNumber } from './daily/DailyScoringTab';
 
 /**
@@ -385,6 +387,16 @@ function GroupDetailsView(props: GroupDetailsViewProps) {
                 }
               }}
             />
+            {hasHabitNames(row) && (
+              <div
+                className="caption"
+                style={{ color: 'var(--text-subtle)', marginBlockStart: 'var(--space-1)' }}
+              >
+                {Array.from({ length: Math.min(4, row.habitCount || 0) }, function (_v, i) {
+                  return habitLabel(row, i).label;
+                }).join('، ')}
+              </div>
+            )}
           </div>
         );
       }
@@ -879,6 +891,7 @@ function PasteParticipantsModal(props: {
 
   const [text, setText] = useState('');
   const [habitCount, setHabitCount] = useState('3');
+  const [habitNames, setHabitNames] = useState<string[]>(['', '', '', '']);
   const [errorMsg, setErrorMsg] = useState('');
 
   useEffect(
@@ -886,6 +899,7 @@ function PasteParticipantsModal(props: {
       if (open) {
         setText('');
         setHabitCount('3');
+        setHabitNames(['', '', '', '']);
         setErrorMsg('');
       }
     },
@@ -915,7 +929,8 @@ function PasteParticipantsModal(props: {
         name: name,
         telegram: tel,
         groupId: group.id,
-        habitCount: parseInt(habitCount, 10) || 3
+        habitCount: parseInt(habitCount, 10) || 3,
+        habits: cleanHabitNames(habitNames).slice(0, parseInt(habitCount, 10) || 3)
       };
     });
 
@@ -972,6 +987,10 @@ function PasteParticipantsModal(props: {
           />
           <HelpHint help="habitCount" corner />
         </div>
+        <HabitNameFields count={parseInt(habitCount, 10) || 0} names={habitNames} onChange={setHabitNames} />
+        <div className="bsh-help-row">
+          <HelpHint help="habitNames" visibleLabel />
+        </div>
       </div>
     </B.Dialog>
   );
@@ -1002,11 +1021,17 @@ function ParticipantModal(props: {
   const [habitCount, setHabitCount] = useState(
     participant && participant.habitCount != null ? String(participant.habitCount) : ''
   );
+  const [habitNames, setHabitNames] = useState<string[]>(
+    participant && participant.habits ? [...participant.habits] : ['', '', '', '']
+  );
+  const [applyToGroup, setApplyToGroup] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
 
   useEffect(
     function () {
       if (open && participant) {
+        setHabitNames(participant.habits ? [...participant.habits] : ['', '', '', '']);
+        setApplyToGroup(false);
         setName(participant.name);
         setTelegram(participant.telegram || '');
         setGroupId(participant.groupId);
@@ -1032,10 +1057,30 @@ function ParticipantModal(props: {
       telegram: telegram.trim(),
       groupId: groupId,
       status: status,
-      habitCount: habitCount ? parseInt(habitCount, 10) : null
+      habitCount: habitCount ? parseInt(habitCount, 10) : null,
+      habits: cleanHabitNames(habitNames).slice(0, habitCount ? parseInt(habitCount, 10) : 0)
     });
 
-    if (toast) toast.show({ intent: 'success', message: 'مشخصات فرد ذخیره شد.' });
+    // همین نام‌ها برای بقیهٔ افراد گروه که تعدادشان یکی است و هنوز نام عادت ندارند
+    let applied = 0;
+    if (applyToGroup && habitCount) {
+      const n = parseInt(habitCount, 10);
+      const names = cleanHabitNames(habitNames).slice(0, n);
+      cohort.participants.forEach(function (o) {
+        if (o.id === participant.id || o.groupId !== groupId || o.habitCount !== n) return;
+        if (hasHabitNames(o)) return;
+        Store.updateParticipant(cohort.id, o.id, { habits: names });
+        applied++;
+      });
+    }
+
+    if (toast)
+      toast.show({
+        intent: 'success',
+        message:
+          'مشخصات فرد ذخیره شد.' +
+          (applied ? ' نام عادت‌ها برای ' + Names.toPersianDigits(applied) + ' نفر دیگر هم گذاشته شد.' : '')
+      });
     onClose();
   };
 
@@ -1112,6 +1157,23 @@ function ParticipantModal(props: {
             }}
           />
           <HelpHint help="habitCount" corner />
+        </div>
+        <HabitNameFields
+          count={habitCount ? parseInt(habitCount, 10) : 0}
+          names={habitNames}
+          onChange={setHabitNames}
+        />
+        {habitCount && (
+          <B.Checkbox
+            label="همین نام‌ها را برای بقیهٔ افراد این گروه (با همین تعداد عادت و بدون نام) هم بگذار"
+            checked={applyToGroup}
+            onChange={function (e) {
+              setApplyToGroup(e.target.checked);
+            }}
+          />
+        )}
+        <div className="bsh-help-row">
+          <HelpHint help="habitNames" visibleLabel />
         </div>
       </div>
     </B.Dialog>

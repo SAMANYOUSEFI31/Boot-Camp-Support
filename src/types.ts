@@ -16,6 +16,8 @@ export interface Participant {
   groupId: string;
   status: ParticipantStatus;
   habitCount: number | null;
+  /** نام عادت‌ها به ترتیب (اختیاری؛ کوتاه‌تر از habitCount هم می‌تواند باشد) */
+  habits?: string[];
 }
 
 export interface Group {
@@ -38,6 +40,8 @@ export interface DayRecord {
   done: number | null;
   hard: number | null;
   special: number | null;
+  /** اندیس عادت‌های انجام‌شده (از ۰)؛ اگر باشد done همان تعداد است. رکورد قدیمی ندارد. */
+  doneHabits?: number[];
 }
 
 /** { [شناسهٔ فرد]: { [شمارهٔ روز]: رکورد } } */

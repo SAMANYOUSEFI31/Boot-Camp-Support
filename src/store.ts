@@ -4,6 +4,7 @@
  */
 
 import { Names } from './names';
+import { MAX_HABITS, cleanHabitNames, doneIndexes } from './habits';
 import { defaultPlan, findMergeTarget, mergeIntoCohort } from './merge-groups';
 import type {
   AppState,
@@ -625,6 +626,7 @@ interface NewParticipantInput {
   groupId?: string;
   status?: Participant['status'];
   habitCount?: number | string | null;
+  habits?: string[];
 }
 
 function addParticipants(
@@ -650,6 +652,8 @@ function addParticipants(
       status: p.status || 'active',
       habitCount: p.habitCount != null ? parseInt(String(p.habitCount), 10) : null
     };
+    const names = cleanHabitNames(p.habits);
+    if (names.some(Boolean)) newP.habits = names;
     c.participants.push(newP);
     added.push(newP);
   });
@@ -673,7 +677,12 @@ function updateParticipant(cohortId: string, participantId: string, updates: Par
   if (updates.telegram !== undefined) {
     updates.telegram = (updates.telegram || '').replace(/^@/, '').trim();
   }
+  if (updates.habits !== undefined) {
+    updates.habits = cleanHabitNames(updates.habits);
+    if (!updates.habits.some(Boolean)) delete p.habits;
+  }
   Object.assign(p, updates);
+  if (updates.habits && !updates.habits.some(Boolean)) delete p.habits;
   saveImmediately();
   notifyListeners({ type: 'participant_updated', participant: p });
 }
@@ -706,10 +715,35 @@ function recordDaily(cohortId: string, participantId: string, dayN: number, reco
 
   const existing: DayRecord = c.records[participantId][dayN] || { done: null, hard: null, special: null };
   const updated = Object.assign({}, existing, recordData);
+  // تعداد دستی (بدون فهرست عادت‌ها) فهرست قبلی را بی‌اعتبار می‌کند
+  if ('done' in recordData && !('doneHabits' in recordData)) delete updated.doneHabits;
 
   c.records[participantId][dayN] = updated;
   scheduleSave();
   notifyListeners({ type: 'record_updated', participantId: participantId, dayN: dayN });
+}
+
+/**
+ * انجام‌شدن/نشدن یک عادت مشخص (index از ۰) برای یک فرد در یک روز.
+ * done خودکار برابر تعداد عادت‌های انجام‌شده می‌شود. رکورد قدیمی (فقط تعداد) از صفر شروع می‌شود.
+ */
+function toggleHabit(cohortId: string, participantId: string, dayN: number, index: number) {
+  const c = state.cohorts.find(function (item) {
+    return item.id === cohortId;
+  });
+  if (!c) return;
+  const p = c.participants.find(function (item) {
+    return item.id === participantId;
+  });
+  if (!p || p.habitCount == null || index < 0 || index >= Math.min(MAX_HABITS, p.habitCount)) return;
+  const rec = (c.records && c.records[participantId] && c.records[participantId][dayN]) || null;
+  const set = new Set(doneIndexes(p, rec) || []);
+  if (set.has(index)) set.delete(index);
+  else set.add(index);
+  const list = Array.from(set).sort(function (a, b) {
+    return a - b;
+  });
+  recordDaily(cohortId, participantId, dayN, { doneHabits: list, done: list.length });
 }
 
 /**
@@ -749,12 +783,20 @@ function batchRecordDay(
 
     if (action === 'all_habits_done') {
       cur.done = p.habitCount != null ? p.habitCount : 3;
+      // ثبت تک‌تک: همهٔ عادت‌ها انجام شده (فرد بدون تعداد عادت فقط شمارش قدیمی دارد)
+      if (p.habitCount != null) {
+        cur.doneHabits = Array.from({ length: Math.max(0, Math.min(MAX_HABITS, p.habitCount)) }, (_v, i) => i);
+        cur.done = cur.doneHabits.length;
+      } else {
+        delete cur.doneHabits;
+      }
     } else if (action === 'all_special_done') {
       cur.special = 1;
     } else if (action === 'clear_day') {
       cur.done = null;
       cur.hard = null;
       cur.special = null;
+      delete cur.doneHabits;
     }
     c.records[p.id][dayN] = cur;
   });
@@ -913,6 +955,7 @@ export const Store = {
   updateParticipant: updateParticipant,
   deleteParticipant: deleteParticipant,
   recordDaily: recordDaily,
+  toggleHabit: toggleHabit,
   batchRecordDay: batchRecordDay,
   toggleCloseDay: toggleCloseDay,
   updateDaysConfig: updateDaysConfig,

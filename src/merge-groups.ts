@@ -13,7 +13,7 @@ import type { Cohort, DayConfig, DayRecord, Group, Participant } from './types';
 
 export type GroupPolicy = 'current' | 'file' | 'both';
 export type Side = 'current' | 'file';
-export type PersonField = 'habitCount' | 'status' | 'telegram';
+export type PersonField = 'habitCount' | 'status' | 'telegram' | 'habits';
 
 export interface GroupPlan {
   /** «بیاور»؛ پیش‌فرض: فقط گروهی که دست‌کم یک رکورد دارد */
@@ -110,20 +110,33 @@ export function findMergeTarget(current: Cohort[], file: Cohort): number {
 const isEmptyRec = (r: Partial<DayRecord> | null | undefined) =>
   !r || (r.done == null && r.hard == null && r.special == null);
 
+const habitsKey = (r: Partial<DayRecord>) =>
+  Array.isArray(r.doneHabits)
+    ? r.doneHabits
+        .slice()
+        .sort((x, y) => x - y)
+        .join(',')
+    : null;
+
 function sameRec(a: Partial<DayRecord>, b: Partial<DayRecord>) {
   return (
     (a.done ?? null) === (b.done ?? null) &&
     (a.hard ?? null) === (b.hard ?? null) &&
-    (a.special ?? null) === (b.special ?? null)
+    (a.special ?? null) === (b.special ?? null) &&
+    habitsKey(a) === habitsKey(b)
   );
 }
 
-const isEmptyField = (field: PersonField, v: unknown) => v == null || v === '';
+const isEmptyField = (field: PersonField, v: unknown) =>
+  field === 'habits' ? !Array.isArray(v) || !v.some((x) => String(x || '').trim()) : v == null || v === '';
+const sameField = (field: PersonField, a: unknown, b: unknown) =>
+  field === 'habits' ? show(field, a) === show(field, b) : String(a) === String(b);
 
 const STATUS_FA: Record<string, string> = { active: 'فعال', frozen: 'فریز', left: 'خارج‌شده' };
 function show(field: PersonField, v: unknown): string {
   if (v == null || v === '') return 'خالی';
   if (field === 'status') return STATUS_FA[String(v)] || String(v);
+  if (field === 'habits') return (v as string[]).filter(Boolean).join('، ');
   if (field === 'habitCount') return Names.toPersianDigits(String(v)) + ' عادت';
   return String(v);
 }
@@ -197,11 +210,11 @@ export function analyzeGroups(current: Cohort, file: Cohort, plan: MergePlan): G
     filePeople.forEach((fp) => {
       const cp = curByKey.get(personKey(fp));
       if (cp) {
-        (['habitCount', 'status', 'telegram'] as PersonField[]).forEach((field) => {
+        (['habitCount', 'status', 'telegram', 'habits'] as PersonField[]).forEach((field) => {
           const a = cp[field];
           const b = fp[field];
           if (isEmptyField(field, a) || isEmptyField(field, b)) return;
-          if (String(a) === String(b)) return;
+          if (sameField(field, a, b)) return;
           diffs.push({
             key: fg.id + '|' + personKey(fp) + '|' + field,
             groupId: fg.id,
@@ -376,13 +389,13 @@ export function mergeIntoCohort(
       }
 
       // مشخصات فرد
-      (['habitCount', 'status', 'telegram'] as PersonField[]).forEach((field) => {
+      (['habitCount', 'status', 'telegram', 'habits'] as PersonField[]).forEach((field) => {
         const a = cp[field];
         const b = fp[field];
         if (isEmptyField(field, a) && !isEmptyField(field, b)) {
           (cp as unknown as Record<string, unknown>)[field] = b;
           stats.fieldsFilled++;
-        } else if (!isEmptyField(field, a) && !isEmptyField(field, b) && String(a) !== String(b)) {
+        } else if (!isEmptyField(field, a) && !isEmptyField(field, b) && !sameField(field, a, b)) {
           const choice = plan.personChoices[fg.id + '|' + personKey(fp) + '|' + field] || 'current';
           if (choice === 'file') {
             (cp as unknown as Record<string, unknown>)[field] = b;
