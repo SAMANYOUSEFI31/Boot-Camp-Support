@@ -8,7 +8,7 @@ import { B } from './bushido';
 import { Names } from './names';
 import { errorMessage } from './errors';
 import { Excel } from './excel';
-import { ImageExport, type ImagesData } from './image-export';
+import { ImageExport, ImagePreviewModal, type ImagesData } from './image-export';
 import type { Cohort, Group, Toast } from './types';
 
 type LoadingKey = 'day' | 'full' | 'all_day' | 'all_full' | 'image' | 'both';
@@ -368,7 +368,7 @@ function ReportsTab(props: { cohort: Cohort; toast?: Toast }) {
         </B.Card>
       </div>
       {imageModalOpen && (
-        <ImageExport.ImagePreviewModal
+        <ImagePreviewModal
           open={imageModalOpen}
           imagesData={imagePreviewData}
           onClose={function () {
@@ -381,6 +381,4 @@ function ReportsTab(props: { cohort: Cohort; toast?: Toast }) {
   );
 }
 
-export const UIReports = {
-  ReportsTab: ReportsTab
-};
+export { ReportsTab };

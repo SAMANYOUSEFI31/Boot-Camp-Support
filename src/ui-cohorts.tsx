@@ -8,7 +8,7 @@ import { B } from './bushido';
 import { Names } from './names';
 import { errorMessage } from './errors';
 import { Store } from './store';
-import { UICommon } from './ui-common';
+import { downloadBeforeRestoreBackup } from './ui-common';
 import type { AppState, Cohort, MergeDecision, Toast } from './types';
 
 /**
@@ -324,7 +324,7 @@ function RestoreBackupModal(props: { open: boolean; onClose: () => void; toast?:
     if (!backup) return;
     try {
       if (mode === 'replace') {
-        if (currentCohorts.length) UICommon.downloadBeforeRestoreBackup();
+        if (currentCohorts.length) downloadBeforeRestoreBackup();
         Store.restoreState(backup);
         if (toast) toast.show({ intent: 'success', message: 'اطلاعات با موفقیت جایگزین شد.' });
       } else {
@@ -528,8 +528,4 @@ function RestoreBackupModal(props: { open: boolean; onClose: () => void; toast?:
   );
 }
 
-export const UICohorts = {
-  CohortModal: CohortModal,
-  EmptyCohortState: EmptyCohortState,
-  RestoreBackupModal: RestoreBackupModal
-};
+export { CohortModal, EmptyCohortState, RestoreBackupModal };

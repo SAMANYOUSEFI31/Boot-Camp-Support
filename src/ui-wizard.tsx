@@ -415,6 +415,4 @@ function ImportWizardModal(props: { open: boolean; cohort: Cohort; onClose: () =
   );
 }
 
-export const UIWizard = {
-  ImportWizardModal: ImportWizardModal
-};
+export { ImportWizardModal };

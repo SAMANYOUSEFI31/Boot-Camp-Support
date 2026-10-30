@@ -1052,6 +1052,7 @@ export const ImageExport = {
   getGroupSummary: getGroupSummary,
   generateGroupDayReportImages: generateGroupDayReportImages,
   shareOrDownloadImage: shareOrDownloadImage,
-  downloadBlob: downloadBlob,
-  ImagePreviewModal: ImagePreviewModal
+  downloadBlob: downloadBlob
 };
+
+export { ImagePreviewModal };

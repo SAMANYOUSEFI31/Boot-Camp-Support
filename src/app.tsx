@@ -7,13 +7,13 @@ import { useEffect, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import { B } from './bushido';
 import { Store } from './store';
-import { UICommon } from './ui-common';
-import { UICohorts } from './ui-cohorts';
-import { UIGroups } from './ui-groups';
-import { UIDaily } from './ui-daily';
-import { UIReports } from './ui-reports';
-import { UISettings } from './ui-settings';
-import { UIWizard } from './ui-wizard';
+import { BackupReminderBanner, Header, MultiTabWarningBanner } from './ui-common';
+import { CohortModal, EmptyCohortState, RestoreBackupModal } from './ui-cohorts';
+import { GroupsTab } from './ui-groups';
+import { DailyScoringTab } from './daily/DailyScoringTab';
+import { ReportsTab } from './ui-reports';
+import { SettingsTab } from './ui-settings';
+import { ImportWizardModal } from './ui-wizard';
 
 function MainApp() {
   const [appState, setAppState] = useState(Store.getState());
@@ -57,7 +57,7 @@ function MainApp() {
         width: '100%'
       }}
     >
-      <UICommon.Header
+      <Header
         state={appState}
         activeCohort={activeCohort}
         onOpenCohortModal={function (mode?: 'new' | 'edit') {
@@ -75,8 +75,8 @@ function MainApp() {
           setRestoreModalOpen(true);
         }}
       />
-      <UICommon.BackupReminderBanner />
-      <UICommon.MultiTabWarningBanner />
+      <BackupReminderBanner />
+      <MultiTabWarningBanner />
       <main
         className="bsh-app-main"
         style={{
@@ -90,7 +90,7 @@ function MainApp() {
         }}
       >
         {!activeCohort ? (
-          <UICohorts.EmptyCohortState
+          <EmptyCohortState
             onCreateCohort={function () {
               setCohortModalMode('new');
               setCohortModalOpen(true);
@@ -111,15 +111,15 @@ function MainApp() {
                 }}
               />
             </div>
-            {activeTab === 'groups' && <UIGroups.GroupsTab cohort={activeCohort} toast={toast} />}
-            {activeTab === 'daily' && <UIDaily.DailyScoringTab cohort={activeCohort} toast={toast} />}
-            {activeTab === 'reports' && <UIReports.ReportsTab cohort={activeCohort} toast={toast} />}
-            {activeTab === 'settings' && <UISettings.SettingsTab cohort={activeCohort} toast={toast} />}
+            {activeTab === 'groups' && <GroupsTab cohort={activeCohort} toast={toast} />}
+            {activeTab === 'daily' && <DailyScoringTab cohort={activeCohort} toast={toast} />}
+            {activeTab === 'reports' && <ReportsTab cohort={activeCohort} toast={toast} />}
+            {activeTab === 'settings' && <SettingsTab cohort={activeCohort} toast={toast} />}
           </div>
         )}
       </main>
       {cohortModalOpen && (
-        <UICohorts.CohortModal
+        <CohortModal
           open={cohortModalOpen}
           cohort={cohortModalMode === 'edit' ? activeCohort : null}
           existingCohorts={appState.cohorts || []}
@@ -130,7 +130,7 @@ function MainApp() {
         />
       )}
       {restoreModalOpen && (
-        <UICohorts.RestoreBackupModal
+        <RestoreBackupModal
           open={restoreModalOpen}
           onClose={function () {
             setRestoreModalOpen(false);
@@ -139,7 +139,7 @@ function MainApp() {
         />
       )}
       {importWizardOpen && activeCohort && (
-        <UIWizard.ImportWizardModal
+        <ImportWizardModal
           open={importWizardOpen}
           cohort={activeCohort}
           onClose={function () {
