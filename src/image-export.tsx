@@ -305,25 +305,37 @@ function ensureFontsLoaded() {
 /**
  * نسبت ابعاد یک SVG از روی viewBox یا width/height (بدون کشیدن لوگو)
  */
-function svgRatio(dataUri: string, img?: HTMLImageElement): number {
+function svgRatioFromText(svg: string): number | null {
+  const vb = svg.match(/viewBox\s*=\s*["']\s*[-\d.]+[\s,]+[-\d.]+[\s,]+([\d.]+)[\s,]+([\d.]+)/);
+  if (vb && parseFloat(vb[2]) > 0) return parseFloat(vb[1]) / parseFloat(vb[2]);
+  const w = svg.match(/<svg[^>]*\swidth\s*=\s*["']([\d.]+)/);
+  const hh = svg.match(/<svg[^>]*\sheight\s*=\s*["']([\d.]+)/);
+  if (w && hh && parseFloat(hh[1]) > 0) return parseFloat(w[1]) / parseFloat(hh[1]);
+  return null;
+}
+
+async function svgRatio(src: string, img: HTMLImageElement): Promise<number> {
   try {
-    const comma = dataUri.indexOf(',');
-    const head = dataUri.slice(0, comma);
-    const body = dataUri.slice(comma + 1);
-    const svg = /;base64/.test(head) ? atob(body) : decodeURIComponent(body);
-    const vb = svg.match(/viewBox\s*=\s*["']\s*[-\d.]+[\s,]+[-\d.]+[\s,]+([\d.]+)[\s,]+([\d.]+)/);
-    if (vb && parseFloat(vb[2]) > 0) return parseFloat(vb[1]) / parseFloat(vb[2]);
-    const w = svg.match(/<svg[^>]*\swidth\s*=\s*["']([\d.]+)/);
-    const hh = svg.match(/<svg[^>]*\sheight\s*=\s*["']([\d.]+)/);
-    if (w && hh && parseFloat(hh[1]) > 0) return parseFloat(w[1]) / parseFloat(hh[1]);
-  } catch (e) {}
-  return img && img.naturalHeight ? img.naturalWidth / img.naturalHeight : 1;
+    let svg: string;
+    if (src.startsWith('data:')) {
+      const comma = src.indexOf(',');
+      const body = src.slice(comma + 1);
+      svg = /;base64/.test(src.slice(0, comma)) ? atob(body) : decodeURIComponent(body);
+    } else {
+      svg = await (await fetch(src)).text();
+    }
+    const r = svgRatioFromText(svg);
+    if (r) return r;
+  } catch (e) {
+    // ادامه با اندازهٔ طبیعی تصویر
+  }
+  return img.naturalHeight ? img.naturalWidth / img.naturalHeight : 1;
 }
 
 const brandImageCache: Record<string, BrandImage> = {};
 
 /**
- * بارگذاری لوگوها از Brand (data URI، تا بوم آلوده نشود). اگر نبود، بدون لوگو ادامه می‌دهیم.
+ * بارگذاری لوگوها از Brand. اگر نبود یا بارگذاری نشد، بدون لوگو ادامه می‌دهیم.
  */
 function loadBrandImages(): Promise<BrandImages> {
   function load(key: keyof typeof Brand): Promise<BrandImage | null> {
@@ -333,8 +345,10 @@ function loadBrandImages(): Promise<BrandImages> {
     return new Promise<BrandImage | null>(function (resolve) {
       const img = new Image();
       img.onload = function () {
-        brandImageCache[src] = { img: img, ratio: svgRatio(src, img) };
-        resolve(brandImageCache[src]);
+        svgRatio(src, img).then(function (ratio) {
+          brandImageCache[src] = { img: img, ratio: ratio };
+          resolve(brandImageCache[src]);
+        });
       };
       img.onerror = function () {
         resolve(null);
