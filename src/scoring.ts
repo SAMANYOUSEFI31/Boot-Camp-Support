@@ -4,6 +4,7 @@
  */
 
 import { Names } from './names';
+import { doneIndexes } from './habits';
 
 const toLatinDigits = Names.toLatinDigits;
 
@@ -11,6 +12,7 @@ const toLatinDigits = Names.toLatinDigits;
 type Num = number | string | null | undefined;
 export interface RecordInput {
   done?: Num;
+  doneHabits?: number[];
   hard?: Num;
   special?: Num;
 }
@@ -57,6 +59,14 @@ function habitsDone(
   participant: ParticipantInput | null | undefined,
   record: RecordInput | null | undefined
 ): number {
+  // ثبت تک‌تک عادت‌ها: شمارش از روی همان‌ها (done فقط نسخهٔ هم‌گام است)
+  if (record && Array.isArray(record.doneHabits) && participant && participant.habitCount != null) {
+    const idx = doneIndexes(
+      { habitCount: toInt(participant.habitCount) || 0 },
+      { doneHabits: record.doneHabits }
+    );
+    return idx ? idx.length : 0;
+  }
   if (!record || record.done == null || record.done === '') return 0;
   const d = parseInt(toLatinDigits(record.done), 10);
   if (isNaN(d)) return 0;
@@ -308,6 +318,7 @@ function groupSummary(
 
 export const Scoring = {
   dayMax: dayMax,
+  habitsDone: habitsDone,
   dayScore: dayScore,
   dayBreakdown: dayBreakdown,
   standardDay: standardDay,

@@ -7,6 +7,7 @@ import { memo } from 'react';
 import { B } from '../bushido';
 import { Names } from '../names';
 import { Scoring, standardDay } from '../scoring';
+import { HabitChips } from './HabitChips';
 import type { CellChange, ParticipantCardProps, RowsViewProps } from './types';
 
 export function DailyScoringCardView(props: RowsViewProps) {
@@ -41,6 +42,7 @@ export function DailyScoringCardView(props: RowsViewProps) {
             record={rec}
             dayCfg={dayCfg}
             onCellChange={onCellChange}
+            onHabitToggle={props.onHabitToggle}
             toast={toast}
           />
         );
@@ -55,9 +57,9 @@ const ParticipantCard = memo(function ParticipantCard(props: ParticipantCardProp
   const rec = props.record;
   const dayCfg = props.dayCfg;
   const onCellChange = props.onCellChange;
+  const onHabitToggle = props.onHabitToggle;
 
   const habitCount = p.habitCount;
-  const doneVal = rec && rec.done != null ? rec.done : null;
   const hardVal = rec && rec.hard != null ? rec.hard : null;
   const specialVal = rec && rec.special != null ? rec.special : 0;
 
@@ -68,14 +70,6 @@ const ParticipantCard = memo(function ParticipantCard(props: ParticipantCardProp
     const sc = Scoring.dayScore(p, rec, dayCfg);
     const mx = Scoring.dayMax(p, dayCfg, rec);
     dayScoreVal = Names.toPersianDigits(sc) + ' از ' + Names.toPersianDigits(mx);
-  }
-
-  // آرایه گزینه‌های عادت (۰ تا habitCount)
-  const habitOptions = [];
-  if (habitCount != null) {
-    for (let i = 0; i <= habitCount; i++) {
-      habitOptions.push(i);
-    }
   }
 
   // آرایه سطوح کار سخت (۰ تا hardLevels)
@@ -158,24 +152,7 @@ const ParticipantCard = memo(function ParticipantCard(props: ParticipantCardProp
               تعداد عادت این فرد تعیین نشده. در تب «گروه‌ها و افراد» تعیینش کن.
             </div>
           ) : (
-            <div className="bsh-opts">
-              {habitOptions.map(function (opt) {
-                const isSelected = doneVal === opt;
-                return (
-                  <button
-                    key={opt}
-                    type="button"
-                    className="bsh-opt"
-                    aria-pressed={isSelected}
-                    onClick={function () {
-                      onCellChange(p.id, 'done', isSelected ? null : opt);
-                    }}
-                  >
-                    {Names.toPersianDigits(opt)}
-                  </button>
-                );
-              })}
-            </div>
+            <HabitChips participant={p} record={rec} onToggle={onHabitToggle} />
           )}
         </div>
         {dayCfg.hardLevels > 0 && (

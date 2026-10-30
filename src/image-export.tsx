@@ -312,6 +312,72 @@ function wrapNameText(
   return { lines: [words.slice(0, mid).join(' '), words.slice(mid).join(' ')], fontSize: minSize };
 }
 
+interface HabitChip {
+  text: string;
+  tone: 'success' | 'subtle';
+  w: number;
+}
+type HabitLine = HabitChip[];
+
+/**
+ * چیدمان سطر در حالت «عادت‌های نام‌دار»: بلوک نام (یک یا دو خط) و زیرش خط(های) عادت‌ها
+ */
+function layoutHabitRow(
+  mctx: CanvasRenderingContext2D,
+  T: Tokens,
+  row: ReportRow,
+  avail: number,
+  nameText: string,
+  minH: number
+) {
+  const wrapped = wrapNameText(mctx, T, nameText, avail, T.f30, T.f24);
+  const unregistered = row.dayScore == null;
+  const topH = wrapped.lines.length === 2 ? 68 : unregistered ? 60 : 44;
+
+  const items: { text: string; tone: 'success' | 'subtle' }[] = [];
+  const known = row.habits.filter(function (h) {
+    return h.state === 'done' || h.state === 'missed';
+  });
+  if (row.habits.length && known.length === 0 && row.habits.every((h) => h.state === 'unknown')) {
+    // رکورد قدیمی: فقط تعداد معلوم است
+    items.push({
+      text:
+        Names.toPersianDigits(row.breakdown.habits) +
+        ' از ' +
+        Names.toPersianDigits(row.habits.length) +
+        ' عادت (کدام‌ها ثبت نشده)',
+      tone: 'subtle'
+    });
+  } else {
+    row.habits.forEach(function (h) {
+      const mark = h.state === 'done' ? '✓ ' : h.state === 'missed' ? '✗ ' : '— ';
+      items.push({ text: mark + h.label, tone: h.state === 'done' ? 'success' : 'subtle' });
+    });
+  }
+  if (row.standardDay) items.push({ text: 'روز استاندارد ✓', tone: 'success' });
+
+  const lines: HabitLine[] = [];
+  let cur: HabitLine = [];
+  let curW = 0;
+  items.forEach(function (it) {
+    mctx.font = (it.tone === 'success' ? T.wSemibold : T.wRegular) + ' ' + T.f20 + 'px ' + T.font;
+    let text = it.text;
+    while (mctx.measureText(text).width > avail && text.length > 2) text = text.slice(0, -2) + '…';
+    const w = mctx.measureText(text).width;
+    if (cur.length && curW + T.s4 + w > avail) {
+      lines.push(cur);
+      cur = [];
+      curW = 0;
+    }
+    cur.push({ text: text, tone: it.tone, w: w });
+    curW += (cur.length > 1 ? T.s4 : 0) + w;
+  });
+  if (cur.length) lines.push(cur);
+
+  const h = Math.max(minH, 14 + topH + (lines.length ? 8 + lines.length * 30 : 0) + 14);
+  return { h: h, mainMid: 14 + topH / 2, topH: topH, lines: lines };
+}
+
 /**
  * رسم یک بخش از گزارش روی Canvas و تولید Blob و DataURL
  * فقط توکن‌های دیزاین سیستم برای رنگ و اندازه (به‌جز عرض ۱۰۸۰ و مقیاس ۲ که استاندارد خروجی‌اند)
@@ -343,8 +409,51 @@ function renderSingleCanvasPart(
   const headerH = T.s8 + Math.max(titleBlockH, lockupH) + T.s6;
   const summaryH = T.s24;
   const footerH = T.s20;
-  const rowsCount = Math.max(1, partRows.length);
-  const tableH = headRowH + rowsCount * rowHeight;
+  // ستون‌ها از فهرست مشترک report-columns.ts می‌آیند
+  const cols: { def: ReportColumn; title: string; width: number }[] = visibleColumns(
+    'image',
+    reportData.ctx
+  ).map(function (def) {
+    return { def: def, title: columnTitle(def, 'image'), width: def.imageWidth };
+  });
+  const fixedW = cols.reduce(function (sum2, c) {
+    return sum2 + c.width;
+  }, 0);
+  cols.forEach(function (c) {
+    if (c.def.kind === 'name') c.width = tableW - fixedW;
+  });
+
+  // حالت جزئیات: وقتی دست‌کم یک فرد عادت نام‌دار دارد، زیر نام هر فرد وضعیت تک‌تک عادت‌ها نوشته می‌شود
+  const detailed = reportData.ctx.hasHabitNames;
+  const nameCol = cols.find(function (c) {
+    return c.def.kind === 'name';
+  });
+  const indexW = cols.length && cols[0].def.kind === 'index' ? cols[0].width : 0;
+  const mctx = document.createElement('canvas').getContext('2d') as CanvasRenderingContext2D;
+  if (mctx) mctx.direction = 'rtl';
+  const layouts = partRows.map(function (row) {
+    return detailed && mctx && nameCol
+      ? layoutHabitRow(
+          mctx,
+          T,
+          row,
+          nameCol.width - 2 * T.s4,
+          cellText(nameCol.def, row, reportData.ctx, 'image'),
+          rowHeight
+        )
+      : { h: rowHeight, mainMid: rowHeight / 2, topH: 0, lines: [] as HabitLine[] };
+  });
+  const rowsTotal = layouts.length
+    ? layouts.reduce(function (sum2, l) {
+        return sum2 + l.h;
+      }, 0)
+    : rowHeight;
+  const rowOffsets: number[] = [];
+  layouts.reduce(function (acc, l) {
+    rowOffsets.push(acc);
+    return acc + l.h;
+  }, 0);
+  const tableH = headRowH + rowsTotal;
   const height = headerH + T.s6 + summaryH + T.s6 + tableH + T.s4 + footerH;
 
   const canvas = document.createElement('canvas');
@@ -444,20 +553,6 @@ function renderSingleCanvasPart(
   });
 
   // ۳. جدول
-  // ستون‌ها از فهرست مشترک report-columns.ts می‌آیند
-  const cols: { def: ReportColumn; title: string; width: number }[] = visibleColumns(
-    'image',
-    reportData.ctx
-  ).map(function (def) {
-    return { def: def, title: columnTitle(def, 'image'), width: def.imageWidth };
-  });
-  const fixedW = cols.reduce(function (sum2, c) {
-    return sum2 + c.width;
-  }, 0);
-  cols.forEach(function (c) {
-    if (c.def.kind === 'name') c.width = tableW - fixedW;
-  });
-
   const tableTop = cardY + summaryH + T.s6;
   ctx.save();
   roundRectPath(ctx, tableX, tableTop, tableW, tableH, T.rContainer);
@@ -476,11 +571,12 @@ function renderSingleCanvasPart(
   });
 
   partRows.forEach(function (row, rIdx) {
-    const rowY = tableTop + headRowH + rIdx * rowHeight;
-    const midY = rowY + rowHeight / 2;
+    const lay = layouts[rIdx];
+    const rowY = tableTop + headRowH + rowOffsets[rIdx];
+    const midY = rowY + lay.mainMid;
     if (rIdx % 2 === 1) {
       ctx.fillStyle = T.raised;
-      ctx.fillRect(tableX, rowY, tableW, rowHeight);
+      ctx.fillRect(tableX, rowY, tableW, lay.h);
     }
     const unregistered = row.dayScore == null;
 
@@ -557,6 +653,22 @@ function renderSingleCanvasPart(
       }
       cx -= col.width;
     });
+
+    // جزئیات عادت‌ها زیر نام: ✓ انجام شد، ✗ انجام نشد
+    if (lay.lines.length) {
+      let ly = rowY + lay.mainMid - lay.topH / 2 + lay.topH + 8 + 15;
+      lay.lines.forEach(function (line) {
+        let hx = width - tableX - indexW - T.s4;
+        ctx.textAlign = 'right';
+        line.forEach(function (chip) {
+          setFont(chip.tone === 'success' ? T.wSemibold : T.wRegular, T.f20);
+          ctx.fillStyle = chip.tone === 'success' ? T.success : T.subtle;
+          ctx.fillText(chip.text, hx, ly);
+          hx -= chip.w + T.s4;
+        });
+        ly += 30;
+      });
+    }
   });
   ctx.restore();
   roundRectPath(ctx, tableX, tableTop, tableW, tableH, T.rContainer);

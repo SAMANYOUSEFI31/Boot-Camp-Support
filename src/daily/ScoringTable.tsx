@@ -7,6 +7,7 @@ import { memo, useRef } from 'react';
 import { B } from '../bushido';
 import { Names } from '../names';
 import { Scoring, standardDay } from '../scoring';
+import { HabitChips } from './HabitChips';
 import type { ParticipantCardProps, RowsViewProps } from './types';
 
 /**
@@ -17,6 +18,7 @@ export function DailyScoringTable(props: RowsViewProps) {
   const dayCfg = props.dayCfg;
   const members = props.members;
   const onCellChange = props.onCellChange;
+  const onHabitToggle = props.onHabitToggle;
   const toast = props.toast;
 
   const inputRefs = useRef<Record<string, HTMLInputElement | null>>({});
@@ -79,7 +81,7 @@ export function DailyScoringTable(props: RowsViewProps) {
             <th className="label-sm is-num" style={{ textAlign: 'center', width: 110 }}>
               تعداد عادت
             </th>
-            <th className="label-sm is-num" style={{ textAlign: 'center', width: 130 }}>
+            <th className="label-sm is-num" style={{ textAlign: 'center' }}>
               عادت‌های انجام‌شده
             </th>
             <th className="label-sm is-num" style={{ textAlign: 'center', width: 130 }}>
@@ -105,6 +107,7 @@ export function DailyScoringTable(props: RowsViewProps) {
                 dayCfg={dayCfg}
                 inputRefs={inputRefs}
                 onCellChange={onCellChange}
+                onHabitToggle={onHabitToggle}
                 focusNextRow={focusNextRow}
                 focusPrevRow={focusPrevRow}
                 toast={toast}
@@ -133,12 +136,12 @@ const TableRowItem = memo(function TableRowItem(props: TableRowItemProps) {
   const dayCfg = props.dayCfg;
   const inputRefs = props.inputRefs;
   const onCellChange = props.onCellChange;
+  const onHabitToggle = props.onHabitToggle;
   const focusNextRow = props.focusNextRow;
   const focusPrevRow = props.focusPrevRow;
   const toast = props.toast;
 
   const isHabitLocked = p.habitCount == null;
-  const doneVal = rec && rec.done != null ? String(rec.done) : '';
   const hardVal = rec && rec.hard != null ? String(rec.hard) : '';
   const specialVal = rec && rec.special != null ? rec.special : 0;
 
@@ -188,52 +191,13 @@ const TableRowItem = memo(function TableRowItem(props: TableRowItemProps) {
           </span>
         )}
       </td>
-      <td style={{ textAlign: 'center' }}>
+      <td style={{ minInlineSize: 'calc(var(--space-16) * 3)' }}>
         {isHabitLocked ? (
           <span className="caption" style={{ color: 'var(--text-subtle)' }}>
             —
           </span>
         ) : (
-          <input
-            ref={function (el) {
-              inputRefs.current[rowIdx + '_done'] = el;
-            }}
-            type="text"
-            inputMode="numeric"
-            className="bsh-field__input bsh-cell-input body-md"
-            value={doneVal !== '' ? Names.toPersianDigits(doneVal) : ''}
-            placeholder="—"
-            onChange={function (e) {
-              const raw = e.target.value;
-              if (!raw) {
-                onCellChange(p.id, 'done', null);
-                return;
-              }
-              const latin = Names.toLatinDigits(raw);
-              const d = parseInt(latin, 10);
-              if (isNaN(d)) return;
-
-              if (d > (p.habitCount as number)) {
-                if (toast)
-                  toast.show({
-                    intent: 'danger',
-                    message: 'انجام‌شده از تعداد عادت این فرد بیشتر نمی‌شود.'
-                  });
-                return;
-              }
-              onCellChange(p.id, 'done', d);
-              focusNextRow(rowIdx, 'done');
-            }}
-            onKeyDown={function (e) {
-              if (e.key === 'ArrowDown' || e.key === 'Enter') {
-                e.preventDefault();
-                focusNextRow(rowIdx, 'done');
-              } else if (e.key === 'ArrowUp') {
-                e.preventDefault();
-                focusPrevRow(rowIdx, 'done');
-              }
-            }}
-          />
+          <HabitChips participant={p} record={rec} onToggle={onHabitToggle} />
         )}
       </td>
       <td style={{ textAlign: 'center' }}>

@@ -12,7 +12,12 @@ import type { Cohort } from './types';
 
 const fa = Names.toPersianDigits;
 
-const FIELD_FA = { habitCount: 'تعداد عادت', status: 'وضعیت', telegram: 'آیدی تلگرام' };
+const FIELD_FA = {
+  habitCount: 'تعداد عادت',
+  status: 'وضعیت',
+  telegram: 'آیدی تلگرام',
+  habits: 'نام عادت‌ها'
+};
 
 const daysText = (days: number[]) =>
   days.length ? 'روز ' + days.map((d) => fa(d)).join(' و ') + ' فرق دارد' : '';

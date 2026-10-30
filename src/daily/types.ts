@@ -8,6 +8,8 @@ import type { DayConfig, DayRecord, Cohort, Group, Participant, Toast } from '..
 export type CellField = 'done' | 'hard' | 'special';
 export type CellChange = (participantId: string, field: CellField, value: number | null) => void;
 
+export type HabitToggle = (participantId: string, habitIndex: number) => void;
+
 /** props مشترک نمای کارتی و نمای جدولی */
 export interface RowsViewProps {
   cohort: Cohort;
@@ -15,6 +17,7 @@ export interface RowsViewProps {
   dayCfg: DayConfig;
   members: Participant[];
   onCellChange: CellChange;
+  onHabitToggle: HabitToggle;
   toast?: Toast;
 }
 
@@ -24,5 +27,6 @@ export interface ParticipantCardProps {
   record: DayRecord | null;
   dayCfg: DayConfig;
   onCellChange: CellChange;
+  onHabitToggle: HabitToggle;
   toast?: Toast;
 }

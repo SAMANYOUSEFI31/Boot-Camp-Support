@@ -12,6 +12,8 @@
 import { Names } from './names';
 import { SCORING_RULES } from './copy';
 import { Scoring } from './scoring';
+import { habitStatuses, hasHabitNames, MAX_HABITS } from './habits';
+import type { HabitStatus } from './habits';
 import type { Cohort, DayConfig, Group, Participant, ParticipantStatus, DayRecord } from './types';
 
 export type ReportTarget = 'excel' | 'image';
@@ -34,10 +36,14 @@ export interface ReportRow {
   totalMax: number;
   percent: number;
   breakdown: ReturnType<typeof Scoring.dayBreakdown>;
+  /** وضعیت تک‌تک عادت‌ها (انجام شد / نشد / فقط تعداد / ثبت‌نشده) */
+  habits: HabitStatus[];
 }
 
 export interface ReportContext {
   dayCfg: DayConfig;
+  /** دست‌کم یک فرد عادت نام‌دار دارد: گزارش‌ها جزئیات هر عادت را نشان می‌دهند */
+  hasHabitNames?: boolean;
 }
 
 export type Tone = 'success' | 'subtle';
@@ -83,8 +89,36 @@ const scoreIf = (r: ReportRow, pick: (b: ReportRow['breakdown']) => number) =>
 const habitsText = (r: ReportRow, _ctx?: ReportContext): string => {
   const hc = r.participant.habitCount;
   if (hc == null) return '—';
-  return r.record && r.record.done != null ? ofText(r.record.done, hc) : '— از ' + fa(hc);
+  const has = r.record && (r.record.done != null || Array.isArray(r.record.doneHabits));
+  return has ? ofText(r.breakdown.habits, hc) : '— از ' + fa(hc);
 };
+
+/** «✓ مطالعه، ✗ ورزش»؛ برای رکورد قدیمی فقط تعداد معلوم است */
+const habitDetailsText = (r: ReportRow, _ctx?: ReportContext): string => {
+  if (!r.habits.length) return '—';
+  if (r.habits.every((h) => h.state === 'unknown')) return habitsText(r) + ' (کدام‌ها ثبت نشده)';
+  return r.habits
+    .map((h) => (h.state === 'done' ? '✓ ' : h.state === 'missed' ? '✗ ' : '— ') + h.label)
+    .join('، ');
+};
+
+/** ستون‌های عددی هر عادت برای شیت «داده»: نام و ۱/۰ انجام‌شدن */
+const habitDataFields = (): DataField[] =>
+  Array.from({ length: MAX_HABITS }, (_v, i) => i).flatMap((i) => [
+    {
+      header: 'habit' + (i + 1) + '_name',
+      group: 'input' as const,
+      value: (r: ReportRow) => (r.habits[i] && r.habits[i].named ? r.habits[i].label : null)
+    },
+    {
+      header: 'habit' + (i + 1) + '_done',
+      group: 'input' as const,
+      value: (r: ReportRow) => {
+        const st = r.habits[i] && r.habits[i].state;
+        return st === 'done' ? 1 : st === 'missed' ? 0 : null;
+      }
+    }
+  ]);
 
 const hardText = (r: ReportRow, ctx: ReportContext): string => {
   if (!(ctx.dayCfg.hardLevels > 0)) return 'ندارد';
@@ -130,14 +164,29 @@ export const REPORT_COLUMNS: ReportColumn[] = [
     excelWidth: 14,
     imageWidth: 150,
     text: habitsText,
+    // در حالت عادت‌های نام‌دار، تصویر جزئیات را زیر نام می‌نویسد و این ستون نمی‌آید
+    image: (ctx) => !ctx.hasHabitNames,
     // «روز استاندارد» در تصویر با یک تیک کوچک کنار عادت‌ها نشان داده می‌شود
     imageText: (r, ctx) => (r.standardDay ? habitsText(r, ctx) + ' ✓' : habitsText(r, ctx)),
     tone: (r, target) => (target === 'image' && r.standardDay ? 'success' : undefined),
     data: [
       { header: 'habitCount', group: 'input', value: (r) => r.participant.habitCount ?? null },
       { header: 'done', group: 'input', value: (r) => num(r.record && r.record.done) },
+      ...habitDataFields(),
       { header: 'habitScore', group: 'score', value: (r) => scoreIf(r, (b) => b.habits) }
     ]
+  },
+  {
+    id: 'habitDetails',
+    title: 'کدام عادت‌ها',
+    kind: 'text',
+    excelWidth: 36,
+    imageWidth: 0,
+    // فقط در Excel و فقط وقتی عادت‌ها نام دارند (تصویر جزئیات را خودش زیر نام می‌کشد)
+    excel: (ctx) => !!ctx.hasHabitNames,
+    image: () => false,
+    text: habitDetailsText,
+    data: []
   },
   {
     id: 'standardDay',
@@ -329,7 +378,8 @@ export function buildReportRows(
       totalScore: totals.totalScore,
       totalMax: totals.totalMax,
       percent: totals.percent,
-      breakdown: Scoring.dayBreakdown(p, rec, dayCfg)
+      breakdown: Scoring.dayBreakdown(p, rec, dayCfg),
+      habits: habitStatuses(p, rec)
     };
   });
 
@@ -340,7 +390,7 @@ export function buildReportRows(
     dayShamsi: dayShamsi,
     isClosed: isClosed,
     dayCfg: dayCfg,
-    ctx: { dayCfg: dayCfg },
+    ctx: { dayCfg: dayCfg, hasHabitNames: rows.some((r) => hasHabitNames(r.participant)) },
     rules: scoringRules(dayCfg),
     rows: rows
   };
