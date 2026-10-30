@@ -55,7 +55,7 @@ function MainApp() {
         color: 'var(--text-default)',
         display: 'flex',
         flexDirection: 'column',
-        overflowX: 'hidden',
+        overflowX: 'clip',
         width: '100%'
       }}
     >
@@ -86,7 +86,7 @@ function MainApp() {
         className="bsh-app-main"
         style={{
           flex: 1,
-          maxWidth: 1280,
+          maxWidth: 'var(--container-xl)',
           width: '100%',
           margin: '0 auto',
           padding: 'var(--space-4)',

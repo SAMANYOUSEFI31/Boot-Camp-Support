@@ -12,8 +12,10 @@
   }
 }
 
+/* clip، نه hidden: hidden والد را «کانتینر اسکرول» می‌کند و position: sticky هدر را از کار می‌اندازد */
+html { scroll-padding-block-start: calc(var(--control-lg) + var(--space-4)); }
 html, body {
-  overflow-x: hidden;
+  overflow-x: clip;
   min-height: var(--app-dvh);
   padding-block-start: var(--safe-top);
   padding-block-end: var(--safe-bottom);
@@ -51,7 +53,7 @@ html, body {
 }
 
 /* ---------- هدر ---------- */
-.bsh-header { z-index: var(--layer-sticky); }
+.bsh-header { position: sticky; inset-block-start: 0; z-index: var(--layer-sticky); }
 .bsh-header__cohort { min-inline-size: calc(var(--space-10) * 4); }
 .bsh-header__cohortwrap { display: flex; align-items: center; gap: var(--space-2); margin-inline-end: auto; }
 .bsh-help__btn .body-sm { white-space: nowrap; }
@@ -62,6 +64,8 @@ html, body {
   .bsh-header__cohortwrap { order: 3; flex: 1 0 100%; margin-inline-end: 0; }
   .bsh-header__cohort { min-inline-size: 0; flex: 1; }
   .bsh-backup-status { display: none; }
+  /* فقط ردیف اول (لوگو و دکمه‌ها) قفل می‌ماند؛ ردیف انتخاب دوره با اسکرول بالا می‌رود تا ۱۱۷px از صفحهٔ کوچک اشغال نشود */
+  .bsh-header { inset-block-start: calc(-1 * (var(--control-md) + var(--space-3))); }
 }
 
 /* ---------- منو، پاپ‌اور و تقویم ---------- */

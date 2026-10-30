@@ -201,7 +201,7 @@ function SettingsTab(props: { cohort: Cohort; toast?: Toast }) {
             >
               <thead>
                 <tr>
-                  <th className="label-sm is-num" style={{ textAlign: 'center', width: 60 }}>
+                  <th className="label-sm is-num" style={{ textAlign: 'center', width: 'var(--space-16)' }}>
                     روز
                   </th>
                   <th className="label-sm" style={{ minWidth: 'var(--space-32)' }}>
@@ -213,7 +213,7 @@ function SettingsTab(props: { cohort: Cohort; toast?: Toast }) {
                   <th className="label-sm" style={{ minWidth: 'var(--space-32)' }}>
                     سطح کار سخت
                   </th>
-                  <th className="label-sm" style={{ minWidth: 100, textAlign: 'center' }}>
+                  <th className="label-sm" style={{ minWidth: 'var(--space-24)', textAlign: 'center' }}>
                     اقدام
                   </th>
                 </tr>

@@ -165,14 +165,12 @@ function Header(props: HeaderProps) {
       style={{
         background: 'var(--surface-raised)',
         borderBottom: 'var(--border-width-thin) solid var(--border-subtle)',
-        padding: 'var(--space-3) var(--space-4)',
-        position: 'sticky',
-        top: 0
+        padding: 'var(--space-3) var(--space-4)'
       }}
     >
       <div
         style={{
-          maxWidth: 1280,
+          maxWidth: 'var(--container-xl)',
           margin: '0 auto',
           display: 'flex',
           justifyContent: 'space-between',
