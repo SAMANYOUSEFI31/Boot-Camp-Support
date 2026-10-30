@@ -53,9 +53,14 @@ html, body {
 /* ---------- هدر ---------- */
 .bsh-header { z-index: var(--layer-sticky); }
 .bsh-header__cohort { min-inline-size: calc(var(--space-10) * 4); }
+.bsh-header__cohortwrap { display: flex; align-items: center; gap: var(--space-2); margin-inline-end: auto; }
+.bsh-help__btn .body-sm { white-space: nowrap; }
 @media (max-width: 640px) {
+  /* موبایل: ردیف اول لوگو و دکمه‌ها، ردیف دوم انتخاب دوره با تمام عرض */
+  .bsh-header__brand { order: 1; }
+  .bsh-header__actions { order: 2; }
+  .bsh-header__cohortwrap { order: 3; flex: 1 0 100%; margin-inline-end: 0; }
   .bsh-header__cohort { min-inline-size: 0; flex: 1; }
-  .bsh-header__brand { flex: 1; }
   .bsh-backup-status { display: none; }
 }
 
@@ -81,11 +86,12 @@ html, body {
   margin: var(--space-3) auto 0;
   padding-inline: var(--space-4);
 }
+/* بنر بکاپ: یک سطر کوتاه در همهٔ اندازه‌ها (فضای کار را نگیرد) */
+.bsh-banner .bsh-alert { padding: var(--inset-md); }
+.bsh-banner .bsh-alert__content { flex-direction: row; align-items: center; flex-wrap: wrap; gap: var(--space-2); }
+.bsh-banner .bsh-alert__action { margin-block-start: 0; }
 @media (max-width: 640px), (max-height: 520px) {
-  .bsh-banner .bsh-alert { padding: var(--inset-md); }
   .bsh-banner .bsh-alert__text { display: none; }
-  .bsh-banner .bsh-alert__content { flex-direction: row; align-items: center; flex-wrap: wrap; gap: var(--space-2); }
-  .bsh-banner .bsh-alert__action { margin-block-start: 0; }
 }
 
 /* ---------- اندازهٔ کنترل‌ها در لمس ---------- */
@@ -162,8 +168,7 @@ th.bsh-sticky-right { z-index: calc(var(--layer-raised) + 1); }
   gap: var(--space-2);
 }
 @media (max-width: 640px) {
-  .bsh-batch-bar { flex-wrap: nowrap; overflow-x: auto; padding-block: var(--space-2); }
-  .bsh-batch-bar > * { flex: none; }
+  .bsh-batch-bar { padding-block: var(--space-1); }
 }
 
 /* دکمه‌های انتخاب عدد (عادت/سطح کار سخت) */

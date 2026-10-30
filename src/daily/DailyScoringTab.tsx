@@ -38,7 +38,7 @@ export function calculateCurrentDayNumber(startDateIso: string | null | undefine
 /**
  * صفحه ثبت روزانه نتایج (قلب ابزار پشتیبان)
  */
-export function DailyScoringTab(props: { cohort: Cohort; toast?: Toast }) {
+export function DailyScoringTab(props: { cohort: Cohort; toast?: Toast; onGoToGroups?: () => void }) {
   const cohort = props.cohort;
   const toast = props.toast;
 
@@ -133,6 +133,7 @@ export function DailyScoringTab(props: { cohort: Cohort; toast?: Toast }) {
   const dayDate = Names.addDaysToIso(cohort.startDate, selectedDayN - 1);
   const dayShamsi = Names.formatShamsiShort(dayDate);
 
+  const todayDayN = calculateCurrentDayNumber(cohort.startDate);
   const dayTypeName = dayCfg.type === 'warmup' ? 'گرم‌کردن' : dayCfg.type === 'review' ? 'مرور' : 'اصلی';
 
   const members = (cohort.participants || []).filter(function (p) {
@@ -228,6 +229,9 @@ export function DailyScoringTab(props: { cohort: Cohort; toast?: Toast }) {
 
   const totalMembersCount = members.length;
   const unrecordedCount = totalMembersCount - recordedMembersCount;
+  const missingHabit = members.filter(function (p) {
+    return p.status === 'active' && p.habitCount == null;
+  }).length;
   const progressPercent =
     totalMembersCount > 0 ? Math.round((recordedMembersCount / totalMembersCount) * 100) : 0;
 
@@ -316,9 +320,13 @@ export function DailyScoringTab(props: { cohort: Cohort; toast?: Toast }) {
                 flexWrap: 'wrap'
               }}
             >
-              <span className="heading-xs">
-                {'روز ' + Names.toPersianDigits(selectedDayN) + ' · ' + dayShamsi + ' · ' + dayTypeName}
-              </span>
+              <div style={{ display: 'grid' }}>
+                <span className="heading-xs">{'روز ' + Names.toPersianDigits(selectedDayN)}</span>
+                <span className="caption" style={{ color: 'var(--text-subtle)' }}>
+                  <bdi>{dayShamsi}</bdi>
+                  {' — روز ' + dayTypeName}
+                </span>
+              </div>
               <HelpHint help="dayTypes" />
               {isDayClosed ? (
                 <B.Badge intent="success" emphasis="bold" icon="Check">
@@ -331,6 +339,17 @@ export function DailyScoringTab(props: { cohort: Cohort; toast?: Toast }) {
               )}
               <HelpHint help="closeDay" />
             </div>
+            {selectedDayN !== todayDayN && (
+              <B.Button
+                variant="ghost"
+                size="sm"
+                onClick={function () {
+                  setSelectedDayN(todayDayN);
+                }}
+              >
+                برو به امروز
+              </B.Button>
+            )}
             <B.IconButton
               icon="ChevronLeft"
               flip={true}
@@ -415,6 +434,7 @@ export function DailyScoringTab(props: { cohort: Cohort; toast?: Toast }) {
                   Names.toPersianDigits(progressPercent) +
                   '٪)'}
               </span>
+              <HelpHint help="scoring" visibleLabel />
             </div>
             <div className="bsh-row">
               <div
@@ -471,13 +491,20 @@ export function DailyScoringTab(props: { cohort: Cohort; toast?: Toast }) {
           </div>
         </div>
       )}
-      {dayCfg.type === 'main' && (
-        <div className="bsh-help-row">
-          <HelpHint help="scoring" visibleLabel />
-          <HelpHint help="standardDay" visibleLabel />
-          <HelpHint help="goalReport" visibleLabel />
-          <HelpHint help="hardLevel" visibleLabel />
-        </div>
+      {dayCfg.type === 'main' && missingHabit > 0 && (
+        <B.Alert
+          intent="warning"
+          title={Names.toPersianDigits(missingHabit) + ' نفر تعداد عادت ندارند'}
+          action={
+            props.onGoToGroups ? (
+              <B.Button size="sm" variant="secondary" onClick={props.onGoToGroups}>
+                تعیین تعداد عادت
+              </B.Button>
+            ) : undefined
+          }
+        >
+          تا تعداد عادتشان تعیین نشود، عادت‌هایشان ثبت نمی‌شود.
+        </B.Alert>
       )}
       {dayCfg.type === 'main' && (
         <div className="bsh-batch-bar">
@@ -599,7 +626,16 @@ export function DailyScoringTab(props: { cohort: Cohort; toast?: Toast }) {
                   if (toast)
                     toast.show({
                       intent: 'success',
-                      message: 'روز ' + Names.toPersianDigits(selectedDayN) + ' بسته شد.'
+                      message: 'روز ' + Names.toPersianDigits(selectedDayN) + ' بسته شد.',
+                      action:
+                        selectedDayN < 30
+                          ? {
+                              label: 'روز بعد',
+                              onClick: function () {
+                                setSelectedDayN(selectedDayN + 1);
+                              }
+                            }
+                          : undefined
                     });
                 }}
               >

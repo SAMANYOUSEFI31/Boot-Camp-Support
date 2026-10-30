@@ -38,7 +38,7 @@ function formatRelativeBackupTime(isoDate: string | null | undefined): string {
 /**
  * دانلود یک آبجکت به صورت فایل JSON
  */
-function downloadJson(filename: string, data: unknown) {
+function saveJsonFile(filename: string, data: unknown) {
   const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
@@ -51,31 +51,44 @@ function downloadJson(filename: string, data: unknown) {
     URL.revokeObjectURL(url);
   }, 2000);
 }
+const downloadJson = saveJsonFile;
+
+function makeJsonFile(filename: string, data: unknown): File {
+  return new File([JSON.stringify(data, null, 2)], filename, { type: 'application/json' });
+}
+
+/** آیا مرورگر می‌تواند فایل را با «ارسال» (Web Share) به تلگرام و برنامه‌های دیگر بدهد؟ */
+function canShareFiles(filename: string): boolean {
+  try {
+    return (
+      typeof navigator !== 'undefined' &&
+      typeof navigator.share === 'function' &&
+      typeof navigator.canShare === 'function' &&
+      navigator.canShare({ files: [makeJsonFile(filename, {})] })
+    );
+  } catch (e) {
+    return false;
+  }
+}
+
+/**
+ * ارسال فایل JSON با فهرست ارسال سیستم (تلگرام ← Saved Messages و ...).
+ * خروجی true یعنی ارسال شد؛ false یعنی کاربر فهرست را بست (خطا نیست).
+ */
+function shareJsonFile(filename: string, data: unknown): Promise<boolean> {
+  return navigator
+    .share({ files: [makeJsonFile(filename, data)], title: filename })
+    .then(function () {
+      return true;
+    })
+    .catch(function (err) {
+      if (err && err.name === 'AbortError') return false;
+      throw err;
+    });
+}
 
 function todayStr() {
   return new Date().toISOString().slice(0, 10);
-}
-
-/**
- * بکاپ همهٔ دوره‌ها
- */
-function downloadAllBackup() {
-  const data = Store.buildBackupData(Store.getState());
-  downloadJson('support-backup-' + Names.sanitizeFilename('همه-دوره‌ها') + '-' + todayStr() + '.json', data);
-  Store.recordBackupTime();
-}
-
-/**
- * بکاپ فقط یک دوره
- */
-function downloadCohortBackup(cohort: Cohort | null) {
-  if (!cohort) return;
-  const data = Store.buildBackupData(Store.getState(), cohort.id);
-  downloadJson(
-    'support-backup-دوره-' + Names.sanitizeFilename(cohort.name) + '-' + todayStr() + '.json',
-    data
-  );
-  Store.recordBackupTime();
 }
 
 /**
@@ -95,6 +108,7 @@ interface HeaderProps {
   onOpenCohortModal: (mode?: 'new' | 'edit') => void;
   onOpenImportWizard: () => void;
   onOpenRestoreModal: () => void;
+  onOpenBackup: () => void;
 }
 
 function Header(props: HeaderProps) {
@@ -103,6 +117,7 @@ function Header(props: HeaderProps) {
   const onOpenCohortModal = props.onOpenCohortModal;
   const onOpenImportWizard = props.onOpenImportWizard;
   const onOpenRestoreModal = props.onOpenRestoreModal;
+  const onOpenBackup = props.onOpenBackup;
 
   const cohorts = state.cohorts || [];
 
@@ -113,38 +128,15 @@ function Header(props: HeaderProps) {
     };
   });
 
-  const backupStatusText = 'آخرین بکاپ: ' + formatRelativeBackupTime(state.lastBackupAt);
+  const backupOverdue = Store.isBackupOverdue();
 
+  // بکاپ دکمهٔ جدا دارد؛ منو فقط کارهای کم‌تکرار را نگه می‌دارد
   const menuItems: MenuProps['items'] = [
-    {
-      label: backupStatusText,
-      disabled: true
-    },
-    { divider: true },
     {
       label: 'ورود افراد از Excel یا CSV',
       icon: 'Inbox',
       onSelect: onOpenImportWizard
     },
-    {
-      label: 'دانلود بکاپ این دوره',
-      icon: 'Copy',
-      disabled: !activeCohort,
-      onSelect: function () {
-        downloadCohortBackup(activeCohort);
-      }
-    },
-    {
-      label: 'دانلود بکاپ همهٔ دوره‌ها',
-      icon: 'Copy',
-      onSelect: downloadAllBackup
-    },
-    {
-      label: 'بازگردانی بکاپ',
-      icon: 'ExternalLink',
-      onSelect: onOpenRestoreModal
-    },
-    { divider: true },
     {
       label: 'ساخت دوره جدید',
       icon: 'Plus',
@@ -152,6 +144,12 @@ function Header(props: HeaderProps) {
         onOpenCohortModal('new');
       }
     },
+    {
+      label: 'بازگردانی بکاپ',
+      icon: 'ExternalLink',
+      onSelect: onOpenRestoreModal
+    },
+    { divider: true },
     {
       label: 'آزمون‌های محاسبه (فنی)',
       icon: 'CircleCheck',
@@ -202,8 +200,10 @@ function Header(props: HeaderProps) {
             ) : (
               <B.Icon name="Flame" size="lg" className="text-brand" />
             )}
-            <span className="heading-xs">پشتیبان بوشیدو</span>
+            <span className="heading-xs bsh-header__title">پشتیبان بوشیدو</span>
           </div>
+        </div>
+        <div className="bsh-header__cohortwrap">
           {cohorts.length > 0 && (
             <div className="bsh-header__cohort">
               <B.Select
@@ -222,13 +222,19 @@ function Header(props: HeaderProps) {
             </B.Badge>
           )}
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)' }}>
-          <span
-            className="caption bsh-backup-status"
-            style={{ color: 'var(--text-subtle)', whiteSpace: 'nowrap' }}
+        <div
+          className="bsh-header__actions"
+          style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}
+        >
+          <B.Button
+            variant="secondary"
+            size="sm"
+            iconStart={backupOverdue ? 'TriangleAlert' : 'Share2'}
+            onClick={onOpenBackup}
+            aria-label={backupOverdue ? 'بکاپ (وقتش رسیده)' : 'بکاپ'}
           >
-            {backupStatusText}
-          </span>
+            بکاپ
+          </B.Button>
           <B.Menu
             trigger={
               <B.Button variant="secondary" size="sm" iconStart="Settings">
@@ -257,7 +263,7 @@ function isBannerSnoozed() {
 /**
  * بنر هشدار نیاز به بکاپ (قابل بستن تا بعد؛ در موبایل جمع‌وجور)
  */
-function BackupReminderBanner() {
+function BackupReminderBanner(props: { onOpenBackup: () => void }) {
   const [snoozed, setSnoozed] = useState(isBannerSnoozed());
   if (snoozed || !Store.isBackupOverdue()) return null;
 
@@ -273,12 +279,12 @@ function BackupReminderBanner() {
           setSnoozed(true);
         }}
         action={
-          <B.Button size="sm" variant="secondary" onClick={downloadAllBackup}>
-            دانلود بکاپ همهٔ دوره‌ها
+          <B.Button size="sm" variant="secondary" onClick={props.onOpenBackup}>
+            بکاپ بگیر
           </B.Button>
         }
       >
-        اطلاعات فقط در همین مرورگر ذخیره می‌شود و با پاک‌شدن حافظهٔ مرورگر از بین می‌رود. یک بکاپ دانلود کن.
+        اطلاعات فقط در همین مرورگر ذخیره می‌شود.
       </B.Alert>
     </div>
   );
@@ -318,6 +324,9 @@ function MultiTabWarningBanner() {
 
 export {
   formatRelativeBackupTime,
+  saveJsonFile,
+  shareJsonFile,
+  canShareFiles,
   downloadBeforeRestoreBackup,
   Header,
   BackupReminderBanner,
