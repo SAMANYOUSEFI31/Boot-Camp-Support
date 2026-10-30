@@ -6,40 +6,10 @@
 import { useState } from 'react';
 import { B } from './bushido';
 import { Names } from './names';
-import { Scoring, standardDay } from './scoring';
+import { buildReportRows, cellText, columnTitle, visibleColumns } from './report-columns';
+import type { ReportColumn, ReportRow, ReportRowsData as ReportData } from './report-columns';
 import { Brand } from './brand';
-import type { Cohort, DayConfig, Group, ParticipantStatus, Toast } from './types';
-
-export interface ReportRow {
-  rowNum: number;
-  participantId: string;
-  name: string;
-  rawName: string;
-  status: ParticipantStatus;
-  habitsText: string;
-  standardDay: boolean;
-  hasRecord: boolean;
-  hardText: string;
-  specialText: string;
-  dayScore: number | null;
-  dayMax: number | null;
-  dayScoreText: string;
-  totalScore: number;
-  totalMax: number;
-  totalText: string;
-  percent: number;
-  percentText: string;
-}
-
-export interface ReportData {
-  cohortName: string;
-  groupName: string;
-  dayN: number;
-  dayShamsi: string;
-  isClosed: boolean;
-  dayCfg: DayConfig;
-  rows: ReportRow[];
-}
+import type { Cohort, Group, Toast } from './types';
 
 export interface ImagePart {
   partIndex: number;
@@ -75,7 +45,7 @@ interface RenderedPart {
 }
 
 /**
- * استخراج داده‌های جدول گزارش روز منطبق با اکسل
+ * ردیف‌های گزارش روز (همان منبع اکسل: report-columns.ts)
  * خروجی خالص جهت آزمون و رسم در بوم
  */
 function getGroupDayReportRows(
@@ -84,125 +54,7 @@ function getGroupDayReportRows(
   dayN: number,
   includeFrozen?: boolean
 ): ReportData {
-  const defaultDayCfg: DayConfig = {
-    n: dayN,
-    type: dayN <= 7 ? 'warmup' : dayN >= 29 ? 'review' : 'main',
-    hardLevels: 3,
-    specialMission: true
-  };
-  if (!cohort || !group) {
-    return {
-      cohortName: '',
-      groupName: '',
-      dayN: dayN,
-      dayShamsi: '',
-      isClosed: false,
-      dayCfg: defaultDayCfg,
-      rows: []
-    };
-  }
-
-  const dayCfg: DayConfig = (cohort.days || []).find(function (d) {
-    return d.n === dayN;
-  }) || {
-    n: dayN,
-    type: dayN <= 7 ? 'warmup' : dayN >= 29 ? 'review' : 'main',
-    hardLevels: 3,
-    specialMission: true
-  };
-
-  const closedDays = group.closedDays || [];
-  const isClosed = closedDays.indexOf(dayN) !== -1;
-  const dayDate = Names.addDaysToIso(cohort.startDate, dayN - 1);
-  const dayShamsi = Names.formatShamsiShort(dayDate);
-
-  const members = (cohort.participants || []).filter(function (p) {
-    if (p.groupId !== group.id) return false;
-    if (!includeFrozen && (p.status === 'frozen' || p.status === 'left')) return false;
-    return true;
-  });
-
-  const rows: ReportRow[] = members.map(function (p, idx) {
-    const rec = (cohort.records && cohort.records[p.id] && cohort.records[p.id][dayN]) || null;
-    const totals = Scoring.personTotals(p, cohort, group, dayN);
-    const hasRecord = rec && (rec.done != null || rec.hard != null || rec.special != null);
-
-    // عادت‌ها
-    let habitsText = '—';
-    if (p.habitCount != null) {
-      if (rec && rec.done != null) {
-        habitsText = Names.toPersianDigits(rec.done) + ' از ' + Names.toPersianDigits(p.habitCount);
-      } else {
-        habitsText = '— از ' + Names.toPersianDigits(p.habitCount);
-      }
-    }
-
-    // کار سخت
-    let hardText = 'ندارد';
-    if (dayCfg.hardLevels > 0) {
-      if (rec && rec.hard != null) {
-        const hVal = Number(rec.hard);
-        hardText = hVal > 0 ? 'سطح ' + Names.toPersianDigits(hVal) : 'انجام نداد';
-      } else {
-        hardText = 'ثبت‌نشده';
-      }
-    }
-
-    // گزارش هدف (در همهٔ روزهای main فعال است)
-    let specialText = 'ثبت‌نشده';
-    if (rec && rec.special != null) {
-      specialText = rec.special > 0 ? '✓' : '✗';
-    }
-
-    // امتیاز امروز
-    let dayScore: number | null = null;
-    let dayMax: number | null = null;
-    let dayScoreText = 'ثبت‌نشده';
-    if (hasRecord) {
-      dayScore = Scoring.dayScore(p, rec, dayCfg);
-      dayMax = Scoring.dayMax(p, dayCfg, rec);
-      dayScoreText = Names.toPersianDigits(dayScore) + ' از ' + Names.toPersianDigits(dayMax);
-    }
-
-    const totalText =
-      Names.toPersianDigits(totals.totalScore) + ' از ' + Names.toPersianDigits(totals.totalMax);
-    const percentText = Names.toPersianDigits(totals.percent) + '٪';
-
-    let displayName = p.name;
-    if (p.status === 'frozen') displayName += ' (فریز)';
-    else if (p.status === 'left') displayName += ' (خارج)';
-
-    return {
-      rowNum: idx + 1,
-      participantId: p.id,
-      name: displayName,
-      rawName: p.name,
-      status: p.status,
-      habitsText: habitsText,
-      standardDay: standardDay(p, rec, dayCfg),
-      hasRecord: !!hasRecord,
-      hardText: hardText,
-      specialText: specialText,
-      dayScore: dayScore,
-      dayMax: dayMax,
-      dayScoreText: dayScoreText,
-      totalScore: totals.totalScore,
-      totalMax: totals.totalMax,
-      totalText: totalText,
-      percent: totals.percent,
-      percentText: percentText
-    };
-  });
-
-  return {
-    cohortName: cohort.name || '',
-    groupName: group.name || '',
-    dayN: dayN,
-    dayShamsi: dayShamsi,
-    isClosed: isClosed,
-    dayCfg: dayCfg,
-    rows: rows
-  };
+  return buildReportRows(cohort, group, dayN, { includeFrozen: includeFrozen });
 }
 
 /**
@@ -460,10 +312,6 @@ function wrapNameText(
   return { lines: [words.slice(0, mid).join(' '), words.slice(mid).join(' ')], fontSize: minSize };
 }
 
-function isDash(text: string): boolean {
-  return text === 'ثبت‌نشده' || text === 'ندارد';
-}
-
 /**
  * رسم یک بخش از گزارش روی Canvas و تولید Blob و DataURL
  * فقط توکن‌های دیزاین سیستم برای رنگ و اندازه (به‌جز عرض ۱۰۸۰ و مقیاس ۲ که استاندارد خروجی‌اند)
@@ -479,8 +327,6 @@ function renderSingleCanvasPart(
   const brand: Partial<BrandImages> = brandImages || {};
   const scale = 2;
   const width = 1080;
-  const dayCfg = reportData.dayCfg || {};
-  const showHard = dayCfg.hardLevels > 0;
 
   const padX = T.s8;
   const tableX = T.s4;
@@ -598,19 +444,18 @@ function renderSingleCanvasPart(
   });
 
   // ۳. جدول
-  const cols = [{ id: 'rowNum', title: 'ردیف', width: T.s12 + T.s1 + T.s1 }];
-  cols.push({ id: 'name', title: 'نام و نام خانوادگی', width: 0 });
-  cols.push({ id: 'habits', title: 'عادت‌ها', width: 150 });
-  if (showHard) cols.push({ id: 'hard', title: 'کار سخت', width: 120 });
-  cols.push({ id: 'special', title: 'گزارش هدف', width: 140 });
-  cols.push({ id: 'dayScore', title: 'امتیاز امروز', width: 140 });
-  cols.push({ id: 'totalScore', title: 'مجموع', width: 130 });
-  cols.push({ id: 'percent', title: 'درصد', width: 120 });
+  // ستون‌ها از فهرست مشترک report-columns.ts می‌آیند
+  const cols: { def: ReportColumn; title: string; width: number }[] = visibleColumns(
+    'image',
+    reportData.ctx
+  ).map(function (def) {
+    return { def: def, title: columnTitle(def, 'image'), width: def.imageWidth };
+  });
   const fixedW = cols.reduce(function (sum2, c) {
     return sum2 + c.width;
   }, 0);
   cols.forEach(function (c) {
-    if (c.id === 'name') c.width = tableW - fixedW;
+    if (c.def.kind === 'name') c.width = tableW - fixedW;
   });
 
   const tableTop = cardY + summaryH + T.s6;
@@ -624,8 +469,8 @@ function renderSingleCanvasPart(
   cols.forEach(function (col) {
     setFont(T.wSemibold, T.f20);
     ctx.fillStyle = T.subtle;
-    ctx.textAlign = col.id === 'name' ? 'right' : 'center';
-    const hx = col.id === 'name' ? x - T.s4 : x - col.width / 2;
+    ctx.textAlign = col.def.kind === 'name' ? 'right' : 'center';
+    const hx = col.def.kind === 'name' ? x - T.s4 : x - col.width / 2;
     ctx.fillText(col.title, hx, tableTop + headRowH / 2);
     x -= col.width;
   });
@@ -643,12 +488,19 @@ function renderSingleCanvasPart(
     cols.forEach(function (col) {
       const center = cx - col.width / 2;
       ctx.textAlign = 'center';
-      if (col.id === 'rowNum') {
+      if (col.def.kind === 'index') {
         setFont(T.wRegular, T.f24);
         ctx.fillStyle = T.subtle;
-        ctx.fillText(Names.toPersianDigits(row.rowNum), center, midY);
-      } else if (col.id === 'name') {
-        const wrapped = wrapNameText(ctx, T, row.name, col.width - 2 * T.s4, T.f30, T.f24);
+        ctx.fillText(cellText(col.def, row, reportData.ctx, 'image'), center, midY);
+      } else if (col.def.kind === 'name') {
+        const wrapped = wrapNameText(
+          ctx,
+          T,
+          cellText(col.def, row, reportData.ctx, 'image'),
+          col.width - 2 * T.s4,
+          T.f30,
+          T.f24
+        );
         setFont(T.wSemibold, wrapped.fontSize);
         ctx.fillStyle = row.status === 'frozen' || row.status === 'left' ? T.subtle : T.text;
         ctx.textAlign = 'right';
@@ -675,12 +527,12 @@ function renderSingleCanvasPart(
           ctx.textAlign = 'center';
           ctx.fillText(tagText, tx - tagW / 2, tagY);
         }
-      } else if (col.id === 'percent') {
+      } else if (col.def.kind === 'percent') {
         const innerW = col.width - 2 * T.s3;
         const pct = Math.max(0, Math.min(100, row.percent || 0));
         setFont(T.wSemibold, T.f24);
         ctx.fillStyle = T.text;
-        ctx.fillText(row.percentText, center, midY - T.s2);
+        ctx.fillText(cellText(col.def, row, reportData.ctx, 'image'), center, midY - T.s2);
         const barY = midY + T.s4 - T.s1;
         const barX = cx - T.s3 - innerW;
         roundRectPath(ctx, barX, barY, innerW, T.s2, T.rFull);
@@ -693,27 +545,11 @@ function renderSingleCanvasPart(
           ctx.fill();
         }
       } else {
-        let text;
-        let weight = T.wRegular;
-        let color = T.text;
-        if (col.id === 'habits') {
-          // «روز استاندارد» کنار عادت‌ها با یک تیک کوچک نشان داده می‌شود
-          text = row.standardDay ? row.habitsText + ' ✓' : row.habitsText;
-          if (row.standardDay) color = T.success;
-        } else if (col.id === 'hard') {
-          text = isDash(row.hardText) ? '—' : row.hardText;
-          if (row.hardText === 'انجام نداد') color = T.subtle;
-        } else if (col.id === 'special') {
-          text = isDash(row.specialText) ? '—' : row.specialText;
-          color = row.specialText === '✓' ? T.success : T.subtle;
-          weight = T.wSemibold;
-        } else if (col.id === 'dayScore') {
-          text = unregistered ? '—' : row.dayScoreText;
-          weight = T.wBold;
-          if (!unregistered && (row.dayMax ?? 0) > 0 && row.dayScore === row.dayMax) color = T.success;
-        } else {
-          text = row.totalText;
-        }
+        const text = cellText(col.def, row, reportData.ctx, 'image');
+        const weight =
+          col.def.weight === 'bold' ? T.wBold : col.def.weight === 'semibold' ? T.wSemibold : T.wRegular;
+        const tone = col.def.tone ? col.def.tone(row, 'image') : undefined;
+        let color = tone === 'success' ? T.success : tone === 'subtle' ? T.subtle : T.text;
         if (text === '—') color = T.subtle;
         fitFont(ctx, T, text, col.width - T.s3, T.f30, T.f24, weight);
         ctx.fillStyle = color;
