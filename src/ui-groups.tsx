@@ -85,7 +85,10 @@ function GroupsTab(props: { cohort: Cohort; toast?: Toast }) {
         >
           افزودن گروه
         </B.Button>
-        <div className="bsh-row__end">
+        <div
+          className="bsh-row__end"
+          style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}
+        >
           <B.Switch
             label="نمایش همه گروه‌ها"
             checked={showAllGroups}
@@ -428,7 +431,7 @@ function GroupDetailsView(props: GroupDetailsViewProps) {
         <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)', flexWrap: 'wrap' }}>
           <h3 className="heading-sm">{group.name}</h3>
           {group.mine ? (
-            <B.Badge intent="brand" emphasis="bold">
+            <B.Badge intent="info" emphasis="subtle">
               گروه من
             </B.Badge>
           ) : (
@@ -436,37 +439,39 @@ function GroupDetailsView(props: GroupDetailsViewProps) {
               گروه دیگران
             </B.Badge>
           )}
+          <HelpHint help="mine" />
           {todayCfg && todayCfg.type === 'main' && (
             <span className="caption" style={{ color: 'var(--text-subtle)' }}>
               {'امروز ' + Names.toPersianDigits(summary.unrecordedTodayCount) + ' نفر ثبت‌نشده'}
             </span>
           )}
-          <HelpHint help="mine" />
         </div>
         <div style={{ display: 'flex', gap: 'var(--space-2)', flexWrap: 'wrap' }}>
           <B.Button variant="secondary" size="sm" iconStart="Plus" onClick={onAddPaste}>
             افزودن افراد با لیست
           </B.Button>
-          <B.Button
-            variant="ghost"
-            size="sm"
-            iconStart="Pencil"
-            onClick={function () {
-              onEditGroup(group);
-            }}
-          >
-            ویرایش گروه
-          </B.Button>
-          <B.Button
-            variant="danger"
-            size="sm"
-            iconStart="Trash2"
-            onClick={function () {
-              onDeleteGroup(group);
-            }}
-          >
-            حذف گروه
-          </B.Button>
+          <B.Menu
+            label="کارهای گروه"
+            align="end"
+            trigger={<B.IconButton icon="Ellipsis" label="کارهای بیشتر گروه" variant="ghost" />}
+            items={[
+              {
+                label: 'ویرایش گروه',
+                icon: 'Pencil',
+                onSelect: function () {
+                  onEditGroup(group);
+                }
+              },
+              {
+                label: 'حذف گروه',
+                icon: 'Trash2',
+                intent: 'danger',
+                onSelect: function () {
+                  onDeleteGroup(group);
+                }
+              }
+            ]}
+          />
         </div>
       </div>
       <div className="bsh-row" style={{ justifyContent: 'space-between' }}>
@@ -495,8 +500,8 @@ function GroupDetailsView(props: GroupDetailsViewProps) {
                 setStatusFilter(e.target.value);
               }}
             />
-            <HelpHint help="frozen" />
-            <HelpHint help="habitCount" />
+            <HelpHint help="frozen" visibleLabel />
+            <HelpHint help="habitCount" visibleLabel />
           </div>
         )}
       </div>

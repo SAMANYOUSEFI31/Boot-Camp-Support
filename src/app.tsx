@@ -14,6 +14,7 @@ import { DailyScoringTab } from './daily/DailyScoringTab';
 import { ReportsTab } from './ui-reports';
 import { SettingsTab } from './ui-settings';
 import { ImportWizardModal } from './ui-wizard';
+import { BackupDialog } from './ui-backup';
 
 function MainApp() {
   const [appState, setAppState] = useState(Store.getState());
@@ -24,6 +25,7 @@ function MainApp() {
   const [cohortModalMode, setCohortModalMode] = useState('new'); // 'new' | 'edit'
   const [restoreModalOpen, setRestoreModalOpen] = useState(false);
   const [importWizardOpen, setImportWizardOpen] = useState(false);
+  const [backupOpen, setBackupOpen] = useState(false);
 
   const toast = B.useToast();
 
@@ -70,8 +72,15 @@ function MainApp() {
         onOpenRestoreModal={function () {
           setRestoreModalOpen(true);
         }}
+        onOpenBackup={function () {
+          setBackupOpen(true);
+        }}
       />
-      <BackupReminderBanner />
+      <BackupReminderBanner
+        onOpenBackup={function () {
+          setBackupOpen(true);
+        }}
+      />
       <MultiTabWarningBanner />
       <main
         className="bsh-app-main"
@@ -111,7 +120,15 @@ function MainApp() {
               />
             </div>
             {activeTab === 'groups' && <GroupsTab cohort={activeCohort} toast={toast} />}
-            {activeTab === 'daily' && <DailyScoringTab cohort={activeCohort} toast={toast} />}
+            {activeTab === 'daily' && (
+              <DailyScoringTab
+                cohort={activeCohort}
+                toast={toast}
+                onGoToGroups={function () {
+                  setActiveTab('groups');
+                }}
+              />
+            )}
             {activeTab === 'reports' && <ReportsTab cohort={activeCohort} toast={toast} />}
             {activeTab === 'settings' && <SettingsTab cohort={activeCohort} toast={toast} />}
           </div>
@@ -124,6 +141,20 @@ function MainApp() {
           existingCohorts={appState.cohorts || []}
           onClose={function () {
             setCohortModalOpen(false);
+          }}
+          toast={toast}
+        />
+      )}
+      {backupOpen && (
+        <BackupDialog
+          open={backupOpen}
+          onClose={function () {
+            setBackupOpen(false);
+          }}
+          activeCohort={activeCohort}
+          lastBackupAt={appState.lastBackupAt}
+          onOpenRestore={function () {
+            setRestoreModalOpen(true);
           }}
           toast={toast}
         />
