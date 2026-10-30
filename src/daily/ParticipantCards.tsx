@@ -22,8 +22,8 @@ export function DailyScoringCardView(props: RowsViewProps) {
       <B.Card padding="lg">
         <B.EmptyState
           icon="User"
-          title="عضوی برای ثبت امتیاز وجود ندارد"
-          description="لطفاً ابتدا از تب «گروه‌ها»، اعضای این گروه را اضافه کنید."
+          title="فردی در این گروه نیست"
+          description="در تب «گروه‌ها و افراد»، افراد این گروه را اضافه کن."
         />
       </B.Card>
     );
@@ -150,12 +150,12 @@ const ParticipantCard = memo(function ParticipantCard(props: ParticipantCardProp
               عادت‌های انجام‌شده:
             </span>
             <span className="caption" style={{ color: 'var(--text-subtle)' }}>
-              {habitCount != null ? 'سقف: ' + Names.toPersianDigits(habitCount) + ' عادت' : 'تعیین‌نشده'}
+              {habitCount != null ? Names.toPersianDigits(habitCount) + ' عادت دارد' : 'تعیین‌نشده'}
             </span>
           </div>
           {habitCount == null ? (
             <div className="caption" style={{ color: 'var(--text-subtle)', padding: 'var(--space-1) 0' }}>
-              تعداد عادت این فرد تعیین نشده است.
+              تعداد عادت این فرد تعیین نشده. در تب «گروه‌ها و افراد» تعیینش کن.
             </div>
           ) : (
             <div className="bsh-opts">

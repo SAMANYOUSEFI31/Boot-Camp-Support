@@ -15,11 +15,12 @@ import type { CellChange } from './types';
 import { DailyScoringCardView } from './ParticipantCards';
 import { DailyScoringTable } from './ScoringTable';
 import { ExcelGroupDayExportModal } from './ExcelExportModal';
+import { HelpHint } from '../help-hint';
 
 /**
  * محاسبه روز جاری نسبت به تاریخ شروع دوره (۱ تا ۳۰)
  */
-function calculateCurrentDayNumber(startDateIso: string | null | undefined): number {
+export function calculateCurrentDayNumber(startDateIso: string | null | undefined): number {
   if (!startDateIso) return 8;
   try {
     const start = new Date(startDateIso + 'T00:00:00');
@@ -110,8 +111,8 @@ export function DailyScoringTab(props: { cohort: Cohort; toast?: Toast }) {
       <B.Card padding="lg">
         <B.EmptyState
           icon="Flame"
-          title="هیچ گروه فعالی یافت نشد"
-          description="لطفاً ابتدا در تب «گروه‌ها» حداقل یک گروه بسازید و علامت «مال من است» را بزنید."
+          title="هنوز گروهی نیست"
+          description="در تب «گروه‌ها و افراد» یک گروه بساز، بعد به اینجا برگرد."
         />
       </B.Card>
     );
@@ -159,16 +160,16 @@ export function DailyScoringTab(props: { cohort: Cohort; toast?: Toast }) {
   // ابزارهای گروهی
   function handleBatchAction(
     actionName: 'all_habits_done' | 'all_special_done' | 'clear_day',
-    label: string
+    message: string
   ) {
     const rollbackFn = Store.batchRecordDay(cohort.id, activeGroup.id, selectedDayN, actionName);
     triggerSaveIndicator();
     if (toast && rollbackFn) {
       toast.show({
         intent: 'success',
-        message: label + ' انجام شد.',
+        message: message,
         action: {
-          label: 'بازگردانی',
+          label: 'برگردان',
           onClick: rollbackFn
         },
         duration: 10000
@@ -187,7 +188,11 @@ export function DailyScoringTab(props: { cohort: Cohort; toast?: Toast }) {
       })
       .catch(function (err) {
         setIsGeneratingImage(false);
-        if (toast) toast.show({ intent: 'danger', message: 'خطا در ساخت تصویر: ' + errorMessage(err) });
+        if (toast)
+          toast.show({
+            intent: 'danger',
+            message: 'تصویر ساخته نشد (' + errorMessage(err) + '). دوباره امتحان کن.'
+          });
       });
   }
 
@@ -207,7 +212,7 @@ export function DailyScoringTab(props: { cohort: Cohort; toast?: Toast }) {
         setIsGeneratingImage(false);
         setImagePreviewData(result);
         setImageModalOpen(true);
-        if (toast) toast.show({ intent: 'success', message: 'فایل اکسل دانلود شد و تصویر گزارش آماده است.' });
+        if (toast) toast.show({ intent: 'success', message: 'Excel دانلود شد و تصویر آماده است.' });
       })
       .catch(function (err) {
         setIsGeneratingImage(false);
@@ -233,7 +238,7 @@ export function DailyScoringTab(props: { cohort: Cohort; toast?: Toast }) {
       size="sm"
       onClick={function () {
         Store.toggleCloseDay(cohort.id, activeGroup.id, selectedDayN, false);
-        if (toast) toast.show({ intent: 'info', message: 'روز دوباره باز شد.' });
+        if (toast) toast.show({ intent: 'info', message: 'روز دوباره باز شد؛ از مجموع کنار رفت.' });
       }}
     >
       باز کردن دوباره روز
@@ -301,6 +306,7 @@ export function DailyScoringTab(props: { cohort: Cohort; toast?: Toast }) {
               <span className="heading-xs">
                 {'روز ' + Names.toPersianDigits(selectedDayN) + ' · ' + dayShamsi + ' · ' + dayTypeName}
               </span>
+              <HelpHint help="dayTypes" />
               {isDayClosed ? (
                 <B.Badge intent="success" emphasis="bold" icon="Check">
                   بسته شده
@@ -310,6 +316,7 @@ export function DailyScoringTab(props: { cohort: Cohort; toast?: Toast }) {
                   باز
                 </B.Badge>
               )}
+              <HelpHint help="closeDay" />
             </div>
             <B.IconButton
               icon="ChevronLeft"
@@ -350,7 +357,7 @@ export function DailyScoringTab(props: { cohort: Cohort; toast?: Toast }) {
                 handleGenerateImage(showFrozen);
               }}
             >
-              خروجی تصویر
+              دانلود تصویر گروه
             </B.Button>
             <B.Button
               variant="secondary"
@@ -360,7 +367,7 @@ export function DailyScoringTab(props: { cohort: Cohort; toast?: Toast }) {
                 setExportModalOpen(true);
               }}
             >
-              خروجی Excel
+              دانلود Excel گروه
             </B.Button>
             <B.Button
               variant="secondary"
@@ -370,7 +377,7 @@ export function DailyScoringTab(props: { cohort: Cohort; toast?: Toast }) {
                 handleExportBoth(showFrozen);
               }}
             >
-              خروجی هر دو
+              دانلود هر دو
             </B.Button>
             {closeDayButton}
           </div>
@@ -380,7 +387,7 @@ export function DailyScoringTab(props: { cohort: Cohort; toast?: Toast }) {
         <div className="bsh-progress">
           <div className="bsh-row" style={{ justifyContent: 'space-between' }}>
             <div className="bsh-row" style={{ gap: 'var(--space-2)' }}>
-              <span className="label-md">پیشرفت ثبت گروه:</span>
+              <span className="label-md">ثبت‌شده در این روز:</span>
               <span
                 className="body-md"
                 style={{
@@ -391,7 +398,7 @@ export function DailyScoringTab(props: { cohort: Cohort; toast?: Toast }) {
                 {Names.toPersianDigits(recordedMembersCount) +
                   ' از ' +
                   Names.toPersianDigits(totalMembersCount) +
-                  ' نفر ثبت شد (' +
+                  ' نفر (' +
                   Names.toPersianDigits(progressPercent) +
                   '٪)'}
               </span>
@@ -424,14 +431,16 @@ export function DailyScoringTab(props: { cohort: Cohort; toast?: Toast }) {
                 >
                   نمای جدولی
                 </B.Button>
+                <HelpHint help="viewMode" />
               </div>
               <B.Switch
-                label="نمایش فریز‌شده‌ها"
+                label="نمایش فریز و خارج‌شده‌ها"
                 checked={showFrozen}
                 onChange={function (e) {
                   setShowFrozen(e.target.checked);
                 }}
               />
+              <HelpHint help="frozen" />
             </div>
           </div>
           <div
@@ -440,7 +449,7 @@ export function DailyScoringTab(props: { cohort: Cohort; toast?: Toast }) {
             aria-valuemin={0}
             aria-valuemax={100}
             aria-valuenow={progressPercent}
-            aria-label="پیشرفت ثبت گروه"
+            aria-label="درصد افراد ثبت‌شده در این روز"
           >
             <div
               className={'bsh-progress__fill' + (progressPercent === 100 ? ' is-complete' : '')}
@@ -450,21 +459,29 @@ export function DailyScoringTab(props: { cohort: Cohort; toast?: Toast }) {
         </div>
       )}
       {dayCfg.type === 'main' && (
+        <div className="bsh-help-row">
+          <HelpHint help="scoring" visibleLabel />
+          <HelpHint help="standardDay" visibleLabel />
+          <HelpHint help="goalReport" visibleLabel />
+          <HelpHint help="hardLevel" visibleLabel />
+        </div>
+      )}
+      {dayCfg.type === 'main' && (
         <div className="bsh-batch-bar">
           <B.Button
             variant="ghost"
             size="sm"
             onClick={function () {
-              handleBatchAction('all_habits_done', 'همه‌ی عادت‌ها انجام شد');
+              handleBatchAction('all_habits_done', 'عادت‌های همهٔ افراد فعال ثبت شد.');
             }}
           >
-            همه‌ی عادت‌ها انجام شد
+            همهٔ عادت‌ها انجام شد
           </B.Button>
           <B.Button
             variant="ghost"
             size="sm"
             onClick={function () {
-              handleBatchAction('all_special_done', 'گزارش هدف همه انجام شد');
+              handleBatchAction('all_special_done', 'گزارش هدف همهٔ افراد فعال ثبت شد.');
             }}
           >
             گزارش هدف همه انجام شد
@@ -487,8 +504,8 @@ export function DailyScoringTab(props: { cohort: Cohort; toast?: Toast }) {
             title="این روز امتیاز ندارد"
             description={
               dayCfg.type === 'warmup'
-                ? 'روزهای ۱ تا ۷ دوره، مرحله گرم‌کردن و آشنایی با عادات هستند و امتیازی برای آنها ثبت نمی‌شود.'
-                : 'روزهای ۲۹ و ۳۰ دوره، روزهای مرور پایانی هستند و امتیازی برای آنها ثبت نمی‌شود.'
+                ? 'این روز «گرم‌کردن» است و امتیاز ندارد. فقط روزهای اصلی ثبت می‌شوند.'
+                : 'این روز «مرور» است و امتیاز ندارد. فقط روزهای اصلی ثبت می‌شوند.'
             }
           />
         </B.Card>
@@ -513,28 +530,28 @@ export function DailyScoringTab(props: { cohort: Cohort; toast?: Toast }) {
       )}
       <div className="bsh-daily-bar">
         <B.Menu
-          label="خروجی"
+          label="دانلود گزارش گروه"
           side="top"
           trigger={
             <B.Button variant="secondary" size="sm" iconStart="Share2">
-              خروجی
+              دانلود گزارش
             </B.Button>
           }
           items={[
             {
-              label: 'خروجی تصویر',
+              label: 'دانلود تصویر گروه',
               onSelect: function () {
                 handleGenerateImage(showFrozen);
               }
             },
             {
-              label: 'خروجی Excel',
+              label: 'دانلود Excel گروه',
               onSelect: function () {
                 setExportModalOpen(true);
               }
             },
             {
-              label: 'خروجی هر دو',
+              label: 'دانلود هر دو',
               onSelect: function () {
                 handleExportBoth(showFrozen);
               }
@@ -550,7 +567,7 @@ export function DailyScoringTab(props: { cohort: Cohort; toast?: Toast }) {
             setCloseDayModalOpen(false);
           }}
           title={'بستن روز ' + Names.toPersianDigits(selectedDayN)}
-          description="با بستن روز، امتیازات این روز در مجموع تجمعی اعضا و گروه لحاظ خواهند شد."
+          description="امتیاز این روز در مجموع و درصد افراد گروه حساب می‌شود. هر وقت خواستی می‌شود روز را دوباره باز کرد."
           footer={
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 'var(--space-2)' }}>
               <B.Button
@@ -569,11 +586,11 @@ export function DailyScoringTab(props: { cohort: Cohort; toast?: Toast }) {
                   if (toast)
                     toast.show({
                       intent: 'success',
-                      message: 'روز ' + Names.toPersianDigits(selectedDayN) + ' با موفقیت بسته شد.'
+                      message: 'روز ' + Names.toPersianDigits(selectedDayN) + ' بسته شد.'
                     });
                 }}
               >
-                تأیید و بستن روز
+                روز را ببند
               </B.Button>
             </div>
           }
@@ -581,12 +598,12 @@ export function DailyScoringTab(props: { cohort: Cohort; toast?: Toast }) {
         >
           <div style={{ padding: 'var(--space-2) 0' }}>
             {unrecordedCount > 0 ? (
-              <B.Alert intent="warning" title="توجه">
+              <B.Alert intent="warning" title="ثبت‌نشده داریم">
                 {Names.toPersianDigits(unrecordedCount) +
-                  ' نفر هنوز هیچ رکوردی برای امروز ثبت نکرده‌اند. با بستن روز، امتیاز آنها صفر لحاظ خواهد شد.'}
+                  ' نفر در این روز چیزی ثبت نکرده‌اند. امتیازشان صفر حساب می‌شود.'}
               </B.Alert>
             ) : (
-              <B.Alert intent="success">همه اعضای فعال برای امروز نتیجه ثبت کرده‌اند.</B.Alert>
+              <B.Alert intent="success">برای همهٔ افراد این روز ثبت شده است.</B.Alert>
             )}
           </div>
         </B.Dialog>
@@ -598,7 +615,7 @@ export function DailyScoringTab(props: { cohort: Cohort; toast?: Toast }) {
             setClearDayConfirmOpen(false);
           }}
           title={'پاک کردن ثبت‌های روز ' + Names.toPersianDigits(selectedDayN)}
-          description="آیا مطمئنید که می‌خواهید تمام رکوردهای ثبت‌شده امروز برای این گروه پاک شوند؟"
+          description="ثبت‌های همهٔ افراد فعال این گروه در این روز پاک می‌شود. بلافاصله ۱۰ ثانیه فرصت «برگردان» داری."
           footer={
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 'var(--space-2)' }}>
               <B.Button
@@ -613,7 +630,7 @@ export function DailyScoringTab(props: { cohort: Cohort; toast?: Toast }) {
                 variant="danger-bold"
                 onClick={function () {
                   setClearDayConfirmOpen(false);
-                  handleBatchAction('clear_day', 'ثبت‌های امروز پاک شدند');
+                  handleBatchAction('clear_day', 'ثبت‌های این روز پاک شد.');
                 }}
               >
                 پاک کن

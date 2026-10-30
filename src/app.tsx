@@ -38,9 +38,9 @@ function MainApp() {
 
   // ناوبری تب‌های اصلی
   const navTabs = [
-    { id: 'groups', label: 'گروه‌ها و اعضا' },
+    { id: 'groups', label: 'گروه‌ها و افراد' },
     { id: 'daily', label: 'ثبت روزانه' },
-    { id: 'reports', label: 'گزارش‌ها و خروجی اکسل' },
+    { id: 'reports', label: 'گزارش‌ها' },
     { id: 'settings', label: 'تنظیمات' }
   ];
 

@@ -44,8 +44,8 @@ export function DailyScoringTable(props: RowsViewProps) {
       <B.Card padding="lg">
         <B.EmptyState
           icon="User"
-          title="عضوی برای ثبت امتیاز وجود ندارد"
-          description="لطفاً ابتدا از تب «گروه‌ها»، اعضای این گروه را اضافه کنید."
+          title="فردی در این گروه نیست"
+          description="در تب «گروه‌ها و افراد»، افراد این گروه را اضافه کن."
         />
       </B.Card>
     );
@@ -77,7 +77,7 @@ export function DailyScoringTable(props: RowsViewProps) {
               نام و نام خانوادگی
             </th>
             <th className="label-sm is-num" style={{ textAlign: 'center', width: 110 }}>
-              عادت‌های انتخابی
+              تعداد عادت
             </th>
             <th className="label-sm is-num" style={{ textAlign: 'center', width: 130 }}>
               عادت‌های انجام‌شده
@@ -89,7 +89,7 @@ export function DailyScoringTable(props: RowsViewProps) {
               گزارش هدف (۲ امتیاز)
             </th>
             <th className="label-sm is-num" style={{ textAlign: 'center', width: 110 }}>
-              امتیاز امروز
+              امتیاز این روز
             </th>
           </tr>
         </thead>
@@ -184,7 +184,7 @@ const TableRowItem = memo(function TableRowItem(props: TableRowItemProps) {
           Names.toPersianDigits(p.habitCount) + ' عادت'
         ) : (
           <span className="caption" style={{ color: 'var(--text-subtle)' }}>
-            — (تعیین نشده)
+            تعیین‌نشده
           </span>
         )}
       </td>
@@ -217,7 +217,7 @@ const TableRowItem = memo(function TableRowItem(props: TableRowItemProps) {
                 if (toast)
                   toast.show({
                     intent: 'danger',
-                    message: 'انجام‌شده‌ها نمی‌تواند از انتخابی‌ها بیشتر باشد.'
+                    message: 'انجام‌شده از تعداد عادت این فرد بیشتر نمی‌شود.'
                   });
                 return;
               }
@@ -266,9 +266,7 @@ const TableRowItem = memo(function TableRowItem(props: TableRowItemProps) {
                   toast.show({
                     intent: 'danger',
                     message:
-                      'سطح کار سخت نمی‌تواند از سقف روز (' +
-                      Names.toPersianDigits(dayCfg.hardLevels) +
-                      ') بیشتر باشد.'
+                      'بیشترین سطح کار سخت این روز ' + Names.toPersianDigits(dayCfg.hardLevels) + ' است.'
                   });
                 return;
               }

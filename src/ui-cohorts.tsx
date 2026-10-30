@@ -5,6 +5,7 @@
 
 import { useEffect, useState, type ChangeEvent } from 'react';
 import { B } from './bushido';
+import { HelpHint } from './help-hint';
 import { Names } from './names';
 import { errorMessage } from './errors';
 import { Store } from './store';
@@ -65,7 +66,7 @@ function CohortModal(props: CohortModalProps) {
   function handleSave() {
     const trimmed = name.trim();
     if (!trimmed) {
-      setErrorMsg('نام دوره نمی‌تواند خالی باشد.');
+      setErrorMsg('نام دوره را بنویس.');
       return;
     }
 
@@ -106,7 +107,7 @@ function CohortModal(props: CohortModalProps) {
       onClose={onClose}
       title={isEdit ? 'ویرایش دوره' : 'ساخت دوره جدید'}
       description={
-        isEdit ? 'نام و تاریخ شروع دوره را تغییر دهید.' : 'مشخصات اولیه دوره ۳۰ روزه را وارد کنید.'
+        isEdit ? 'نام یا تاریخ شروع دوره را عوض کن.' : 'نام و تاریخ شروع را بنویس. دوره ۳۰ روز است.'
       }
       footer={footer}
       size="md"
@@ -120,7 +121,7 @@ function CohortModal(props: CohortModalProps) {
             setName(e.target.value);
           }}
           required={true}
-          placeholder="مثلاً: دوره ۳۰ روزه آبان"
+          placeholder="مثلاً: دوره آبان ۱۴۰۵"
         />
         <B.DatePicker
           label="تاریخ شروع دوره"
@@ -130,37 +131,42 @@ function CohortModal(props: CohortModalProps) {
           }}
         />
         {!isEdit && (
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 'var(--space-2)' }}>
-            <B.TextField
-              label="روزهای گرم‌کردن"
-              type="number"
-              value={warmupDays}
-              onChange={function (e) {
-                setWarmupDays(e.target.value);
-              }}
-            />
-            <B.TextField
-              label="روزهای اصلی"
-              type="number"
-              value={mainDays}
-              onChange={function (e) {
-                setMainDays(e.target.value);
-              }}
-            />
-            <B.TextField
-              label="روزهای مرور"
-              type="number"
-              value={reviewDays}
-              onChange={function (e) {
-                setReviewDays(e.target.value);
-              }}
-            />
+          <div style={{ display: 'grid', gap: 'var(--space-2)' }}>
+            <div className="bsh-help-row">
+              <HelpHint help="dayTypes" visibleLabel />
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 'var(--space-2)' }}>
+              <B.TextField
+                label="روز گرم‌کردن"
+                type="number"
+                value={warmupDays}
+                onChange={function (e) {
+                  setWarmupDays(e.target.value);
+                }}
+              />
+              <B.TextField
+                label="روز اصلی"
+                type="number"
+                value={mainDays}
+                onChange={function (e) {
+                  setMainDays(e.target.value);
+                }}
+              />
+              <B.TextField
+                label="روز مرور"
+                type="number"
+                value={reviewDays}
+                onChange={function (e) {
+                  setReviewDays(e.target.value);
+                }}
+              />
+            </div>
           </div>
         )}
         {!isEdit && existingCohorts.length > 0 && (
           <div style={{ display: 'grid', gap: 'var(--space-2)' }}>
             <B.Checkbox
-              label="گروه‌ها و افراد از دوره قبل کپی شوند"
+              label="گروه‌ها و افراد را از دورهٔ دیگری کپی کن"
               checked={copyFromPrevious}
               onChange={function (e) {
                 setCopyFromPrevious(e.target.checked);
@@ -168,7 +174,7 @@ function CohortModal(props: CohortModalProps) {
             />
             {copyFromPrevious && (
               <B.Select
-                label="انتخاب دوره مبدأ برای کپی"
+                label="کپی از کدام دوره؟"
                 options={existingCohorts.map(function (c) {
                   return { value: c.id, label: c.name };
                 })}
@@ -203,10 +209,10 @@ function EmptyCohortState(props: {
         ساخت دوره
       </B.Button>
       <B.Button variant="secondary" iconStart="ExternalLink" onClick={onRestoreBackup}>
-        بازگردانی از بکاپ
+        بازگردانی بکاپ
       </B.Button>
       <B.Button variant="secondary" iconStart="Inbox" onClick={onImport}>
-        ورود از اکسل / CSV
+        ورود افراد از Excel یا CSV
       </B.Button>
     </div>
   );
@@ -221,8 +227,8 @@ function EmptyCohortState(props: {
     >
       <B.EmptyState
         icon="Flame"
-        title="هنوز هیچ دوره‌ای ایجاد نشده است"
-        description="برای شروع کار با ابزار پشتیبان‌ها، دوره جدید بسازید یا فایل بکاپ قبلی خود را بازگردانی کنید."
+        title="هنوز دوره‌ای نیست"
+        description="یک دوره بساز، یا اگر بکاپ داری آن را بازگردانی کن."
         action={action}
       />
     </div>
@@ -273,7 +279,7 @@ function RestoreBackupModal(props: { open: boolean; onClose: () => void; toast?:
 
     if (/\.(xlsx|xls|csv|numbers)$/i.test(file.name)) {
       setErrorMsg(
-        'این فایل اکسل یا CSV است، نه بکاپ. برای ورود لیست افراد از «ابزارها ← ورود از اکسل / CSV» استفاده کنید.'
+        'این فایل Excel یا CSV است، نه بکاپ. برای وارد کردن افراد از «ابزارها ← ورود افراد از Excel یا CSV» استفاده کن.'
       );
       return;
     }
@@ -284,12 +290,12 @@ function RestoreBackupModal(props: { open: boolean; onClose: () => void; toast?:
       try {
         json = JSON.parse(String(ev.target?.result));
       } catch (err) {
-        setErrorMsg('این فایل خوانده نشد. مطمئن شوید فایل بکاپ (با پسوند json) را انتخاب کرده‌اید.');
+        setErrorMsg('این فایل خوانده نشد. فایل بکاپ را انتخاب کن (پسوند json).');
         return;
       }
       const v = Store.validateBackup(json);
       if (!v.ok) {
-        setErrorMsg(v.error + ' هیچ تغییری در اطلاعات شما اعمال نشد.');
+        setErrorMsg(v.error + ' چیزی در برنامه عوض نشد.');
         return;
       }
       const sel: Record<number, boolean> = {};
@@ -311,7 +317,7 @@ function RestoreBackupModal(props: { open: boolean; onClose: () => void; toast?:
       setBackup(v.data);
     };
     reader.onerror = function () {
-      setErrorMsg('خطا در خواندن فایل.');
+      setErrorMsg('فایل خوانده نشد. دوباره انتخابش کن.');
     };
     reader.readAsText(file, 'utf-8');
   }
@@ -353,7 +359,7 @@ function RestoreBackupModal(props: { open: boolean; onClose: () => void; toast?:
       if (mode === 'replace') {
         if (currentCohorts.length) downloadBeforeRestoreBackup();
         Store.restoreState(backup);
-        if (toast) toast.show({ intent: 'success', message: 'اطلاعات با موفقیت جایگزین شد.' });
+        if (toast) toast.show({ intent: 'success', message: 'اطلاعات با فایل بکاپ جایگزین شد.' });
       } else {
         const report = Store.mergeFromBackup(backup, {
           selected: selected,
@@ -372,7 +378,7 @@ function RestoreBackupModal(props: { open: boolean; onClose: () => void; toast?:
       }
       onClose();
     } catch (err) {
-      setErrorMsg('خطا در اعمال بکاپ: ' + errorMessage(err));
+      setErrorMsg('بکاپ اعمال نشد: ' + errorMessage(err) + ' چیزی در برنامه عوض نشد.');
     }
   }
 
@@ -387,7 +393,7 @@ function RestoreBackupModal(props: { open: boolean; onClose: () => void; toast?:
         disabled={!backup || (isMerge && selectedCount === 0)}
         onClick={handleConfirm}
       >
-        {isMerge ? 'افزودن به داده‌های فعلی' : 'تأیید و جایگزینی کامل'}
+        {isMerge ? 'به داده‌های فعلی اضافه کن' : 'همه‌چیز را جایگزین کن'}
       </B.Button>
     </div>
   );
@@ -414,7 +420,7 @@ function RestoreBackupModal(props: { open: boolean; onClose: () => void; toast?:
             <div style={{ display: 'flex', gap: 'var(--space-2)', alignItems: 'flex-end', flexWrap: 'wrap' }}>
               <div style={{ flex: 1, minInlineSize: 0 }}>
                 <B.TextField
-                  label="نام دوره (قابل تغییر)"
+                  label="نام دوره (می‌توانی عوضش کنی)"
                   value={shownName}
                   onChange={function (e) {
                     setIn(setNames, names, i, e.target.value);
@@ -428,7 +434,7 @@ function RestoreBackupModal(props: { open: boolean; onClose: () => void; toast?:
                   setIn(setNames, names, i, Names.cohortNameFromFileName(fileName) || c.name);
                 }}
               >
-                نام فایل
+                نام از فایل
               </B.Button>
             </div>
           )}
@@ -436,11 +442,11 @@ function RestoreBackupModal(props: { open: boolean; onClose: () => void; toast?:
             {Names.toPersianDigits(groupsCount) +
               ' گروه · ' +
               Names.toPersianDigits(peopleCount) +
-              ' نفر · شروع: ' +
+              ' نفر · شروع ' +
               (c.startDate ? Names.formatShamsi(c.startDate) : 'نامشخص')}
           </div>
           {isSelected && conflict && (
-            <B.Alert intent="warning" title="این دوره از قبل در برنامه هست">
+            <B.Alert intent="warning" title="این دوره از قبل هست">
               <B.RadioGroup
                 name={'dup-' + i}
                 orientation="vertical"
@@ -449,11 +455,12 @@ function RestoreBackupModal(props: { open: boolean; onClose: () => void; toast?:
                   setIn(setDecisions, decisions, i, v as MergeDecision);
                 }}
                 options={[
-                  { value: 'skip', label: 'رد کن (دورهٔ فعلی دست‌نخورده می‌ماند)' },
-                  { value: 'replace', label: 'جایگزین کن (دورهٔ فعلی با این نسخه عوض می‌شود)' },
-                  { value: 'copy', label: 'نسخهٔ جدا بساز (نام با پسوند ـ۲)' }
+                  { value: 'skip', label: 'رد کن (دورهٔ فعلی می‌ماند)' },
+                  { value: 'replace', label: 'جایگزین کن (با نسخهٔ فایل عوض می‌شود)' },
+                  { value: 'copy', label: 'نسخهٔ جدا بساز (هر دو می‌مانند)' }
                 ]}
               />
+              <HelpHint help="restoreConflict" visibleLabel />
             </B.Alert>
           )}
           {isSelected && groupsCount > 0 && (
@@ -477,6 +484,7 @@ function RestoreBackupModal(props: { open: boolean; onClose: () => void; toast?:
                 >
                   همه را بردار
                 </B.Button>
+                <HelpHint help="mine" visibleLabel />
               </div>
               {c.groups.map(function (g) {
                 const members = c.participants.filter(function (p) {
@@ -486,7 +494,7 @@ function RestoreBackupModal(props: { open: boolean; onClose: () => void; toast?:
                 return (
                   <B.Checkbox
                     key={g.id}
-                    label={'مال من است — ' + g.name + ' (' + Names.toPersianDigits(members) + ' نفر)'}
+                    label={'گروه من — ' + g.name + ' (' + Names.toPersianDigits(members) + ' نفر)'}
                     checked={mineMap[g.id] !== false}
                     onChange={function (e) {
                       setMine(i, g.id, e.target.checked);
@@ -506,7 +514,7 @@ function RestoreBackupModal(props: { open: boolean; onClose: () => void; toast?:
       open={open}
       onClose={onClose}
       title="بازگردانی از فایل پشتیبان (JSON)"
-      description="ابتدا فایل بکاپ را انتخاب کنید، سپس بگویید با اطلاعات فعلی چه شود."
+      description="فایل بکاپ را انتخاب کن، بعد بگو با اطلاعات فعلی چه شود."
       footer={footer}
       size="lg"
     >
@@ -514,7 +522,7 @@ function RestoreBackupModal(props: { open: boolean; onClose: () => void; toast?:
         {errorMsg && <B.Alert intent="danger">{errorMsg}</B.Alert>}
         <div>
           <label className="label-md" style={{ display: 'block', marginBottom: 'var(--space-2)' }}>
-            انتخاب فایل JSON بکاپ
+            فایل بکاپ (json)
           </label>
           <input
             type="file"
@@ -524,7 +532,7 @@ function RestoreBackupModal(props: { open: boolean; onClose: () => void; toast?:
           />
         </div>
         <B.RadioGroup
-          legend="روش بازگردانی"
+          legend="با اطلاعات فعلی چه شود؟"
           name="restore-mode"
           orientation="vertical"
           value={mode}
@@ -536,10 +544,10 @@ function RestoreBackupModal(props: { open: boolean; onClose: () => void; toast?:
               value: 'merge',
               label: (
                 <span>
-                  <strong>افزودن به داده‌های فعلی (پیشنهادی)</strong>
+                  <strong>اضافه کن (پیشنهادی)</strong>
                   <br />
                   <span className="caption" style={{ color: 'var(--text-subtle)' }}>
-                    دوره‌های فایل کنار دوره‌های فعلی اضافه می‌شوند و چیزی پاک نمی‌شود.
+                    دوره‌های فایل کنار دوره‌های فعلی می‌آیند. چیزی پاک نمی‌شود.
                   </span>
                 </span>
               )
@@ -548,20 +556,23 @@ function RestoreBackupModal(props: { open: boolean; onClose: () => void; toast?:
               value: 'replace',
               label: (
                 <span>
-                  <strong>جایگزینی کامل</strong>
+                  <strong>جایگزین کن</strong>
                   <br />
                   <span className="caption" style={{ color: 'var(--text-subtle)' }}>
-                    همهٔ اطلاعات فعلی پاک و با محتوای فایل عوض می‌شود.
+                    همهٔ اطلاعات فعلی پاک و با فایل عوض می‌شود.
                   </span>
                 </span>
               )
             }
           ]}
         />
+        <div className="bsh-help-row">
+          <HelpHint help="restoreMode" visibleLabel />
+        </div>
         {!isMerge && (
           <B.Alert intent="warning">
-            پیش از جایگزینی، خودکار یک فایل از اطلاعات فعلی با نام support-before-restore-تاریخ.json دانلود
-            می‌شود. آن را نگه دارید تا اگر لازم شد، برگردانید.
+            قبل از جایگزینی، یک نسخهٔ احتیاطی از اطلاعات فعلی دانلود می‌شود
+            (support-before-restore-تاریخ.json). نگهش دار تا اگر لازم شد برگردانی.
           </B.Alert>
         )}
         {backup && (
@@ -569,7 +580,9 @@ function RestoreBackupModal(props: { open: boolean; onClose: () => void; toast?:
             <div className="title">
               {isMerge ? 'دوره‌های داخل فایل (' + fileName + ')' : 'محتوای فایل (' + fileName + ')'}
             </div>
-            {cohorts.length === 0 && <B.Alert intent="info">این فایل هیچ دوره‌ای ندارد.</B.Alert>}
+            {cohorts.length === 0 && (
+              <B.Alert intent="info">این فایل دوره‌ای ندارد. بکاپ دیگری را امتحان کن.</B.Alert>
+            )}
             {isMerge ? (
               cohorts.map(renderCohortCard)
             ) : (
@@ -590,7 +603,7 @@ function RestoreBackupModal(props: { open: boolean; onClose: () => void; toast?:
             )}
             {(backup.exportedAt || backup.lastBackupAt) && (
               <div className="caption" style={{ color: 'var(--text-subtle)' }}>
-                {'تاریخ ساخت فایل: ' + Names.formatShamsi(backup.exportedAt || backup.lastBackupAt)}
+                {'ساخته‌شده در: ' + Names.formatShamsi(backup.exportedAt || backup.lastBackupAt)}
               </div>
             )}
           </div>

@@ -5,6 +5,7 @@
 
 import { useState } from 'react';
 import { B } from './bushido';
+import { HelpHint } from './help-hint';
 import { Names } from './names';
 import { errorMessage } from './errors';
 import { Excel } from './excel';
@@ -49,8 +50,8 @@ function ReportsTab(props: { cohort: Cohort; toast?: Toast }) {
       <B.Card padding="lg">
         <B.EmptyState
           icon="Inbox"
-          title="گروهی برای گزارش وجود ندارد"
-          description="ابتدا در تب «گروه‌ها و اعضا» یک گروه بسازید."
+          title="هنوز گروهی نیست"
+          description="در تب «گروه‌ها و افراد» یک گروه بساز، بعد گزارش بگیر."
         />
       </B.Card>
     );
@@ -70,7 +71,11 @@ function ReportsTab(props: { cohort: Cohort; toast?: Toast }) {
       })
       .catch(function (err) {
         setLoadingReport(null);
-        if (toast) toast.show({ intent: 'danger', message: errorMessage(err) });
+        if (toast)
+          toast.show({
+            intent: 'danger',
+            message: 'فایل ساخته نشد: ' + errorMessage(err) + ' دوباره امتحان کن.'
+          });
       });
   }
 
@@ -85,7 +90,11 @@ function ReportsTab(props: { cohort: Cohort; toast?: Toast }) {
       })
       .catch(function (err) {
         setLoadingReport(null);
-        if (toast) toast.show({ intent: 'danger', message: errorMessage(err) });
+        if (toast)
+          toast.show({
+            intent: 'danger',
+            message: 'فایل ساخته نشد: ' + errorMessage(err) + ' دوباره امتحان کن.'
+          });
       });
   }
 
@@ -100,11 +109,15 @@ function ReportsTab(props: { cohort: Cohort; toast?: Toast }) {
         setLoadingReport(null);
         setImagePreviewData(result);
         setImageModalOpen(true);
-        if (toast) toast.show({ intent: 'success', message: 'اکسل دانلود شد و تصویر گزارش آماده است.' });
+        if (toast) toast.show({ intent: 'success', message: 'Excel دانلود شد و تصویر آماده است.' });
       })
       .catch(function (err) {
         setLoadingReport(null);
-        if (toast) toast.show({ intent: 'danger', message: errorMessage(err) });
+        if (toast)
+          toast.show({
+            intent: 'danger',
+            message: 'فایل ساخته نشد: ' + errorMessage(err) + ' دوباره امتحان کن.'
+          });
       });
   }
 
@@ -119,7 +132,11 @@ function ReportsTab(props: { cohort: Cohort; toast?: Toast }) {
       })
       .catch(function (err) {
         setLoadingReport(null);
-        if (toast) toast.show({ intent: 'danger', message: errorMessage(err) });
+        if (toast)
+          toast.show({
+            intent: 'danger',
+            message: 'فایل ساخته نشد: ' + errorMessage(err) + ' دوباره امتحان کن.'
+          });
       });
   }
 
@@ -128,11 +145,15 @@ function ReportsTab(props: { cohort: Cohort; toast?: Toast }) {
     Excel.exportAllMyGroupsReport(cohort, 'day', selectedDayN, includeFrozen)
       .then(function () {
         setLoadingReport(null);
-        if (toast) toast.show({ intent: 'success', message: 'گزارش روز برای همه گروه‌ها دانلود شد.' });
+        if (toast) toast.show({ intent: 'success', message: 'گزارش روز همهٔ گروه‌ها دانلود شد.' });
       })
       .catch(function (err) {
         setLoadingReport(null);
-        if (toast) toast.show({ intent: 'danger', message: errorMessage(err) });
+        if (toast)
+          toast.show({
+            intent: 'danger',
+            message: 'فایل ساخته نشد: ' + errorMessage(err) + ' دوباره امتحان کن.'
+          });
       });
   }
 
@@ -141,11 +162,15 @@ function ReportsTab(props: { cohort: Cohort; toast?: Toast }) {
     Excel.exportAllMyGroupsReport(cohort, 'full', null, includeFrozen)
       .then(function () {
         setLoadingReport(null);
-        if (toast) toast.show({ intent: 'success', message: 'گزارش کل دوره برای همه گروه‌ها دانلود شد.' });
+        if (toast) toast.show({ intent: 'success', message: 'گزارش کل دوره همهٔ گروه‌ها دانلود شد.' });
       })
       .catch(function (err) {
         setLoadingReport(null);
-        if (toast) toast.show({ intent: 'danger', message: errorMessage(err) });
+        if (toast)
+          toast.show({
+            intent: 'danger',
+            message: 'فایل ساخته نشد: ' + errorMessage(err) + ' دوباره امتحان کن.'
+          });
       });
   }
 
@@ -161,10 +186,9 @@ function ReportsTab(props: { cohort: Cohort; toast?: Toast }) {
   return (
     <div className="bsh-stack bsh-stack--lg">
       <div>
-        <h2 className="heading-md">گزارش‌ها و خروجی‌های اکسل و تصویر</h2>
+        <h2 className="heading-md">گزارش‌ها</h2>
         <p className="body-sm" style={{ color: 'var(--text-subtle)' }}>
-          فایل‌های اکسل استاندارد و تصاویر تمیز تلگرامی (PNG ۱۰۸۰p) برای ارسال مستقیم در گروه‌ها و
-          اشتراک‌گذاری.
+          Excel و تصویر گزارش را دانلود کن تا در گروه تلگرام بفرستی.
         </p>
       </div>
       <div
@@ -175,13 +199,13 @@ function ReportsTab(props: { cohort: Cohort; toast?: Toast }) {
           gap: 'var(--space-3)'
         }}
       >
-        <B.Stat label="تعداد کل اعضا" value={Names.toPersianDigits(totalParticipants) + ' نفر'} />
-        <B.Stat label="اعضای فعال" value={Names.toPersianDigits(activeCount) + ' نفر'} />
-        <B.Stat label="افراد فریز شده" value={Names.toPersianDigits(frozenCount) + ' نفر'} />
-        <B.Stat label="تعداد گروه‌های من" value={Names.toPersianDigits(myGroups.length) + ' گروه'} />
+        <B.Stat label="همهٔ افراد" value={Names.toPersianDigits(totalParticipants) + ' نفر'} />
+        <B.Stat label="افراد فعال" value={Names.toPersianDigits(activeCount) + ' نفر'} />
+        <B.Stat label="افراد فریز" value={Names.toPersianDigits(frozenCount) + ' نفر'} />
+        <B.Stat label="گروه‌های من" value={Names.toPersianDigits(myGroups.length) + ' گروه'} />
       </div>
       <B.Card padding="lg" style={{ display: 'grid', gap: 'var(--space-4)' }}>
-        <h3 className="title">انتخاب گروه و روز برای گزارش</h3>
+        <h3 className="title">گروه و روز گزارش</h3>
         <div
           style={{
             display: 'grid',
@@ -190,7 +214,7 @@ function ReportsTab(props: { cohort: Cohort; toast?: Toast }) {
           }}
         >
           <B.Select
-            label="انتخاب گروه هدف"
+            label="گروه"
             options={myGroups.map(function (g) {
               return { value: g.id, label: g.name };
             })}
@@ -200,7 +224,7 @@ function ReportsTab(props: { cohort: Cohort; toast?: Toast }) {
             }}
           />
           <B.Select
-            label="انتخاب روز"
+            label="روز"
             options={mainDays.map(function (d) {
               const dayDate = Names.addDaysToIso(cohort.startDate, d.n - 1);
               return {
@@ -215,12 +239,13 @@ function ReportsTab(props: { cohort: Cohort; toast?: Toast }) {
           />
           <div style={{ display: 'flex', alignItems: 'flex-end', paddingBottom: 'var(--space-2)' }}>
             <B.Checkbox
-              label="افراد فریز و خارج‌شده در خروجی بیایند"
+              label="فریز و خارج‌شده‌ها هم در فایل بیایند"
               checked={includeFrozen}
               onChange={function (e) {
                 setIncludeFrozen(e.target.checked);
               }}
             />
+            <HelpHint help="exportFrozen" />
           </div>
         </div>
       </B.Card>
@@ -246,16 +271,16 @@ function ReportsTab(props: { cohort: Cohort; toast?: Toast }) {
               }}
             >
               <B.Icon name="CalendarDays" size="lg" className="text-brand" />
-              <h4 className="title">۱. گزارش روز گروه (اکسل و تصویر)</h4>
+              <h4 className="title">۱. گزارش روز گروه</h4>
             </div>
             <p className="body-sm" style={{ color: 'var(--text-subtle)', marginBottom: 'var(--space-4)' }}>
-              مخصوص ارسال در گروه تلگرام در پایان روز. تصویر بهینه ۱۰۸۰ پیکسلی شارپ با فونت Vazirmatn، همراه
-              با اکسل دو شیت.
+              برای فرستادن در گروه تلگرام آخر روز: یک تصویر PNG و یک فایل Excel با دو شیت.
+              <HelpHint help="exportDaily" />
             </p>
           </div>
           <div style={{ display: 'grid', gap: 'var(--space-2)' }}>
             <B.Button variant="primary" loading={loadingReport === 'image'} onClick={handleExportImage}>
-              خروجی تصویر گزارش (PNG)
+              دانلود تصویر گزارش
             </B.Button>
             <div style={{ display: 'flex', gap: 'var(--space-2)' }}>
               <B.Button
@@ -265,7 +290,7 @@ function ReportsTab(props: { cohort: Cohort; toast?: Toast }) {
                 loading={loadingReport === 'day'}
                 onClick={handleExportDay}
               >
-                دانلود اکسل
+                دانلود Excel
               </B.Button>
               <B.Button
                 variant="secondary"
@@ -273,7 +298,7 @@ function ReportsTab(props: { cohort: Cohort; toast?: Toast }) {
                 loading={loadingReport === 'both'}
                 onClick={handleExportBoth}
               >
-                خروجی هر دو
+                دانلود هر دو
               </B.Button>
             </div>
           </div>
@@ -292,11 +317,11 @@ function ReportsTab(props: { cohort: Cohort; toast?: Toast }) {
               }}
             >
               <B.Icon name="ChartColumn" size="lg" className="text-brand" />
-              <h4 className="title">۲. ماتریس کل دوره گروه</h4>
+              <h4 className="title">۲. گزارش کل دوره گروه</h4>
             </div>
             <p className="body-sm" style={{ color: 'var(--text-subtle)', marginBottom: 'var(--space-4)' }}>
-              ماتریس ۲۱ روز اصلی برای تمام اعضای گروه، امتیاز هر روز در صورت بسته بودن، مجموع تجمعی و درصد
-              نهایی.
+              یک ستون برای هر روز اصلی، به‌علاوهٔ مجموع و درصد. امتیاز فقط برای روزهای بسته‌شده پر می‌شود.
+              <HelpHint help="exportFull" />
             </p>
           </div>
           <B.Button
@@ -305,7 +330,7 @@ function ReportsTab(props: { cohort: Cohort; toast?: Toast }) {
             loading={loadingReport === 'full'}
             onClick={handleExportFullCohort}
           >
-            {'دانلود اکسل کل دوره ' + (activeGroup ? activeGroup.name : '')}
+            {'دانلود Excel کل دوره ' + (activeGroup ? activeGroup.name : '')}
           </B.Button>
         </B.Card>
         <B.Card
@@ -322,10 +347,11 @@ function ReportsTab(props: { cohort: Cohort; toast?: Toast }) {
               }}
             >
               <B.Icon name="House" size="lg" className="text-brand" />
-              <h4 className="title">۳. همه گروه‌ها (گزارش روز)</h4>
+              <h4 className="title">۳. همهٔ گروه‌ها: گزارش روز</h4>
             </div>
             <p className="body-sm" style={{ color: 'var(--text-subtle)', marginBottom: 'var(--space-4)' }}>
-              یک فایل اکسل واحد شامل شیت‌های مجزا برای تک‌تک گروه‌های مسئولیت من در روز انتخاب‌شده.
+              یک فایل Excel با یک شیت برای هر گروه من، برای روز انتخاب‌شده.
+              <HelpHint help="exportAllGroups" />
             </p>
           </div>
           <B.Button
@@ -334,7 +360,7 @@ function ReportsTab(props: { cohort: Cohort; toast?: Toast }) {
             loading={loadingReport === 'all_day'}
             onClick={handleExportAllGroupsDay}
           >
-            {'دانلود همه گروه‌ها (روز ' + Names.toPersianDigits(selectedDayN) + ')'}
+            {'دانلود Excel همهٔ گروه‌ها (روز ' + Names.toPersianDigits(selectedDayN) + ')'}
           </B.Button>
         </B.Card>
         <B.Card
@@ -351,10 +377,10 @@ function ReportsTab(props: { cohort: Cohort; toast?: Toast }) {
               }}
             >
               <B.Icon name="Copy" size="lg" className="text-brand" />
-              <h4 className="title">۴. همه گروه‌ها (کل دوره)</h4>
+              <h4 className="title">۴. همهٔ گروه‌ها: کل دوره</h4>
             </div>
             <p className="body-sm" style={{ color: 'var(--text-subtle)', marginBottom: 'var(--space-4)' }}>
-              یک فایل اکسل جامع شامل شیت ماتریس ۲۱ روزه برای تمام گروه‌های تحت نظارت شما.
+              یک فایل Excel با یک شیت کل‌دوره برای هر گروه من.
             </p>
           </div>
           <B.Button
@@ -363,7 +389,7 @@ function ReportsTab(props: { cohort: Cohort; toast?: Toast }) {
             loading={loadingReport === 'all_full'}
             onClick={handleExportAllGroupsFull}
           >
-            دانلود همه گروه‌ها (کل دوره)
+            دانلود Excel همهٔ گروه‌ها (کل دوره)
           </B.Button>
         </B.Card>
       </div>
