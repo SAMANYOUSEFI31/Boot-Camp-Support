@@ -6,7 +6,7 @@
 import { memo, useRef } from 'react';
 import { B } from '../bushido';
 import { Names } from '../names';
-import { Scoring } from '../scoring';
+import { Scoring, standardDay } from '../scoring';
 import type { ParticipantCardProps, RowsViewProps } from './types';
 
 /**
@@ -86,7 +86,7 @@ export function DailyScoringTable(props: RowsViewProps) {
               {'کار سخت (۰ تا ' + Names.toPersianDigits(dayCfg.hardLevels) + ')'}
             </th>
             <th className="label-sm is-num" style={{ textAlign: 'center', width: 110 }}>
-              مأموریت ویژه
+              گزارش هدف (۲ امتیاز)
             </th>
             <th className="label-sm is-num" style={{ textAlign: 'center', width: 110 }}>
               امتیاز امروز
@@ -288,18 +288,12 @@ const TableRowItem = memo(function TableRowItem(props: TableRowItemProps) {
         )}
       </td>
       <td style={{ textAlign: 'center' }}>
-        {!dayCfg.specialMission ? (
-          <span className="caption" style={{ color: 'var(--text-subtle)' }}>
-            ندارد
-          </span>
-        ) : (
-          <B.Checkbox
-            checked={specialVal === 1}
-            onChange={function (e) {
-              onCellChange(p.id, 'special', e.target.checked ? 1 : 0);
-            }}
-          />
-        )}
+        <B.Checkbox
+          checked={specialVal === 1}
+          onChange={function (e) {
+            onCellChange(p.id, 'special', e.target.checked ? 1 : 0);
+          }}
+        />
       </td>
       <td
         className="body-md is-num"
@@ -309,6 +303,11 @@ const TableRowItem = memo(function TableRowItem(props: TableRowItemProps) {
           color: dayScoreVal === '—' ? 'var(--text-subtle)' : 'var(--text-success)'
         }}
       >
+        {standardDay(p, rec, dayCfg) && (
+          <B.Badge intent="success" emphasis="subtle">
+            روز استاندارد ✓
+          </B.Badge>
+        )}{' '}
         {dayScoreVal}
       </td>
     </tr>

@@ -6,7 +6,7 @@
 import { useState } from 'react';
 import { B } from './bushido';
 import { Names } from './names';
-import { Scoring } from './scoring';
+import { Scoring, standardDay } from './scoring';
 import { Brand } from './brand';
 import type { Cohort, DayConfig, Group, ParticipantStatus, Toast } from './types';
 
@@ -17,6 +17,7 @@ export interface ReportRow {
   rawName: string;
   status: ParticipantStatus;
   habitsText: string;
+  standardDay: boolean;
   hasRecord: boolean;
   hardText: string;
   specialText: string;
@@ -147,14 +148,10 @@ function getGroupDayReportRows(
       }
     }
 
-    // مأموریت ویژه
-    let specialText = 'ندارد';
-    if (dayCfg.specialMission) {
-      if (rec && rec.special != null) {
-        specialText = rec.special > 0 ? '✓' : '✗';
-      } else {
-        specialText = 'ثبت‌نشده';
-      }
+    // گزارش هدف (در همهٔ روزهای main فعال است)
+    let specialText = 'ثبت‌نشده';
+    if (rec && rec.special != null) {
+      specialText = rec.special > 0 ? '✓' : '✗';
     }
 
     // امتیاز امروز
@@ -182,6 +179,7 @@ function getGroupDayReportRows(
       rawName: p.name,
       status: p.status,
       habitsText: habitsText,
+      standardDay: standardDay(p, rec, dayCfg),
       hasRecord: !!hasRecord,
       hardText: hardText,
       specialText: specialText,
@@ -483,7 +481,6 @@ function renderSingleCanvasPart(
   const width = 1080;
   const dayCfg = reportData.dayCfg || {};
   const showHard = dayCfg.hardLevels > 0;
-  const showSpecial = !!dayCfg.specialMission;
 
   const padX = T.s8;
   const tableX = T.s4;
@@ -603,12 +600,12 @@ function renderSingleCanvasPart(
   // ۳. جدول
   const cols = [{ id: 'rowNum', title: 'ردیف', width: T.s12 + T.s1 + T.s1 }];
   cols.push({ id: 'name', title: 'نام و نام خانوادگی', width: 0 });
-  cols.push({ id: 'habits', title: 'عادت‌ها', width: 110 });
+  cols.push({ id: 'habits', title: 'عادت‌ها', width: 150 });
   if (showHard) cols.push({ id: 'hard', title: 'کار سخت', width: 120 });
-  if (showSpecial) cols.push({ id: 'special', title: 'مأموریت', width: 100 });
-  cols.push({ id: 'dayScore', title: 'امتیاز امروز', width: 150 });
-  cols.push({ id: 'totalScore', title: 'مجموع', width: 140 });
-  cols.push({ id: 'percent', title: 'درصد', width: 130 });
+  cols.push({ id: 'special', title: 'گزارش هدف', width: 140 });
+  cols.push({ id: 'dayScore', title: 'امتیاز امروز', width: 140 });
+  cols.push({ id: 'totalScore', title: 'مجموع', width: 130 });
+  cols.push({ id: 'percent', title: 'درصد', width: 120 });
   const fixedW = cols.reduce(function (sum2, c) {
     return sum2 + c.width;
   }, 0);
@@ -700,7 +697,9 @@ function renderSingleCanvasPart(
         let weight = T.wRegular;
         let color = T.text;
         if (col.id === 'habits') {
-          text = row.habitsText;
+          // «روز استاندارد» کنار عادت‌ها با یک تیک کوچک نشان داده می‌شود
+          text = row.standardDay ? row.habitsText + ' ✓' : row.habitsText;
+          if (row.standardDay) color = T.success;
         } else if (col.id === 'hard') {
           text = isDash(row.hardText) ? '—' : row.hardText;
           if (row.hardText === 'انجام نداد') color = T.subtle;

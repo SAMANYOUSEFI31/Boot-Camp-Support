@@ -7,7 +7,7 @@ import { createRoot } from 'react-dom/client';
 import { B } from './bushido';
 import { Names } from './names';
 import { errorMessage } from './errors';
-import { Scoring } from './scoring';
+import { Scoring, standardDay } from './scoring';
 import { Store } from './store';
 import { ImageExport } from './image-export';
 import type { AppState, Cohort, Group } from './types';
@@ -19,50 +19,50 @@ const asState = (v: unknown) => v as AppState;
 const testDefinitions = [
   {
     id: 1,
-    title: '۱. habitCount=3, done=3, hard=3, special=1 در روز ۳ سطحی با مأموریت -> ۷ از ۷',
+    title: '۱. habitCount=3, done=3, hard=3, special=1 در روز ۳ سطحی -> ۱۰ از ۱۰',
     run: function () {
       const p = { id: 'p1', habitCount: 3 };
       const day = { n: 8, type: 'main', hardLevels: 3, specialMission: true };
       const rec = { done: 3, hard: 3, special: 1 };
       const sc = Scoring.dayScore(p, rec, day);
       const mx = Scoring.dayMax(p, day, rec);
-      return { pass: sc === 7 && mx === 7, detail: 'امتیاز: ' + sc + ' از ' + mx };
+      return { pass: sc === 10 && mx === 10, detail: 'امتیاز: ' + sc + ' از ' + mx };
     }
   },
   {
     id: 2,
-    title: '۲. habitCount=4, done=2, hard=0, special=0 در همان روز -> ۲ از ۸',
+    title: '۲. habitCount=4, done=2, hard=0, special=0 در همان روز -> ۲ از ۱۱',
     run: function () {
       const p = { id: 'p2', habitCount: 4 };
       const day = { n: 8, type: 'main', hardLevels: 3, specialMission: true };
       const rec = { done: 2, hard: 0, special: 0 };
       const sc = Scoring.dayScore(p, rec, day);
       const mx = Scoring.dayMax(p, day, rec);
-      return { pass: sc === 2 && mx === 8, detail: 'امتیاز: ' + sc + ' از ' + mx };
+      return { pass: sc === 2 && mx === 11, detail: 'امتیاز: ' + sc + ' از ' + mx };
     }
   },
   {
     id: 3,
-    title: '۳. habitCount=1, done=1, hard=2 در روز ۲ سطحی بدون مأموریت -> ۳ از ۳',
+    title: '۳. habitCount=1, done=1, hard=2 در روز ۲ سطحی -> ۵ از ۷',
     run: function () {
       const p = { id: 'p3', habitCount: 1 };
       const day = { n: 10, type: 'main', hardLevels: 2, specialMission: false };
       const rec = { done: 1, hard: 2, special: 0 };
       const sc = Scoring.dayScore(p, rec, day);
       const mx = Scoring.dayMax(p, day, rec);
-      return { pass: sc === 3 && mx === 3, detail: 'امتیاز: ' + sc + ' از ' + mx };
+      return { pass: sc === 5 && mx === 7, detail: 'امتیاز: ' + sc + ' از ' + mx };
     }
   },
   {
     id: 4,
-    title: '۴. روز بدون کار سخت (hardLevels=0) با مأموریت، habitCount=2, done=2, special=1 -> ۳ از ۳',
+    title: '۴. روز بدون کار سخت (hardLevels=0) با گزارش هدف، habitCount=2, done=2, special=1 -> ۶ از ۶',
     run: function () {
       const p = { id: 'p4', habitCount: 2 };
       const day = { n: 11, type: 'main', hardLevels: 0, specialMission: true };
       const rec = { done: 2, hard: 0, special: 1 };
       const sc = Scoring.dayScore(p, rec, day);
       const mx = Scoring.dayMax(p, day, rec);
-      return { pass: sc === 3 && mx === 3, detail: 'امتیاز: ' + sc + ' از ' + mx };
+      return { pass: sc === 6 && mx === 6, detail: 'امتیاز: ' + sc + ' از ' + mx };
     }
   },
   {
@@ -86,7 +86,7 @@ const testDefinitions = [
       const val = Scoring.validateRecord(p, rec, day);
       const sc = Scoring.dayScore(p, rec, day);
       return {
-        pass: !val.valid && sc === 3,
+        pass: !val.valid && sc === 5,
         detail: 'خطا: ' + val.errors.join('، ') + ' | امتیاز کلَمپ شده: ' + sc
       };
     }
@@ -100,7 +100,7 @@ const testDefinitions = [
       const rec = { done: 2, hard: 1, special: 0 };
       const mx = Scoring.dayMax(p, day, rec);
       const sc = Scoring.dayScore(p, rec, day);
-      return { pass: mx === 6 && sc === 3, detail: 'حداکثر: ' + mx + ' | امتیاز: ' + sc };
+      return { pass: mx === 7 && sc === 3, detail: 'حداکثر: ' + mx + ' | امتیاز: ' + sc };
     }
   },
   {
@@ -141,7 +141,7 @@ const testDefinitions = [
   },
   {
     id: 10,
-    title: '۱۰. روز بسته‌شده و نفری که هیچ رکوردی ندارد -> امتیاز ۰، حداکثر = hardLevels + مأموریت',
+    title: '۱۰. روز بسته‌شده و نفری که هیچ رکوردی ندارد -> امتیاز ۰، حداکثر = hardLevels + گزارش هدف',
     run: function () {
       const p = { id: 'p10', habitCount: null };
       const cohort = {
@@ -151,14 +151,14 @@ const testDefinitions = [
       const g = { id: 'g1', closedDays: [8] };
       const res = Scoring.personTotals(p, cohort, g);
       return {
-        pass: res.totalScore === 0 && res.totalMax === 4,
+        pass: res.totalScore === 0 && res.totalMax === 5,
         detail: 'امتیاز: ' + res.totalScore + ' از ' + res.totalMax
       };
     }
   },
   {
     id: 11,
-    title: '۱۱. جمع تجمعی: روز ۸ با ۷ از ۷ و روز ۹ با ۳ از ۵ -> ۱۰ از ۱۲ و درصد ۸۳',
+    title: '۱۱. جمع تجمعی: روز ۸ با ۱۰ از ۱۰ و روز ۹ با ۳ از ۸ -> ۱۳ از ۱۸ و درصد ۷۲',
     run: function () {
       const p = { id: 'p11', habitCount: 3 };
       const cohort = {
@@ -171,7 +171,7 @@ const testDefinitions = [
       const g = { id: 'g1', closedDays: [8, 9] };
       const res = Scoring.personTotals(p, cohort, g);
       return {
-        pass: res.totalScore === 10 && res.totalMax === 12 && res.percent === 83,
+        pass: res.totalScore === 13 && res.totalMax === 18 && res.percent === 72,
         detail: res.totalScore + ' از ' + res.totalMax + ' (' + res.percent + '٪)'
       };
     }
@@ -196,7 +196,7 @@ const testDefinitions = [
       const g = { id: 'g1', closedDays: [8] };
       const s = Scoring.groupSummary(cohort, g, 8, false);
       return {
-        pass: s.activeCount === 1 && s.totalScore === 7 && s.totalMax === 7,
+        pass: s.activeCount === 1 && s.totalScore === 10 && s.totalMax === 10,
         detail: 'امتیاز گروه فعال: ' + s.totalScore + ' از ' + s.totalMax
       };
     }
@@ -215,7 +215,7 @@ const testDefinitions = [
       g.closedDays = [];
       const t2 = Scoring.personTotals(p, cohort, g);
       return {
-        pass: t1.totalScore === 7 && t2.totalScore === 0,
+        pass: t1.totalScore === 10 && t2.totalScore === 0,
         detail: 'بسته: ' + t1.totalScore + ' -> باز: ' + t2.totalScore
       };
     }
@@ -232,7 +232,7 @@ const testDefinitions = [
       const s2 = Scoring.dayScore(p, rec, day);
       const m2 = Scoring.dayMax(p, day, rec);
       return {
-        pass: s1 === 7 && s2 === 5 && m2 === 5,
+        pass: s1 === 10 && s2 === 8 && m2 === 8,
         detail: 'سقف ۳: ' + s1 + ' -> سقف ۱: ' + s2 + ' از ' + m2
       };
     }
@@ -247,7 +247,7 @@ const testDefinitions = [
       const rAr = { done: '٣', hard: '٢', special: '١' };
       const sFa = Scoring.dayScore(p, rFa, day);
       const sAr = Scoring.dayScore(p, rAr, day);
-      return { pass: sFa === 6 && sAr === 6, detail: 'فارسی: ' + sFa + ' | عربی: ' + sAr };
+      return { pass: sFa === 9 && sAr === 9, detail: 'فارسی: ' + sFa + ' | عربی: ' + sAr };
     }
   },
   {
@@ -284,12 +284,13 @@ const testDefinitions = [
       }
 
       const row1 = reportData.rows[0];
-      // محاسبات برای روز ۸: p1 => done: 3, hard: 3, special: 1 -> dayScore: 7, dayMax: 7, totalScore: 7, totalMax: 7, percent: 100
-      const ok1 = row1.dayScore === 7 && row1.dayMax === 7 && row1.totalScore === 7 && row1.percent === 100;
+      // محاسبات برای روز ۸: p1 => done: 3, hard: 3, special: 1 -> dayScore: 10, dayMax: 10, totalScore: 10, totalMax: 10, percent: 100
+      const ok1 =
+        row1.dayScore === 10 && row1.dayMax === 10 && row1.totalScore === 10 && row1.percent === 100;
 
       const row2 = reportData.rows[1];
-      // محاسبات برای روز ۸: p2 => done: 2, hard: 0, special: 0 -> dayScore: 2, dayMax: 8, totalScore: 2, totalMax: 8, percent: 25
-      const ok2 = row2.dayScore === 2 && row2.dayMax === 8 && row2.totalScore === 2 && row2.percent === 25;
+      // محاسبات برای روز ۸: p2 => done: 2, hard: 0, special: 0 -> dayScore: 2, dayMax: 11, totalScore: 2, totalMax: 11, percent: 18
+      const ok2 = row2.dayScore === 2 && row2.dayMax === 11 && row2.totalScore === 2 && row2.percent === 18;
 
       // تست ۲: با افراد فریز
       const reportWithFrozen = ImageExport.getGroupDayReportRows(asCohort(cohort), group as Group, 8, true);
@@ -424,6 +425,37 @@ const testDefinitions = [
         pass: okMine && !bad.ok && good.ok,
         detail: 'مال من: ' + okMine + ' | خراب: ' + (bad.ok ? '' : bad.error)
       };
+    }
+  },
+  {
+    id: 20,
+    title: '۲۰. قواعد سند ۱.۲: ۲ عادت کامل -> ۴؛ با سخت سطح ۲ -> ۶؛ با هدف -> ۸ از ۸؛ فقط یکی -> ۱',
+    run: function () {
+      const p = { id: 'a', habitCount: 2 };
+      const day = { n: 8, type: 'main', hardLevels: 2, specialMission: true };
+      const a = Scoring.dayScore(p, { done: 2, hard: 0, special: 0 }, day);
+      const b = Scoring.dayScore(p, { done: 2, hard: 2, special: 0 }, day);
+      const full = { done: 2, hard: 2, special: 1 };
+      const c = Scoring.dayScore(p, full, day);
+      const mx = Scoring.dayMax(p, day, full);
+      const half = { done: 1, hard: 0, special: 0 };
+      const d = Scoring.dayScore(p, half, day);
+      const ok = a === 4 && b === 6 && c === 8 && mx === 8 && d === 1 && !standardDay(p, half, day);
+      return { pass: ok, detail: [a, b, c + '/' + mx, d].join(' | ') };
+    }
+  },
+  {
+    id: 21,
+    title: '۲۱. سقف ۲۱ روز (عادت + روز استاندارد) برای ۱ تا ۴ عادت: ۶۳ و ۸۴ و ۱۰۵ و ۱۲۶',
+    run: function () {
+      const day = { n: 8, type: 'main', hardLevels: 0, specialMission: true };
+      const caps = [1, 2, 3, 4].map(function (h) {
+        return Scoring.dayScore({ id: 'h', habitCount: h }, { done: h, hard: null, special: 0 }, day) * 21;
+      });
+      const nullStd = standardDay({ id: 'n', habitCount: null }, { done: 0 }, day);
+      const zeroStd = standardDay({ id: 'z', habitCount: 0 }, { done: 0 }, day);
+      const ok = caps.join(',') === '63,84,105,126' && !nullStd && !zeroStd;
+      return { pass: ok, detail: caps.join(' / ') + ' | habitCount null یا ۰: بدون روز استاندارد' };
     }
   }
 ];

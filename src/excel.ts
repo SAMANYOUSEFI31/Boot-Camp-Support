@@ -4,7 +4,7 @@
  */
 
 import { Names } from './names';
-import { Scoring } from './scoring';
+import { Scoring, standardDay } from './scoring';
 import type { Cohort, Group } from './types';
 
 // کتابخانهٔ ExcelJS از CDN می‌آید و تایپ ندارد
@@ -152,7 +152,7 @@ function buildGroupDayReportSheets(
     ' (' +
     dayShamsi +
     ')';
-  reportSheet.mergeCells('A1:H1');
+  reportSheet.mergeCells('A1:I1');
   const cellA1 = reportSheet.getCell('A1');
   cellA1.value = titleText;
   cellA1.font = FONT_TITLE;
@@ -163,7 +163,7 @@ function buildGroupDayReportSheets(
   const statusText = isClosed
     ? 'وضعیت: نهایی (روز بسته شده است)'
     : 'وضعیت: پیش‌نویس (روز هنوز بسته نشده است)';
-  reportSheet.mergeCells('A2:H2');
+  reportSheet.mergeCells('A2:I2');
   const cellA2 = reportSheet.getCell('A2');
   cellA2.value = statusText;
   cellA2.font = {
@@ -175,11 +175,11 @@ function buildGroupDayReportSheets(
   cellA2.alignment = { horizontal: 'center', vertical: 'middle' };
 
   // سطر ۳: یادآور قانون امتیاز
-  const rules = ['هر عادت ۱ امتیاز'];
+  const rules = ['هر عادت ۱ امتیاز', 'روز استاندارد (همهٔ عادت‌ها) ۲ امتیاز'];
   if (dayCfg.hardLevels > 0)
     rules.push('کار سخت سطح ۱ تا ' + Names.toPersianDigits(dayCfg.hardLevels) + ' امتیاز');
-  if (dayCfg.specialMission) rules.push('مأموریت ویژه ۱ امتیاز');
-  reportSheet.mergeCells('A3:H3');
+  rules.push('گزارش هدف ۲ امتیاز');
+  reportSheet.mergeCells('A3:I3');
   const cellA3 = reportSheet.getCell('A3');
   cellA3.value = 'قوانین امتیاز: ' + rules.join(' ، ');
   cellA3.font = { name: 'Tahoma', size: 8, color: { argb: 'FF71717A' } };
@@ -190,13 +190,14 @@ function buildGroupDayReportSheets(
     'ردیف',
     'نام',
     'عادت‌ها',
+    'روز استاندارد',
     'کار سخت',
-    'مأموریت ویژه',
+    'گزارش هدف',
     'امتیاز امروز',
     'مجموع تا امروز',
     'درصد'
   ];
-  const colWidths = [8, 24, 14, 14, 14, 14, 16, 12];
+  const colWidths = [8, 24, 14, 14, 14, 14, 14, 16, 12];
   const hRow = reportSheet.getRow(4);
   hRow.height = 22;
   headers.forEach(function (h, idx) {
@@ -242,14 +243,13 @@ function buildGroupDayReportSheets(
       }
     }
 
-    // مأموریت ویژه
-    let specialText = 'ندارد';
-    if (dayCfg.specialMission) {
-      if (rec && rec.special != null) {
-        specialText = rec.special > 0 ? '✓' : '✗';
-      } else {
-        specialText = 'ثبت‌نشده';
-      }
+    // روز استاندارد (مشتق‌شده)
+    const standardText = hasRecord ? (standardDay(p, rec, dayCfg) ? '✓' : '—') : '—';
+
+    // گزارش هدف
+    let specialText = 'ثبت‌نشده';
+    if (rec && rec.special != null) {
+      specialText = rec.special > 0 ? '✓' : '✗';
     }
 
     // امتیاز امروز
@@ -268,6 +268,7 @@ function buildGroupDayReportSheets(
       Names.toPersianDigits(idx + 1),
       p.name + (p.status === 'frozen' ? ' (فریز)' : p.status === 'left' ? ' (خارج)' : ''),
       habitsText,
+      standardText,
       hardText,
       specialText,
       dayScoreText,
@@ -296,6 +297,10 @@ function buildGroupDayReportSheets(
     'done',
     'hard',
     'special',
+    'habitScore',
+    'standardDayScore',
+    'hardScore',
+    'goalScore',
     'dayScore',
     'dayMax',
     'totalScore',
@@ -323,6 +328,9 @@ function buildGroupDayReportSheets(
     const sc = rec && (d != null || h != null || s != null) ? Scoring.dayScore(p, rec, dayCfg) : null;
     const mx = rec && (d != null || h != null || s != null) ? Scoring.dayMax(p, dayCfg, rec) : null;
 
+    const bd = rec ? Scoring.dayBreakdown(p, rec, dayCfg) : null;
+    const hasAny = d != null || h != null || s != null;
+
     const rowData = [
       idx + 1,
       p.name,
@@ -330,6 +338,10 @@ function buildGroupDayReportSheets(
       d,
       h,
       s,
+      hasAny && bd ? bd.habits : null,
+      hasAny && bd ? bd.standard : null,
+      hasAny && bd ? bd.hard : null,
+      hasAny && bd ? bd.goal : null,
       sc,
       mx,
       totals.totalScore,

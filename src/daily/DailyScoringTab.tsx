@@ -460,17 +460,15 @@ export function DailyScoringTab(props: { cohort: Cohort; toast?: Toast }) {
           >
             همه‌ی عادت‌ها انجام شد
           </B.Button>
-          {dayCfg.specialMission && (
-            <B.Button
-              variant="ghost"
-              size="sm"
-              onClick={function () {
-                handleBatchAction('all_special_done', 'مأموریت همه انجام شد');
-              }}
-            >
-              مأموریت همه انجام شد
-            </B.Button>
-          )}
+          <B.Button
+            variant="ghost"
+            size="sm"
+            onClick={function () {
+              handleBatchAction('all_special_done', 'گزارش هدف همه انجام شد');
+            }}
+          >
+            گزارش هدف همه انجام شد
+          </B.Button>
           <B.Button
             variant="ghost"
             size="sm"

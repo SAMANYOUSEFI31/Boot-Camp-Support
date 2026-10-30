@@ -6,7 +6,7 @@
 import { memo } from 'react';
 import { B } from '../bushido';
 import { Names } from '../names';
-import { Scoring } from '../scoring';
+import { Scoring, standardDay } from '../scoring';
 import type { CellChange, ParticipantCardProps, RowsViewProps } from './types';
 
 export function DailyScoringCardView(props: RowsViewProps) {
@@ -62,6 +62,7 @@ const ParticipantCard = memo(function ParticipantCard(props: ParticipantCardProp
   const specialVal = rec && rec.special != null ? rec.special : 0;
 
   const hasRecord = rec && (rec.done != null || rec.hard != null || rec.special != null);
+  const isStandard = standardDay(p, rec, dayCfg);
   let dayScoreVal = '—';
   if (hasRecord) {
     const sc = Scoring.dayScore(p, rec, dayCfg);
@@ -132,8 +133,15 @@ const ParticipantCard = memo(function ParticipantCard(props: ParticipantCardProp
               </B.Badge>
             )}
           </div>
-          <div className="bsh-score-chip" data-recorded={hasRecord ? 'true' : 'false'}>
-            {dayScoreVal}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', flexWrap: 'wrap' }}>
+            {isStandard && (
+              <B.Badge intent="success" emphasis="subtle">
+                روز استاندارد ✓
+              </B.Badge>
+            )}
+            <div className="bsh-score-chip" data-recorded={hasRecord ? 'true' : 'false'}>
+              {dayScoreVal}
+            </div>
           </div>
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-1)' }}>
@@ -195,19 +203,17 @@ const ParticipantCard = memo(function ParticipantCard(props: ParticipantCardProp
             </div>
           </div>
         )}
-        {dayCfg.specialMission && (
-          <div className="bsh-special-row">
-            <span className="body-sm" style={{ fontWeight: 500 }}>
-              مأموریت ویژه انجام شد
-            </span>
-            <B.Switch
-              checked={specialVal === 1}
-              onChange={function (e) {
-                onCellChange(p.id, 'special', e.target.checked ? 1 : 0);
-              }}
-            />
-          </div>
-        )}
+        <div className="bsh-special-row">
+          <span className="body-sm" style={{ fontWeight: 500 }}>
+            گزارش هدف (۲ امتیاز)
+          </span>
+          <B.Switch
+            checked={specialVal === 1}
+            onChange={function (e) {
+              onCellChange(p.id, 'special', e.target.checked ? 1 : 0);
+            }}
+          />
+        </div>
       </div>
     </B.Card>
   );

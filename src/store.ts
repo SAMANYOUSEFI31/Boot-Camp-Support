@@ -17,7 +17,7 @@ import type {
   ValidateResult
 } from './types';
 
-const SCHEMA_VERSION = 1;
+const SCHEMA_VERSION = 2;
 const STORAGE_KEY = 'bsh_support_app_state_v1';
 const TAB_CHANNEL_NAME = 'bsh_support_tab_sync';
 const currentTabId = 'tab_' + Math.random().toString(36).slice(2, 9);
@@ -66,7 +66,7 @@ function createDefaultDays(
  */
 function createInitialState(): AppState {
   return {
-    schemaVersion: 1,
+    schemaVersion: SCHEMA_VERSION,
     activeCohortId: null,
     lastBackupAt: null,
     lastChangeAt: new Date().toISOString(),
@@ -96,7 +96,7 @@ function migrate(input: unknown): AppState {
   }
   const data = input as LooseState;
   const version = data.schemaVersion || 1;
-  if (version === 1) {
+  if (version <= SCHEMA_VERSION) {
     if (!Array.isArray(data.cohorts)) data.cohorts = [];
     data.cohorts.forEach(function (c) {
       if (!c.days || !c.days.length) c.days = createDefaultDays();
@@ -108,8 +108,14 @@ function migrate(input: unknown): AppState {
         if (!Array.isArray(g.closedDays)) g.closedDays = [];
         if (g.mine === undefined) g.mine = true;
       });
+      // نسخهٔ ۲: «گزارش هدف» در همهٔ روزهای main فعال است (رکوردها دست‌نخورده می‌مانند)
+      if (version < 2) {
+        c.days.forEach(function (d) {
+          if (d.type === 'main') d.specialMission = true;
+        });
+      }
     });
-    return data as AppState;
+    data.schemaVersion = SCHEMA_VERSION;
   }
   return data as AppState;
 }

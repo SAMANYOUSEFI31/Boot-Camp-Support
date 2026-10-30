@@ -57,3 +57,20 @@ test('نسخهٔ جدا: پسوند فقط وقتی لازم است که نام 
   assert.equal(renamed.state.cohorts[1].name, 'مهر - کپی من');
   assert.equal(renamed.state.cohorts[1].participants.length, 1);
 });
+
+test('مهاجرت به نسخهٔ ۲: گزارش هدف در روزهای main فعال می‌شود و رکوردها دست‌نخورده می‌مانند', () => {
+  const old = state(cohort('c1', 'قدیمی'));
+  old.schemaVersion = 1;
+  old.cohorts[0].days = [
+    { n: 1, type: 'warmup', hardLevels: 0, specialMission: false },
+    { n: 8, type: 'main', hardLevels: 3, specialMission: false }
+  ];
+  const res = Store.validateBackup(JSON.parse(JSON.stringify(old)));
+  assert.ok(res.ok);
+  if (!res.ok) return;
+  const c = res.data.cohorts[0];
+  assert.equal(res.data.schemaVersion, 2);
+  assert.equal(c.days[0].specialMission, false);
+  assert.equal(c.days[1].specialMission, true);
+  assert.deepEqual(c.records, old.cohorts[0].records);
+});

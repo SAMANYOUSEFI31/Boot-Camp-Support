@@ -22,7 +22,7 @@ export interface DayInput {
   n: number;
   type?: string;
   hardLevels?: Num;
-  specialMission?: boolean | null;
+  specialMission?: boolean | null; // قدیمی؛ برای روزهای main همیشه فعال
 }
 interface CohortInput {
   days?: DayInput[];
@@ -36,90 +36,111 @@ interface GroupInput {
 
 const toInt = (v: Num): number => parseInt(String(v), 10);
 
+/** امتیاز «گزارش هدف» (فیلد داده‌ای قدیمی: special) */
+const GOAL_REPORT_POINTS = 2;
+/** امتیاز اضافهٔ «روز استاندارد» */
+const STANDARD_DAY_POINTS = 2;
+
+/** سقف عادت‌های یک فرد در یک روز (با قاعدهٔ موقت وقتی habitCount هنوز null است) */
+function habitCap(participant: ParticipantInput | null | undefined, record?: RecordInput | null): number {
+  if (participant && participant.habitCount != null) {
+    return Math.max(0, toInt(participant.habitCount) || 0);
+  }
+  if (record && record.done != null && record.done !== '') {
+    return Math.max(0, parseInt(toLatinDigits(record.done), 10) || 0);
+  }
+  return 0;
+}
+
+/** تعداد عادت‌های انجام‌شده (نسبت به سقف) */
+function habitsDone(
+  participant: ParticipantInput | null | undefined,
+  record: RecordInput | null | undefined
+): number {
+  if (!record || record.done == null || record.done === '') return 0;
+  const d = parseInt(toLatinDigits(record.done), 10);
+  if (isNaN(d)) return 0;
+  return Math.max(0, Math.min(d, habitCap(participant, record)));
+}
+
+/** فقط روزهای main امتیاز دارند؛ گزارش هدف در همهٔ آن‌ها فعال است */
+const isScoredDay = (dayCfg: DayInput | null | undefined): dayCfg is DayInput =>
+  !!dayCfg && dayCfg.type !== 'warmup' && dayCfg.type !== 'review';
+
 /**
- * محاسبه حداکثر امتیاز ممکن برای یک فرد در یک روز
- * @param {Object} participant فرد { id, habitCount, ... }
- * @param {Object} dayCfg تنظیم روز { n, type: 'warmup'|'main'|'review', hardLevels, specialMission }
- * @param {Object} [record] رکورد ثبت‌شده روز (برای قاعده موقت در صورت null بودن habitCount)
- * @returns {number} حداکثر امتیاز روز
+ * «روز استاندارد»: habitCount ≥ ۱ و همهٔ عادت‌های انتخابی انجام شده باشد.
+ * کاملاً مشتق‌شده است؛ کار سخت و گزارش هدف نقشی ندارند.
+ */
+export function standardDay(
+  participant: ParticipantInput | null | undefined,
+  record: RecordInput | null | undefined,
+  dayCfg: DayInput | null | undefined
+): boolean {
+  if (!record || !isScoredDay(dayCfg)) return false;
+  if (!participant || participant.habitCount == null) return false;
+  const cap = Math.max(0, toInt(participant.habitCount) || 0);
+  return cap >= 1 && habitsDone(participant, record) === cap;
+}
+
+/**
+ * حداکثر امتیاز ممکن یک فرد در یک روز:
+ * habitCount + (habitCount≥۱ ? ۲ : ۰) + hardLevels + ۲
  */
 function dayMax(
   participant: ParticipantInput | null | undefined,
   dayCfg: DayInput | null | undefined,
   record?: RecordInput | null
 ): number {
-  if (!dayCfg || dayCfg.type === 'warmup' || dayCfg.type === 'review') {
-    return 0;
-  }
+  if (!isScoredDay(dayCfg)) return 0;
 
-  let effectiveHabitCount = 0;
-  if (participant && participant.habitCount != null) {
-    effectiveHabitCount = Math.max(0, toInt(participant.habitCount) || 0);
-  } else if (record && record.done != null) {
-    // قاعده موقت: اگر habitCount هنوز null است و done ثبت شده، از done استفاده کن
-    const latinDone = toLatinDigits(record.done);
-    effectiveHabitCount = Math.max(0, parseInt(latinDone, 10) || 0);
-  }
-
+  const cap = habitCap(participant, record);
+  // روز استاندارد فقط وقتی معنا دارد که habitCount ثبت شده باشد
+  const standardMax = participant && participant.habitCount != null && cap >= 1 ? STANDARD_DAY_POINTS : 0;
   const hardMax = Math.max(0, toInt(dayCfg.hardLevels != null ? dayCfg.hardLevels : 0) || 0);
-  const specialMax = dayCfg.specialMission ? 1 : 0;
 
-  return effectiveHabitCount + hardMax + specialMax;
+  return cap + standardMax + hardMax + GOAL_REPORT_POINTS;
 }
 
 /**
- * محاسبه امتیاز کسب‌شده یک فرد در یک روز
- * @param {Object} participant فرد
- * @param {Object} record رکورد روز { done, hard, special }
- * @param {Object} dayCfg تنظیم روز
- * @returns {number} امتیاز روز
+ * امتیاز کسب‌شدهٔ یک فرد در یک روز
+ * (عادت‌ها + روز استاندارد + بالاترین سطح کار سخت + گزارش هدف)
  */
 function dayScore(
   participant: ParticipantInput | null | undefined,
   record: RecordInput | null | undefined,
   dayCfg: DayInput | null | undefined
 ): number {
-  if (!record || !dayCfg || dayCfg.type === 'warmup' || dayCfg.type === 'review') {
-    return 0;
-  }
+  const b = dayBreakdown(participant, record, dayCfg);
+  return b.total;
+}
 
-  // سقف عادت‌ها
-  let habitCap = 0;
-  if (participant && participant.habitCount != null) {
-    habitCap = Math.max(0, toInt(participant.habitCount) || 0);
-  } else if (record.done != null) {
-    const ld = toLatinDigits(record.done);
-    habitCap = Math.max(0, parseInt(ld, 10) || 0);
-  }
+/** تفکیک امتیاز روز برای نمایش و گزارش‌ها */
+function dayBreakdown(
+  participant: ParticipantInput | null | undefined,
+  record: RecordInput | null | undefined,
+  dayCfg: DayInput | null | undefined
+) {
+  const res = { habits: 0, standard: 0, hard: 0, goal: 0, total: 0 };
+  if (!record || !isScoredDay(dayCfg)) return res;
 
-  let scoreDone = 0;
-  if (record.done != null && record.done !== '') {
-    const d = parseInt(toLatinDigits(record.done), 10);
-    if (!isNaN(d)) {
-      scoreDone = Math.max(0, Math.min(d, habitCap));
-    }
-  }
+  res.habits = habitsDone(participant, record);
+  res.standard = standardDay(participant, record, dayCfg) ? STANDARD_DAY_POINTS : 0;
 
   // کار سخت (سطحِ بالاترین مرحله، نه جمع مراحل)
   const hardCap = Math.max(0, toInt(dayCfg.hardLevels != null ? dayCfg.hardLevels : 0) || 0);
-  let scoreHard = 0;
   if (hardCap > 0 && record.hard != null && record.hard !== '') {
     const h = parseInt(toLatinDigits(record.hard), 10);
-    if (!isNaN(h)) {
-      scoreHard = Math.max(0, Math.min(h, hardCap));
-    }
+    if (!isNaN(h)) res.hard = Math.max(0, Math.min(h, hardCap));
   }
 
-  // مأموریت ویژه (۱ یا ۰)
-  let scoreSpecial = 0;
-  if (dayCfg.specialMission && record.special != null && record.special !== '') {
+  // گزارش هدف (special: ۱ ← ۲ امتیاز)
+  if (record.special != null && record.special !== '') {
     const s = parseInt(toLatinDigits(record.special), 10);
-    if (!isNaN(s) && s > 0) {
-      scoreSpecial = 1;
-    }
+    if (!isNaN(s) && s > 0) res.goal = GOAL_REPORT_POINTS;
   }
 
-  return scoreDone + scoreHard + scoreSpecial;
+  res.total = res.habits + res.standard + res.hard + res.goal;
+  return res;
 }
 
 /**
@@ -160,7 +181,7 @@ function validateRecord(
   if (record.special != null && record.special !== '') {
     const s = parseInt(toLatinDigits(record.special), 10);
     if (isNaN(s) || (s !== 0 && s !== 1)) {
-      errors.push('وضعیت مأموریت ویژه نامعتبر است.');
+      errors.push('وضعیت گزارش هدف نامعتبر است.');
     }
   }
 
@@ -288,6 +309,10 @@ function groupSummary(
 export const Scoring = {
   dayMax: dayMax,
   dayScore: dayScore,
+  dayBreakdown: dayBreakdown,
+  standardDay: standardDay,
+  GOAL_REPORT_POINTS: GOAL_REPORT_POINTS,
+  STANDARD_DAY_POINTS: STANDARD_DAY_POINTS,
   validateRecord: validateRecord,
   personTotals: personTotals,
   groupSummary: groupSummary

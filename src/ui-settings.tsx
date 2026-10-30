@@ -24,7 +24,6 @@ function SettingsTab(props: { cohort: Cohort; toast?: Toast }) {
   const [rangeStart, setRangeStart] = useState('8');
   const [rangeEnd, setRangeEnd] = useState('28');
   const [rangeHard, setRangeHard] = useState('3');
-  const [rangeSpecial, setRangeSpecial] = useState(true);
 
   const days = cohort.days || [];
 
@@ -33,6 +32,8 @@ function SettingsTab(props: { cohort: Cohort; toast?: Toast }) {
       if (d.n === dayN) {
         const copy = Object.assign({}, d);
         copy[field] = value;
+        // گزارش هدف در همهٔ روزهای main فعال است
+        if (field === 'type' && value === 'main') copy.specialMission = true;
         return copy;
       }
       return d;
@@ -79,7 +80,7 @@ function SettingsTab(props: { cohort: Cohort; toast?: Toast }) {
       if (d.n >= start && d.n <= end) {
         return Object.assign({}, d, {
           hardLevels: hard,
-          specialMission: rangeSpecial
+          specialMission: d.type === 'main' ? true : d.specialMission
         });
       }
       return d;
@@ -130,6 +131,9 @@ function SettingsTab(props: { cohort: Cohort; toast?: Toast }) {
             <div className="title" style={{ marginBottom: 'var(--space-2)' }}>
               اعمال سریع به بازه‌ای از روزها
             </div>
+            <p className="caption" style={{ color: 'var(--text-subtle)', marginBlockEnd: 'var(--space-3)' }}>
+              گزارش هدف هر روز ۲ امتیاز و اختیاری است.
+            </p>
             <div
               style={{
                 display: 'grid',
@@ -167,15 +171,6 @@ function SettingsTab(props: { cohort: Cohort; toast?: Toast }) {
                   setRangeHard(e.target.value);
                 }}
               />
-              <div style={{ paddingBottom: 'var(--space-2)' }}>
-                <B.Checkbox
-                  label="مأموریت ویژه دارد"
-                  checked={rangeSpecial}
-                  onChange={function (e) {
-                    setRangeSpecial(e.target.checked);
-                  }}
-                />
-              </div>
               <div>
                 <B.Button variant="secondary" onClick={handleApplyToRange}>
                   اعمال به بازه
@@ -207,9 +202,6 @@ function SettingsTab(props: { cohort: Cohort; toast?: Toast }) {
                   </th>
                   <th className="label-sm" style={{ minWidth: 'var(--space-32)' }}>
                     سطح کار سخت
-                  </th>
-                  <th className="label-sm" style={{ minWidth: 120, textAlign: 'center' }}>
-                    مأموریت ویژه
                   </th>
                   <th className="label-sm" style={{ minWidth: 100, textAlign: 'center' }}>
                     اقدام
@@ -254,15 +246,6 @@ function SettingsTab(props: { cohort: Cohort; toast?: Toast }) {
                           value={String(d.hardLevels != null ? d.hardLevels : 3)}
                           onChange={function (e) {
                             handleDayChange(d.n, 'hardLevels', parseInt(e.target.value, 10));
-                          }}
-                        />
-                      </td>
-                      <td style={{ textAlign: 'center' }}>
-                        <B.Checkbox
-                          disabled={d.type !== 'main'}
-                          checked={!!d.specialMission}
-                          onChange={function (e) {
-                            handleDayChange(d.n, 'specialMission', e.target.checked);
                           }}
                         />
                       </td>
