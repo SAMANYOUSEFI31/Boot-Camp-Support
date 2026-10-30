@@ -223,7 +223,7 @@ function EmptyCohortState(props: {
   return (
     <div
       style={{
-        maxWidth: 640,
+        maxWidth: 'var(--container-sm)',
         margin: 'var(--space-12) auto',
         padding: '0 var(--space-4)'
       }}

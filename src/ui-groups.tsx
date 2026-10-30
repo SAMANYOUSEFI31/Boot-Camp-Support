@@ -630,13 +630,13 @@ function GroupMatrixView(props: { cohort: Cohort; group: Group; members: Partici
                 </th>
               );
             })}
-            <th className="label-sm is-num" style={{ textAlign: 'center', minWidth: 64 }}>
+            <th className="label-sm is-num" style={{ textAlign: 'center', minWidth: 'var(--space-16)' }}>
               مجموع
             </th>
-            <th className="label-sm is-num" style={{ textAlign: 'center', minWidth: 64 }}>
+            <th className="label-sm is-num" style={{ textAlign: 'center', minWidth: 'var(--space-16)' }}>
               حداکثر
             </th>
-            <th className="label-sm is-num" style={{ textAlign: 'center', minWidth: 64 }}>
+            <th className="label-sm is-num" style={{ textAlign: 'center', minWidth: 'var(--space-16)' }}>
               درصد
             </th>
           </tr>

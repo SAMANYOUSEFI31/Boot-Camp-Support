@@ -67,7 +67,7 @@ export function DailyScoringTable(props: RowsViewProps) {
       >
         <thead>
           <tr>
-            <th className="label-sm" style={{ width: 50, textAlign: 'center' }}>
+            <th className="label-sm" style={{ width: 'var(--space-12)', textAlign: 'center' }}>
               ردیف
             </th>
             <th
@@ -78,19 +78,19 @@ export function DailyScoringTable(props: RowsViewProps) {
             >
               نام و نام خانوادگی
             </th>
-            <th className="label-sm is-num" style={{ textAlign: 'center', width: 110 }}>
+            <th className="label-sm is-num" style={{ textAlign: 'center', width: 'calc(var(--space-24) + var(--space-4))' }}>
               تعداد عادت
             </th>
             <th className="label-sm is-num" style={{ textAlign: 'center' }}>
               عادت‌های انجام‌شده
             </th>
-            <th className="label-sm is-num" style={{ textAlign: 'center', width: 130 }}>
+            <th className="label-sm is-num" style={{ textAlign: 'center', width: 'var(--space-32)' }}>
               {'کار سخت (۰ تا ' + Names.toPersianDigits(dayCfg.hardLevels) + ')'}
             </th>
-            <th className="label-sm is-num" style={{ textAlign: 'center', width: 110 }}>
+            <th className="label-sm is-num" style={{ textAlign: 'center', width: 'calc(var(--space-24) + var(--space-4))' }}>
               گزارش هدف (۲ امتیاز)
             </th>
-            <th className="label-sm is-num" style={{ textAlign: 'center', width: 110 }}>
+            <th className="label-sm is-num" style={{ textAlign: 'center', width: 'calc(var(--space-24) + var(--space-4))' }}>
               امتیاز این روز
             </th>
           </tr>
