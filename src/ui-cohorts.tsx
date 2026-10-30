@@ -6,6 +6,9 @@
 import { useEffect, useState, type ChangeEvent } from 'react';
 import { B } from './bushido';
 import { HelpHint } from './help-hint';
+import { MergePanel } from './ui-merge-panel';
+import { defaultPlan } from './merge-groups';
+import type { MergePlan } from './merge-groups';
 import { Names } from './names';
 import { errorMessage } from './errors';
 import { Store } from './store';
@@ -251,6 +254,8 @@ function RestoreBackupModal(props: { open: boolean; onClose: () => void; toast?:
   const [decisions, setDecisions] = useState<Record<number, MergeDecision>>({}); // { [اندیس دوره]: skip|replace|copy }
   const [names, setNames] = useState<Record<number, string>>({}); // { [اندیس دوره]: نام قابل‌ویرایش }
   const [groupMine, setGroupMine] = useState<Record<number, Record<string, boolean>>>({}); // { [اندیس دوره]: { [شناسه گروه]: bool } }
+  const [cohortTarget, setCohortTarget] = useState<Record<number, string>>({}); // { [اندیس دوره]: 'separate' | شناسهٔ دورهٔ فعلی }
+  const [plans, setPlans] = useState<Record<number, MergePlan>>({}); // برنامهٔ ادغام هر دوره
 
   useEffect(
     function () {
@@ -260,6 +265,8 @@ function RestoreBackupModal(props: { open: boolean; onClose: () => void; toast?:
         setErrorMsg('');
         setMode('merge');
         setSelected({});
+        setCohortTarget({});
+        setPlans({});
         setDecisions({});
         setGroupMine({});
         setNames({});
@@ -302,9 +309,16 @@ function RestoreBackupModal(props: { open: boolean; onClose: () => void; toast?:
       const dec: Record<number, MergeDecision> = {};
       const mine: Record<number, Record<string, boolean>> = {};
       const nm: Record<number, string> = {};
+      const tgt: Record<number, string> = {};
+      const pl: Record<number, MergePlan> = {};
+      const nowCohorts = Store.getState().cohorts || [];
       v.data.cohorts.forEach(function (c, i) {
         sel[i] = true;
         dec[i] = 'skip';
+        // هم‌نام و هم‌تاریخ (با نرمال‌سازی) = ادغام در همان دوره؛ وگرنه دورهٔ جدا
+        const ti = Store.findMergeTarget(nowCohorts, c);
+        tgt[i] = ti !== -1 ? nowCohorts[ti].id : 'separate';
+        if (ti !== -1) pl[i] = defaultPlan(nowCohorts[ti], c);
         mine[i] = {};
         c.groups.forEach(function (g) {
           mine[i][g.id] = g.mine !== false;
@@ -313,6 +327,8 @@ function RestoreBackupModal(props: { open: boolean; onClose: () => void; toast?:
       setSelected(sel);
       setDecisions(dec);
       setGroupMine(mine);
+      setCohortTarget(tgt);
+      setPlans(pl);
       setNames(nm);
       setBackup(v.data);
     };
@@ -361,13 +377,43 @@ function RestoreBackupModal(props: { open: boolean; onClose: () => void; toast?:
         Store.restoreState(backup);
         if (toast) toast.show({ intent: 'success', message: 'اطلاعات با فایل بکاپ جایگزین شد.' });
       } else {
+        const targets: Record<number, string | null> = {};
+        let willModify = false;
+        cohorts.forEach(function (c, i) {
+          if (!selected[i]) return;
+          const t = cohortTarget[i];
+          targets[i] = t && t !== 'separate' ? t : null;
+          if (targets[i] || decisions[i] === 'replace') willModify = true;
+        });
+        // مثل جایگزینی کامل: پیش از دست‌زدن به دورهٔ موجود، یک نسخهٔ احتیاطی بگیر
+        if (willModify && currentCohorts.length) downloadBeforeRestoreBackup();
         const report = Store.mergeFromBackup(backup, {
           selected: selected,
           decisions: decisions,
           groupMine: groupMine,
-          rename: names
+          rename: names,
+          targets: targets,
+          plans: plans
         });
         const parts = [];
+        report.merged.forEach(function (m) {
+          const s = m.stats;
+          parts.push(
+            s.nothingNew
+              ? '«' + m.name + '»: چیز تازه‌ای نبود'
+              : '«' +
+                  m.into +
+                  '»: ' +
+                  Names.toPersianDigits(s.groupsAdded) +
+                  ' گروه، ' +
+                  Names.toPersianDigits(s.peopleAdded) +
+                  ' نفر، ' +
+                  Names.toPersianDigits(s.recordsAdded + s.recordsReplaced) +
+                  ' رکورد اضافه شد'
+          );
+          if (s.overlaps.length)
+            parts.push(Names.toPersianDigits(s.overlaps.length) + ' نفر در دو گروه هستند');
+        });
         if (report.added.length) parts.push(Names.toPersianDigits(report.added.length) + ' دوره اضافه شد');
         if (report.replaced.length)
           parts.push(Names.toPersianDigits(report.replaced.length) + ' دوره جایگزین شد');
@@ -402,8 +448,14 @@ function RestoreBackupModal(props: { open: boolean; onClose: () => void; toast?:
     const groupsCount = c.groups.length;
     const peopleCount = c.participants.length;
     const shownName = names[i] !== undefined ? names[i] : c.name;
+    const mergeTargetId = cohortTarget[i] && cohortTarget[i] !== 'separate' ? cohortTarget[i] : '';
+    const mergeTarget = currentCohorts.find(function (x) {
+      return x.id === mergeTargetId;
+    });
     const conflict =
-      isMerge && Store.findConflictIndex(currentCohorts, { ...c, name: shownName.trim() || c.name }) !== -1;
+      isMerge &&
+      !mergeTarget &&
+      Store.findConflictIndex(currentCohorts, { ...c, name: shownName.trim() || c.name }) !== -1;
     const isSelected = !!selected[i];
 
     return (
@@ -416,7 +468,36 @@ function RestoreBackupModal(props: { open: boolean; onClose: () => void; toast?:
               setIn(setSelected, selected, i, e.target.checked);
             }}
           />
-          {isSelected && (
+          {isSelected && currentCohorts.length > 0 && (
+            <B.Select
+              label="این دوره چه شود؟"
+              options={[{ value: 'separate', label: 'دورهٔ جدا بساز' }].concat(
+                currentCohorts.map(function (x) {
+                  return { value: x.id, label: 'ادغام در دورهٔ: ' + x.name };
+                })
+              )}
+              value={cohortTarget[i] || 'separate'}
+              onChange={function (e) {
+                const v = e.target.value;
+                setIn(setCohortTarget, cohortTarget, i, v);
+                const ct = currentCohorts.find(function (x) {
+                  return x.id === v;
+                });
+                if (ct) setIn(setPlans, plans, i, defaultPlan(ct, c));
+              }}
+            />
+          )}
+          {isSelected && mergeTarget && plans[i] && (
+            <MergePanel
+              current={mergeTarget}
+              file={c}
+              plan={plans[i]}
+              onChange={function (p) {
+                setIn(setPlans, plans, i, p);
+              }}
+            />
+          )}
+          {isSelected && !mergeTarget && (
             <div style={{ display: 'flex', gap: 'var(--space-2)', alignItems: 'flex-end', flexWrap: 'wrap' }}>
               <div style={{ flex: 1, minInlineSize: 0 }}>
                 <B.TextField
@@ -463,7 +544,7 @@ function RestoreBackupModal(props: { open: boolean; onClose: () => void; toast?:
               <HelpHint help="restoreConflict" visibleLabel />
             </B.Alert>
           )}
-          {isSelected && groupsCount > 0 && (
+          {isSelected && !mergeTarget && groupsCount > 0 && (
             <div style={{ display: 'grid', gap: 'var(--space-1)' }}>
               <div style={{ display: 'flex', gap: 'var(--space-2)', flexWrap: 'wrap' }}>
                 <B.Button
