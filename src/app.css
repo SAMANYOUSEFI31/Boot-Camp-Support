@@ -270,8 +270,15 @@ th.bsh-sticky-right { z-index: calc(var(--layer-raised) + 1); }
   font: inherit;
   cursor: pointer;
 }
+/* در حالت عادی فقط خودِ آیکون کمرنگ است؛ با هاور، فوکوس یا باز بودن پررنگ می‌شود (بدون دایرهٔ پس‌زمینه) */
+.bsh-help__btn svg { opacity: 0.6; transition: opacity var(--duration-fast) var(--ease-standard, ease); }
 .bsh-help__btn.has-label { padding-inline: var(--space-2); }
-.bsh-help__btn:hover { color: var(--text-default); background: var(--bg-neutral-subtle); }
+.bsh-help__btn:hover,
+.bsh-help__btn:focus-visible,
+.bsh-help__btn[aria-expanded="true"] { color: var(--text-default); }
+.bsh-help__btn:hover svg,
+.bsh-help__btn:focus-visible svg,
+.bsh-help__btn[aria-expanded="true"] svg { opacity: 1; }
 .bsh-help__btn:focus-visible { outline: var(--focus-width) solid var(--border-focus); outline-offset: var(--focus-offset); }
 .bsh-help__panel { display: grid; gap: var(--space-2); text-align: start; }
 .bsh-help__panel p, .bsh-help__panel ul { margin: 0; }
