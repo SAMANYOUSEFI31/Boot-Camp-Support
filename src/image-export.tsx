@@ -312,75 +312,208 @@ function wrapNameText(
   return { lines: [words.slice(0, mid).join(' '), words.slice(mid).join(' ')], fontSize: minSize };
 }
 
-interface HabitChip {
+interface HabitChipItem {
   text: string;
-  tone: 'success' | 'subtle';
   w: number;
+  done: boolean;
+  missed: boolean;
+  standard: boolean;
+  subtle: boolean;
 }
-type HabitLine = HabitChip[];
+
+interface RowHabitLayout {
+  lines: HabitChipItem[][];
+  unregisteredText?: string;
+}
+
+interface TableRowLayout {
+  h: number;
+  mainMid: number;
+  nameWrapped: { lines: string[]; fontSize: number };
+  habitLayout: RowHabitLayout;
+}
 
 /**
- * چیدمان سطر در حالت «عادت‌های نام‌دار»: بلوک نام (یک یا دو خط) و زیرش خط(های) عادت‌ها
+ * چیدمان چیپ‌های عادت‌ها برای ستون اختصاصی عادت‌ها
  */
-function layoutHabitRow(
+function buildRowHabitsLayout(
   mctx: CanvasRenderingContext2D,
   T: Tokens,
   row: ReportRow,
-  avail: number,
-  nameText: string,
-  minH: number
-) {
-  const wrapped = wrapNameText(mctx, T, nameText, avail, T.f30, T.f24);
+  availW: number
+): RowHabitLayout {
   const unregistered = row.dayScore == null;
-  const topH = wrapped.lines.length === 2 ? 68 : unregistered ? 60 : 44;
-
-  const items: { text: string; tone: 'success' | 'subtle' }[] = [];
   const known = row.habits.filter(function (h) {
     return h.state === 'done' || h.state === 'missed';
   });
-  if (row.habits.length && known.length === 0 && row.habits.every((h) => h.state === 'unknown')) {
-    // رکورد قدیمی: فقط تعداد معلوم است
-    items.push({
-      text:
-        Names.toPersianDigits(row.breakdown.habits) +
-        ' از ' +
-        Names.toPersianDigits(row.habits.length) +
-        ' عادت (کدام‌ها ثبت نشده)',
-      tone: 'subtle'
+  const legacy =
+    row.habits.length > 0 && known.length === 0 && row.habits.every((h) => h.state === 'unknown');
+
+  const chips: HabitChipItem[] = [];
+
+  if (unregistered && !known.length) {
+    if (row.habits.length > 0) {
+      row.habits.forEach(function (h) {
+        mctx.font = T.wRegular + ' 16px ' + T.font;
+        const text = '— ' + h.label;
+        const w = mctx.measureText(text).width + 16;
+        chips.push({ text: text, w: w, done: false, missed: false, standard: false, subtle: true });
+      });
+    } else {
+      return { lines: [], unregisteredText: 'ثبت‌نشده' };
+    }
+  } else if (legacy) {
+    const text =
+      Names.toPersianDigits(row.breakdown.habits) +
+      ' از ' +
+      Names.toPersianDigits(row.habits.length) +
+      ' عادت (کدام‌ها ثبت نشده)';
+    mctx.font = T.wRegular + ' 16px ' + T.font;
+    const w = mctx.measureText(text).width + 16;
+    chips.push({ text: text, w: w, done: false, missed: false, standard: false, subtle: true });
+  } else if (row.habits.length > 0) {
+    row.habits.forEach(function (h) {
+      const isDone = h.state === 'done';
+      const isMissed = h.state === 'missed';
+      const mark = isDone ? '✓ ' : isMissed ? '✗ ' : '— ';
+      let label = h.label;
+      mctx.font = (isDone ? T.wSemibold : T.wRegular) + ' 16px ' + T.font;
+      while (mctx.measureText(mark + label).width + 16 > availW && label.length > 2) {
+        label = label.slice(0, -2) + '…';
+      }
+      const text = mark + label;
+      const w = mctx.measureText(text).width + 16;
+      chips.push({
+        text: text,
+        w: w,
+        done: isDone,
+        missed: isMissed,
+        standard: false,
+        subtle: !isDone && !isMissed
+      });
     });
   } else {
-    row.habits.forEach(function (h) {
-      const mark = h.state === 'done' ? '✓ ' : h.state === 'missed' ? '✗ ' : '— ';
-      items.push({ text: mark + h.label, tone: h.state === 'done' ? 'success' : 'subtle' });
-    });
+    return { lines: [] };
   }
-  if (row.standardDay) items.push({ text: 'روز استاندارد ✓', tone: 'success' });
 
-  const lines: HabitLine[] = [];
-  let cur: HabitLine = [];
+  if (row.standardDay) {
+    mctx.font = T.wSemibold + ' 16px ' + T.font;
+    const text = 'روز استاندارد ✓';
+    const w = mctx.measureText(text).width + 16;
+    chips.push({ text: text, w: w, done: true, missed: false, standard: true, subtle: false });
+  }
+
+  const lines: HabitChipItem[][] = [];
+  let cur: HabitChipItem[] = [];
   let curW = 0;
-  items.forEach(function (it) {
-    mctx.font = (it.tone === 'success' ? T.wSemibold : T.wRegular) + ' ' + T.f20 + 'px ' + T.font;
-    let text = it.text;
-    while (mctx.measureText(text).width > avail && text.length > 2) text = text.slice(0, -2) + '…';
-    const w = mctx.measureText(text).width;
-    if (cur.length && curW + T.s4 + w > avail) {
+  const gap = 6;
+
+  chips.forEach(function (c) {
+    if (cur.length && curW + gap + c.w > availW) {
       lines.push(cur);
       cur = [];
       curW = 0;
     }
-    cur.push({ text: text, tone: it.tone, w: w });
-    curW += (cur.length > 1 ? T.s4 : 0) + w;
+    cur.push(c);
+    curW += (cur.length > 1 ? gap : 0) + c.w;
   });
   if (cur.length) lines.push(cur);
 
-  const h = Math.max(minH, 14 + topH + (lines.length ? 8 + lines.length * 30 : 0) + 14);
-  return { h: h, mainMid: 14 + topH / 2, topH: topH, lines: lines };
+  return { lines: lines };
+}
+
+/**
+ * رسم چیپ شکیل یک عادت درون ستون اختصاصی
+ */
+function drawHabitChip(
+  ctx: CanvasRenderingContext2D,
+  T: Tokens,
+  chip: HabitChipItem,
+  x: number,
+  y: number,
+  hgt: number,
+  r: number
+) {
+  const chipX = x - chip.w;
+  roundRectPath(ctx, chipX, y, chip.w, hgt, r);
+
+  if (chip.standard) {
+    ctx.fillStyle = 'rgba(52, 211, 153, 0.20)';
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(52, 211, 153, 0.6)';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+
+    ctx.font = T.wBold + ' 16px ' + T.font;
+    ctx.fillStyle = T.success;
+  } else if (chip.done) {
+    ctx.fillStyle = 'rgba(52, 211, 153, 0.14)';
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(52, 211, 153, 0.40)';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+
+    ctx.font = T.wSemibold + ' 16px ' + T.font;
+    ctx.fillStyle = T.success;
+  } else if (chip.missed) {
+    ctx.fillStyle = 'rgba(244, 63, 94, 0.10)';
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(244, 63, 94, 0.28)';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+
+    ctx.font = T.wRegular + ' 16px ' + T.font;
+    ctx.fillStyle = '#fca5a5';
+  } else {
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.05)';
+    ctx.fill();
+    ctx.strokeStyle = T.border;
+    ctx.lineWidth = 1;
+    ctx.stroke();
+
+    ctx.font = T.wRegular + ' 16px ' + T.font;
+    ctx.fillStyle = T.subtle;
+  }
+
+  ctx.textAlign = 'center';
+  ctx.fillText(chip.text, chipX + chip.w / 2, y + hgt / 2 + 1);
+}
+
+/**
+ * چیدمان سطر جدول: نام در ستون نام و عادت‌ها در ستون عادت‌ها
+ */
+function layoutTableRow(
+  mctx: CanvasRenderingContext2D,
+  T: Tokens,
+  row: ReportRow,
+  nameWidth: number,
+  habitsWidth: number,
+  nameText: string
+): TableRowLayout {
+  const nameWrapped = wrapNameText(mctx, T, nameText, nameWidth - 2 * T.s4, T.f30, T.f24);
+  const habitLayout = buildRowHabitsLayout(mctx, T, row, habitsWidth - 2 * T.s3);
+
+  const nameLines = nameWrapped.lines.length;
+  const habitLines = habitLayout.lines.length;
+  const unregistered = row.dayScore == null;
+
+  const minRowH = 68;
+  const habitContentH = habitLines > 0 ? habitLines * 26 + (habitLines - 1) * 6 : 26;
+  const nameContentH = nameLines === 2 ? 52 : unregistered ? 46 : 30;
+  const contentH = Math.max(nameContentH, habitContentH);
+  const h = Math.max(minRowH, contentH + 24);
+
+  return {
+    h: h,
+    mainMid: h / 2,
+    nameWrapped: nameWrapped,
+    habitLayout: habitLayout
+  };
 }
 
 /**
  * رسم یک بخش از گزارش روی Canvas و تولید Blob و DataURL
- * فقط توکن‌های دیزاین سیستم برای رنگ و اندازه (به‌جز عرض ۱۰۸۰ و مقیاس ۲ که استاندارد خروجی‌اند)
+ * فقط توکن‌های دیزاین سیستم برای رنگ و اندازه (عرض استاندارد ۱۲۴۰ و مقیاس ۲)
  */
 function renderSingleCanvasPart(
   reportData: ReportData,
@@ -392,19 +525,17 @@ function renderSingleCanvasPart(
   const T = getTokens();
   const brand: Partial<BrandImages> = brandImages || {};
   const scale = 2;
-  const width = 1080;
+  const width = 1240;
 
   const padX = T.s8;
   const tableX = T.s4;
   const tableW = width - 2 * tableX;
-  const rowHeight = T.s20;
   const headRowH = T.s16;
 
-  // ارتفاع بلوک عنوان: سه سطر
+  // ارتفاع بلوک عنوان: دو سطر (عنوان گروه و تاریخ روز)
   const l1 = Math.round(T.f36 * T.lhSnug);
   const l2 = Math.round(T.f24 * T.lhSnug);
-  const l3 = Math.round(T.f20 * T.lhSnug);
-  const titleBlockH = l1 + l2 + l3;
+  const titleBlockH = l1 + l2;
   const lockupH = T.s12;
   const headerH = T.s8 + Math.max(titleBlockH, lockupH) + T.s6;
   const summaryH = T.s24;
@@ -423,31 +554,39 @@ function renderSingleCanvasPart(
     if (c.def.kind === 'name') c.width = tableW - fixedW;
   });
 
-  // حالت جزئیات: وقتی دست‌کم یک فرد عادت نام‌دار دارد، زیر نام هر فرد وضعیت تک‌تک عادت‌ها نوشته می‌شود
-  const detailed = reportData.ctx.hasHabitNames;
+  const habitsCol = cols.find(function (c) {
+    return c.def.id === 'habits';
+  });
   const nameCol = cols.find(function (c) {
     return c.def.kind === 'name';
   });
-  const indexW = cols.length && cols[0].def.kind === 'index' ? cols[0].width : 0;
   const mctx = document.createElement('canvas').getContext('2d') as CanvasRenderingContext2D;
   if (mctx) mctx.direction = 'rtl';
   const layouts = partRows.map(function (row) {
-    return detailed && mctx && nameCol
-      ? layoutHabitRow(
+    return mctx && nameCol
+      ? layoutTableRow(
           mctx,
           T,
           row,
-          nameCol.width - 2 * T.s4,
-          cellText(nameCol.def, row, reportData.ctx, 'image'),
-          rowHeight
+          nameCol.width,
+          habitsCol ? habitsCol.width : 380,
+          cellText(nameCol.def, row, reportData.ctx, 'image')
         )
-      : { h: rowHeight, mainMid: rowHeight / 2, topH: 0, lines: [] as HabitLine[] };
+      : {
+          h: 68,
+          mainMid: 34,
+          nameWrapped: {
+            lines: [cellText(nameCol ? nameCol.def : cols[0].def, row, reportData.ctx, 'image')],
+            fontSize: T.f24
+          },
+          habitLayout: { lines: [] }
+        };
   });
   const rowsTotal = layouts.length
     ? layouts.reduce(function (sum2, l) {
         return sum2 + l.h;
       }, 0)
-    : rowHeight;
+    : 68;
   const rowOffsets: number[] = [];
   layouts.reduce(function (acc, l) {
     rowOffsets.push(acc);
@@ -478,12 +617,28 @@ function renderSingleCanvasPart(
   ctx.fillStyle = T.page;
   ctx.fillRect(0, 0, width, height);
 
-  // ۱. هدر: متن در سمت شروع (راست)، لوگو در سمت پایان (چپ)
+  // ۱. هدر: متن در سمت شروع (راست)، لوگو و بوشیدو در سمت چپ
   const blockTop = T.s8;
   const blockH = Math.max(titleBlockH, lockupH);
   const textTop = blockTop + (blockH - titleBlockH) / 2;
-  const lockupW = brand.lockup ? lockupH * brand.lockup.ratio : 0;
-  const textMaxW = width - 2 * padX - (lockupW ? lockupW + T.s6 : 0);
+
+  // بالا سمت چپ: اول نوشته شه بوشیدو و بعد سمت چپ لوگو بیاد
+  const brandMidY = blockTop + blockH / 2;
+  const brandMarkH = 44;
+  const brandMarkW = brand.mark ? brandMarkH * brand.mark.ratio : 0;
+  if (brand.mark) {
+    drawLogo(brand.mark, padX, brandMidY - brandMarkH / 2, brandMarkH);
+  }
+  const brandText = 'بوشیدو';
+  setFont(T.wBold, T.f30);
+  const brandTextW = ctx.measureText(brandText).width;
+  const brandTextRightX = padX + (brandMarkW ? brandMarkW + T.s3 : 0) + brandTextW;
+  ctx.fillStyle = T.text;
+  ctx.textAlign = 'right';
+  ctx.fillText(brandText, brandTextRightX, brandMidY);
+
+  const brandBlockW = (brandMarkW ? brandMarkW + T.s3 : 0) + brandTextW;
+  const textMaxW = width - 2 * padX - brandBlockW - T.s6;
 
   ctx.textAlign = 'right';
   const partSuffix =
@@ -506,15 +661,6 @@ function renderSingleCanvasPart(
   ctx.fillStyle = T.subtle;
   ctx.fillText(sub, width - padX, textTop + l1 + l2 / 2);
 
-  const statusLabel = reportData.isClosed ? '● نهایی (روز بسته شده)' : '○ پیش‌نویس (روز هنوز بسته نشده)';
-  setFont(T.wRegular, T.f20);
-  ctx.fillStyle = reportData.isClosed ? T.success : T.warning;
-  ctx.fillText(statusLabel, width - padX, textTop + l1 + l2 + l3 / 2);
-
-  if (brand.lockup) {
-    drawLogo(brand.lockup, padX, blockTop + (blockH - lockupH) / 2, lockupH);
-  }
-
   // خط جداکننده
   ctx.strokeStyle = T.borderStrong;
   ctx.lineWidth = 1;
@@ -523,19 +669,15 @@ function renderSingleCanvasPart(
   ctx.lineTo(width - padX, headerH - 0.5);
   ctx.stroke();
 
-  // ۲. ردیف خلاصه
+  // ۲. ردیف خلاصه (کارت‌های مرتبط با اعضای گروه)
   const sum = getGroupSummary(reportData.rows);
   const gap = T.s3;
-  const cardW = (width - 2 * tableX - 2 * gap) / 3;
-  const cardY = headerH + T.s6;
   const cards = [
-    {
-      value: Names.toPersianDigits(sum.registeredCount) + ' از ' + Names.toPersianDigits(sum.activeCount),
-      label: 'ثبت‌شده در این روز'
-    },
     { value: Names.toPersianDigits(sum.avgPercent) + '٪', label: 'میانگین درصد گروه' },
     { value: Names.toPersianDigits(sum.perfectCount) + ' نفر', label: 'امتیاز کامل گرفتند' }
   ];
+  const cardW = (width - 2 * tableX - (cards.length - 1) * gap) / cards.length;
+  const cardY = headerH + T.s6;
   cards.forEach(function (card, i) {
     const cx = width - tableX - (i + 1) * cardW - i * gap;
     roundRectPath(ctx, cx, cardY, cardW, summaryH, T.rContainer);
@@ -564,8 +706,9 @@ function renderSingleCanvasPart(
   cols.forEach(function (col) {
     setFont(T.wSemibold, T.f20);
     ctx.fillStyle = T.subtle;
-    ctx.textAlign = col.def.kind === 'name' ? 'right' : 'center';
-    const hx = col.def.kind === 'name' ? x - T.s4 : x - col.width / 2;
+    const isRightAligned = col.def.kind === 'name' || col.def.id === 'habits';
+    ctx.textAlign = isRightAligned ? 'right' : 'center';
+    const hx = isRightAligned ? x - T.s4 : x - col.width / 2;
     ctx.fillText(col.title, hx, tableTop + headRowH / 2);
     x -= col.width;
   });
@@ -589,28 +732,17 @@ function renderSingleCanvasPart(
         ctx.fillStyle = T.subtle;
         ctx.fillText(cellText(col.def, row, reportData.ctx, 'image'), center, midY);
       } else if (col.def.kind === 'name') {
-        const wrapped = wrapNameText(
-          ctx,
-          T,
-          cellText(col.def, row, reportData.ctx, 'image'),
-          col.width - 2 * T.s4,
-          T.f30,
-          T.f24
-        );
+        const wrapped = lay.nameWrapped;
         setFont(T.wSemibold, wrapped.fontSize);
         ctx.fillStyle = row.status === 'frozen' || row.status === 'left' ? T.subtle : T.text;
         ctx.textAlign = 'right';
         const tx = cx - T.s4;
         const lineGap = Math.round((wrapped.fontSize * T.lhSnug) / 2);
         if (wrapped.lines.length === 2) {
-          ctx.fillText(wrapped.lines[0], tx, midY - lineGap);
-          ctx.fillText(wrapped.lines[1], tx, midY + lineGap);
+          ctx.fillText(wrapped.lines[0], tx, midY - lineGap / 2);
+          ctx.fillText(wrapped.lines[1], tx, midY + lineGap / 2);
         } else if (unregistered) {
           ctx.fillText(wrapped.lines[0], tx, midY - T.s2);
-        } else {
-          ctx.fillText(wrapped.lines[0], tx, midY);
-        }
-        if (unregistered && wrapped.lines.length === 1) {
           setFont(T.wRegular, T.f14);
           const tagText = 'ثبت‌نشده';
           const tagW = ctx.measureText(tagText).width + 2 * T.s2;
@@ -622,6 +754,38 @@ function renderSingleCanvasPart(
           ctx.fillStyle = T.subtle;
           ctx.textAlign = 'center';
           ctx.fillText(tagText, tx - tagW / 2, tagY);
+        } else {
+          ctx.fillText(wrapped.lines[0], tx, midY);
+        }
+      } else if (col.def.id === 'habits') {
+        const habitLayout = lay.habitLayout;
+        const chipH = 26;
+        const chipGap = 6;
+        const chipR = 6;
+
+        if (habitLayout.unregisteredText) {
+          setFont(T.wRegular, T.f20);
+          ctx.fillStyle = T.subtle;
+          ctx.textAlign = 'center';
+          ctx.fillText(habitLayout.unregisteredText, center, midY);
+        } else if (!habitLayout.lines.length) {
+          setFont(T.wRegular, T.f24);
+          ctx.fillStyle = T.subtle;
+          ctx.textAlign = 'center';
+          ctx.fillText('—', center, midY);
+        } else {
+          const totalLinesH =
+            habitLayout.lines.length * chipH + (habitLayout.lines.length - 1) * chipGap;
+          let startY = midY - totalLinesH / 2;
+
+          habitLayout.lines.forEach(function (line) {
+            let curX = cx - T.s4;
+            line.forEach(function (chip) {
+              drawHabitChip(ctx, T, chip, curX, startY, chipH, chipR);
+              curX -= chip.w + chipGap;
+            });
+            startY += chipH + chipGap;
+          });
         }
       } else if (col.def.kind === 'percent') {
         const innerW = col.width - 2 * T.s3;
@@ -653,22 +817,6 @@ function renderSingleCanvasPart(
       }
       cx -= col.width;
     });
-
-    // جزئیات عادت‌ها زیر نام: ✓ انجام شد، ✗ انجام نشد
-    if (lay.lines.length) {
-      let ly = rowY + lay.mainMid - lay.topH / 2 + lay.topH + 8 + 15;
-      lay.lines.forEach(function (line) {
-        let hx = width - tableX - indexW - T.s4;
-        ctx.textAlign = 'right';
-        line.forEach(function (chip) {
-          setFont(chip.tone === 'success' ? T.wSemibold : T.wRegular, T.f20);
-          ctx.fillStyle = chip.tone === 'success' ? T.success : T.subtle;
-          ctx.fillText(chip.text, hx, ly);
-          hx -= chip.w + T.s4;
-        });
-        ly += 30;
-      });
-    }
   });
   ctx.restore();
   roundRectPath(ctx, tableX, tableTop, tableW, tableH, T.rContainer);
@@ -778,44 +926,82 @@ function downloadBlob(blob: Blob, filename: string) {
 }
 
 /**
- * اشتراک‌گذاری یا دانلود هوشمند
- * اگر navigator.canShare با فایل پشتیبانی شود (موبایل)، شیت تلگرام/پیام‌رسان باز می‌شود؛
- * در غیر این صورت فایل به طور مستقیم دانلود می‌گردد.
+ * کپی مستقیم باینری تصویر در کلیپ‌بورد سیستم
+ * به کاربر امکان می‌دهد در دسکتاپ وارد چت تلگرام شده و با زدن Ctrl+V تصویر را بلافاصله بفرستد
  */
-function shareOrDownloadImage(blob: Blob | null, filename: string): Promise<void> {
+function copyImageToClipboard(blob: Blob): Promise<boolean> {
+  if (
+    typeof navigator !== 'undefined' &&
+    navigator.clipboard &&
+    typeof ClipboardItem !== 'undefined'
+  ) {
+    return navigator.clipboard
+      .write([new ClipboardItem({ [blob.type || 'image/png']: blob })])
+      .then(function () {
+        return true;
+      })
+      .catch(function (e) {
+        console.warn('Clipboard write failed:', e);
+        return false;
+      });
+  }
+  return Promise.resolve(false);
+}
+
+interface ShareResult {
+  downloaded: boolean;
+  copied: boolean;
+  shared: boolean;
+}
+
+/**
+ * دانلود و ارسال هم‌زمان:
+ * ۱. همیشه تصویر بلافاصله دانلود می‌شود.
+ * ۲. تصویر در کلیپ‌بورد کپی می‌شود تا کاربر در تلگرام با Ctrl+V بتواند مستقیم Paste کند.
+ * ۳. در صورت امکان، پنجرهٔ اشتراک‌گذاری سیستم نیز فراخوانی می‌شود.
+ */
+function shareOrDownloadImage(blob: Blob | null, filename: string): Promise<ShareResult> {
   if (!blob) {
     return Promise.reject(new Error('تصویر آماده نیست. دوباره بساز.'));
   }
 
-  if (
-    typeof navigator !== 'undefined' &&
-    navigator.share &&
-    navigator.canShare &&
-    typeof File !== 'undefined'
-  ) {
-    try {
-      const file = new File([blob], filename, { type: 'image/png' });
-      if (navigator.canShare({ files: [file] })) {
-        return navigator
-          .share({
-            files: [file],
-            title: filename,
-            text: 'گزارش روزانه بوت‌کمپ بوشیدو'
-          })
-          .catch(function (err) {
-            // اگر کاربر انصراف داد، نیازی به خطا نیست
-            if (err.name !== 'AbortError') {
-              downloadBlob(blob, filename);
-            }
-          });
-      }
-    } catch (e) {
-      // فال‌بک به دانلود در صورت هرگونه محدودیت
-    }
-  }
-
+  // ۱. همیشه تصویر مستقیماً دانلود می‌شود
   downloadBlob(blob, filename);
-  return Promise.resolve();
+
+  // ۲. کپی در کلیپ‌بورد سیستم جهت پیست مستقیم در تلگرام
+  return copyImageToClipboard(blob).then(function (copied) {
+    let shared = false;
+    if (
+      typeof navigator !== 'undefined' &&
+      navigator.share &&
+      navigator.canShare &&
+      typeof File !== 'undefined'
+    ) {
+      try {
+        const file = new File([blob], filename, { type: 'image/png' });
+        if (navigator.canShare({ files: [file] })) {
+          return navigator
+            .share({
+              files: [file],
+              title: filename,
+              text: 'گزارش روزانه بوت‌کمپ بوشیدو'
+            })
+            .then(function () {
+              shared = true;
+              return { downloaded: true, copied: copied, shared: shared };
+            })
+            .catch(function (err) {
+              // در صورت بستن دیالوگ سیستم، فایل از قبل دانلود و کپی شده است
+              return { downloaded: true, copied: copied, shared: false };
+            });
+        }
+      } catch (e) {
+        // ادامه در صورت عدم پشتیبانی share
+      }
+    }
+
+    return Promise.resolve({ downloaded: true, copied: copied, shared: shared });
+  });
 }
 
 /**
@@ -844,16 +1030,43 @@ function ImagePreviewModal(props: ImagePreviewModalProps) {
   const activePart = parts[currentPartIdx] || parts[0];
 
   function handleShareOrDownloadSingle() {
+    if (!activePart.blob) return;
     setIsSharing(true);
     shareOrDownloadImage(activePart.blob, activePart.filename)
-      .then(function () {
+      .then(function (res) {
         setIsSharing(false);
-        setNotice({ intent: 'success', message: 'تصویر دانلود یا ارسال شد.' });
+        if (res.copied) {
+          setNotice({
+            intent: 'success',
+            message:
+              'تصویر دانلود شد و در کلیپ‌بورد کپی گردید! می‌توانی در چت تلگرام با فشردن Ctrl+V (پیست) آن را مستقیم بفرستی.'
+          });
+        } else {
+          setNotice({ intent: 'success', message: 'تصویر با موفقیت دانلود شد.' });
+        }
       })
       .catch(function (err) {
         setIsSharing(false);
         setNotice({ intent: 'danger', message: err.message });
       });
+  }
+
+  function handleCopyOnly() {
+    if (!activePart.blob) return;
+    copyImageToClipboard(activePart.blob).then(function (ok) {
+      if (ok) {
+        setNotice({
+          intent: 'success',
+          message: 'تصویر در کلیپ‌بورد کپی شد! اکنون در چت تلگرام Ctrl+V بزن تا فرستاده شود.'
+        });
+      } else {
+        downloadBlob(activePart.blob!, activePart.filename);
+        setNotice({
+          intent: 'success',
+          message: 'تصویر دانلود شد. می‌توانی فایل را در چت تلگرام بکشی و رها (Drag & Drop) کنی.'
+        });
+      }
+    });
   }
 
   function handleDownloadAllParts() {
@@ -882,6 +1095,14 @@ function ImagePreviewModal(props: ImagePreviewModalProps) {
             {'دانلود هر ' + Names.toPersianDigits(parts.length) + ' تصویر'}
           </B.Button>
         )}
+        <B.Button
+          variant="secondary"
+          size="sm"
+          iconStart="Copy"
+          onClick={handleCopyOnly}
+        >
+          کپی تصویر (Paste در تلگرام)
+        </B.Button>
         <B.Button variant="ghost" size="sm" onClick={onClose}>
           بستن
         </B.Button>
@@ -894,9 +1115,7 @@ function ImagePreviewModal(props: ImagePreviewModalProps) {
           loading={isSharing}
           onClick={handleShareOrDownloadSingle}
         >
-          {typeof navigator !== 'undefined' && 'share' in navigator
-            ? 'ارسال یا دانلود تصویر'
-            : 'دانلود تصویر'}
+          ارسال و دانلود تصویر
         </B.Button>
       </div>
     </div>
@@ -913,7 +1132,7 @@ function ImagePreviewModal(props: ImagePreviewModalProps) {
         Names.toPersianDigits(imagesData.reportData.dayN) +
         ')'
       }
-      description="آمادهٔ فرستادن در تلگرام است. دانلودش کن یا مستقیم بفرست."
+      description="تصویر هم‌زمان دانلود و در کلیپ‌بورد کپی می‌شود تا بتوانی مستقیم در تلگرام با Ctrl+V ارسال کنی."
       footer={footer}
       size="lg"
     >
@@ -987,7 +1206,13 @@ function ImagePreviewModal(props: ImagePreviewModalProps) {
             {'نام فایل: '}
             <bdi dir="ltr">{activePart.filename}</bdi>
           </span>
-          <span>{'اندازه: ۲۱۶۰ × ' + Names.toPersianDigits(activePart.height) + ' پیکسل'}</span>
+          <span>
+            {'اندازه: ' +
+              Names.toPersianDigits(activePart.width) +
+              ' × ' +
+              Names.toPersianDigits(activePart.height) +
+              ' پیکسل'}
+          </span>
         </div>
       </div>
     </B.Dialog>

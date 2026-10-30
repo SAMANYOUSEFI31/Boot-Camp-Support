@@ -162,10 +162,9 @@ export const REPORT_COLUMNS: ReportColumn[] = [
     title: 'عادت‌ها',
     kind: 'text',
     excelWidth: 14,
-    imageWidth: 150,
+    imageWidth: 380,
     text: habitsText,
-    // در حالت عادت‌های نام‌دار، تصویر جزئیات را زیر نام می‌نویسد و این ستون نمی‌آید
-    image: (ctx) => !ctx.hasHabitNames,
+    image: () => true,
     // «روز استاندارد» در تصویر با یک تیک کوچک کنار عادت‌ها نشان داده می‌شود
     imageText: (r, ctx) => (r.standardDay ? habitsText(r, ctx) + ' ✓' : habitsText(r, ctx)),
     tone: (r, target) => (target === 'image' && r.standardDay ? 'success' : undefined),
@@ -182,7 +181,7 @@ export const REPORT_COLUMNS: ReportColumn[] = [
     kind: 'text',
     excelWidth: 36,
     imageWidth: 0,
-    // فقط در Excel و فقط وقتی عادت‌ها نام دارند (تصویر جزئیات را خودش زیر نام می‌کشد)
+    // فقط در Excel و فقط وقتی عادت‌ها نام دارند (تصویر جزئیات را خودش در ستون عادت‌ها می‌کشد)
     excel: (ctx) => !!ctx.hasHabitNames,
     image: () => false,
     text: habitDetailsText,
@@ -270,6 +269,7 @@ export const REPORT_COLUMNS: ReportColumn[] = [
     kind: 'percent',
     excelWidth: 12,
     imageWidth: 120,
+    image: () => false,
     text: (r) => fa(r.percent) + '٪',
     data: [{ header: 'percent', group: 'score', value: (r) => r.percent }]
   }
