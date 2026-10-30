@@ -4,7 +4,15 @@
  */
 
 import { Names } from './names';
-import { Scoring, standardDay } from './scoring';
+import {
+  MATRIX_TITLES,
+  buildCohortMatrix,
+  buildReportRows,
+  cellText,
+  columnTitle,
+  dataFields,
+  visibleColumns
+} from './report-columns';
 import type { Cohort, Group } from './types';
 
 // کتابخانهٔ ExcelJS از CDN می‌آید و تایپ ندارد
@@ -96,8 +104,21 @@ function downloadWorkbook(workbook: ExcelJSLib, filename: string) {
   });
 }
 
+const colLetter = (n: number) => String.fromCharCode(64 + n);
+
+const styleHeaderCell = (
+  cell: { value: unknown; font: unknown; fill: unknown; border: unknown },
+  value: string
+) => {
+  cell.value = value;
+  cell.font = FONT_HEADER;
+  cell.fill = FILL_HEADER;
+  cell.border = BORDER_THIN;
+};
+
 /**
  * ساخت شیت گزارش روز برای یک گروه
+ * ستون‌ها، عنوان‌ها و مقدارها همه از report-columns.ts می‌آیند.
  */
 function buildGroupDayReportSheets(
   workbook: ExcelJSLib,
@@ -106,26 +127,9 @@ function buildGroupDayReportSheets(
   dayN: number,
   includeFrozen?: boolean
 ) {
-  const dayCfg = (cohort.days || []).find(function (d) {
-    return d.n === dayN;
-  }) || {
-    n: dayN,
-    type: 'main',
-    hardLevels: 3,
-    specialMission: true
-  };
-
-  const closedDays = group.closedDays || [];
-  const isClosed = closedDays.indexOf(dayN) !== -1;
-  const dayDate = Names.addDaysToIso(cohort.startDate, dayN - 1);
-  const dayShamsi = Names.formatShamsiShort(dayDate);
-
-  // اعضای گروه
-  const members = (cohort.participants || []).filter(function (p) {
-    if (p.groupId !== group.id) return false;
-    if (!includeFrozen && (p.status === 'frozen' || p.status === 'left')) return false;
-    return true;
-  });
+  const report = buildReportRows(cohort, group, dayN, { includeFrozen: includeFrozen });
+  const columns = visibleColumns('excel', report.ctx);
+  const lastCol = colLetter(columns.length);
 
   // ۱. شیت گزارش (RTL، متنی، ارقام فارسی، مناسب نمایش و چاپ)
   const reportSheet = workbook.addWorksheet(sanitizeSheetName(group.name, 'گزارش'), {
@@ -150,9 +154,9 @@ function buildGroupDayReportSheets(
     ' — روز ' +
     Names.toPersianDigits(dayN) +
     ' (' +
-    dayShamsi +
+    report.dayShamsi +
     ')';
-  reportSheet.mergeCells('A1:I1');
+  reportSheet.mergeCells('A1:' + lastCol + '1');
   const cellA1 = reportSheet.getCell('A1');
   cellA1.value = titleText;
   cellA1.font = FONT_TITLE;
@@ -160,127 +164,46 @@ function buildGroupDayReportSheets(
   reportSheet.getRow(1).height = 26;
 
   // سطر ۲: وضعیت روز
-  const statusText = isClosed
+  const statusText = report.isClosed
     ? 'وضعیت: نهایی (روز بسته شده است)'
     : 'وضعیت: پیش‌نویس (روز هنوز بسته نشده است)';
-  reportSheet.mergeCells('A2:I2');
+  reportSheet.mergeCells('A2:' + lastCol + '2');
   const cellA2 = reportSheet.getCell('A2');
   cellA2.value = statusText;
   cellA2.font = {
     name: 'Tahoma',
     size: 9,
     italic: true,
-    color: { argb: isClosed ? 'FF059669' : 'FFD97706' }
+    color: { argb: report.isClosed ? 'FF059669' : 'FFD97706' }
   };
   cellA2.alignment = { horizontal: 'center', vertical: 'middle' };
 
   // سطر ۳: یادآور قانون امتیاز
-  const rules = ['هر عادت ۱ امتیاز', 'روز استاندارد (همهٔ عادت‌ها) ۲ امتیاز'];
-  if (dayCfg.hardLevels > 0)
-    rules.push('کار سخت سطح ۱ تا ' + Names.toPersianDigits(dayCfg.hardLevels) + ' امتیاز');
-  rules.push('گزارش هدف ۲ امتیاز');
-  reportSheet.mergeCells('A3:I3');
+  reportSheet.mergeCells('A3:' + lastCol + '3');
   const cellA3 = reportSheet.getCell('A3');
-  cellA3.value = 'قوانین امتیاز: ' + rules.join(' ، ');
+  cellA3.value = 'قوانین امتیاز: ' + report.rules.join(' ، ');
   cellA3.font = { name: 'Tahoma', size: 8, color: { argb: 'FF71717A' } };
   cellA3.alignment = { horizontal: 'center', vertical: 'middle' };
 
   // سطر ۴: سرستون‌ها
-  const headers = [
-    'ردیف',
-    'نام',
-    'عادت‌ها',
-    'روز استاندارد',
-    'کار سخت',
-    'گزارش هدف',
-    'امتیاز امروز',
-    'مجموع تا امروز',
-    'درصد'
-  ];
-  const colWidths = [8, 24, 14, 14, 14, 14, 14, 16, 12];
   const hRow = reportSheet.getRow(4);
   hRow.height = 22;
-  headers.forEach(function (h, idx) {
-    const col = idx + 1;
-    const cell = hRow.getCell(col);
-    cell.value = h;
-    cell.font = FONT_HEADER;
-    cell.fill = FILL_HEADER;
+  columns.forEach(function (c, idx) {
+    const cell = hRow.getCell(idx + 1);
+    styleHeaderCell(cell, columnTitle(c, 'excel'));
     cell.alignment = { horizontal: 'center', vertical: 'middle' };
-    cell.border = BORDER_THIN;
-    reportSheet.getColumn(col).width = colWidths[idx];
+    reportSheet.getColumn(idx + 1).width = c.excelWidth;
   });
 
   // سطرهای داده در شیت گزارش
-  members.forEach(function (p, idx) {
-    const rowNum = idx + 5;
-    const row = reportSheet.getRow(rowNum);
+  report.rows.forEach(function (r, idx) {
+    const row = reportSheet.getRow(idx + 5);
     row.height = 20;
-
-    const rec = (cohort.records && cohort.records[p.id] && cohort.records[p.id][dayN]) || null;
-    const totals = Scoring.personTotals(p, cohort, group, dayN);
-
-    const hasRecord = rec && (rec.done != null || rec.hard != null || rec.special != null);
-
-    // عادت‌ها
-    let habitsText = '—';
-    if (p.habitCount != null) {
-      if (rec && rec.done != null) {
-        habitsText = Names.toPersianDigits(rec.done) + ' از ' + Names.toPersianDigits(p.habitCount);
-      } else {
-        habitsText = '— از ' + Names.toPersianDigits(p.habitCount);
-      }
-    }
-
-    // کار سخت
-    let hardText = 'ندارد';
-    if (dayCfg.hardLevels > 0) {
-      if (rec && rec.hard != null) {
-        const hVal = Number(rec.hard);
-        hardText = hVal > 0 ? 'سطح ' + Names.toPersianDigits(hVal) : 'انجام نداد';
-      } else {
-        hardText = 'ثبت‌نشده';
-      }
-    }
-
-    // روز استاندارد (مشتق‌شده)
-    const standardText = hasRecord ? (standardDay(p, rec, dayCfg) ? '✓' : '—') : '—';
-
-    // گزارش هدف
-    let specialText = 'ثبت‌نشده';
-    if (rec && rec.special != null) {
-      specialText = rec.special > 0 ? '✓' : '✗';
-    }
-
-    // امتیاز امروز
-    let dayScoreText = 'ثبت‌نشده';
-    if (hasRecord) {
-      const sc = Scoring.dayScore(p, rec, dayCfg);
-      const mx = Scoring.dayMax(p, dayCfg, rec);
-      dayScoreText = Names.toPersianDigits(sc) + ' از ' + Names.toPersianDigits(mx);
-    }
-
-    const totalText =
-      Names.toPersianDigits(totals.totalScore) + ' از ' + Names.toPersianDigits(totals.totalMax);
-    const percentText = Names.toPersianDigits(totals.percent) + '٪';
-
-    const vals = [
-      Names.toPersianDigits(idx + 1),
-      p.name + (p.status === 'frozen' ? ' (فریز)' : p.status === 'left' ? ' (خارج)' : ''),
-      habitsText,
-      standardText,
-      hardText,
-      specialText,
-      dayScoreText,
-      totalText,
-      percentText
-    ];
-
-    vals.forEach(function (v, cIdx) {
+    columns.forEach(function (c, cIdx) {
       const cell = row.getCell(cIdx + 1);
-      cell.value = v;
+      cell.value = cellText(c, r, report.ctx, 'excel');
       cell.font = FONT_TAHOMA;
-      cell.alignment = { horizontal: cIdx === 1 ? 'right' : 'center', vertical: 'middle' };
+      cell.alignment = { horizontal: c.kind === 'name' ? 'right' : 'center', vertical: 'middle' };
       cell.border = BORDER_THIN;
     });
   });
@@ -289,70 +212,20 @@ function buildGroupDayReportSheets(
   const dataSheet = workbook.addWorksheet(sanitizeSheetName(group.name + '-داده', 'داده'), {
     views: [{ rightToLeft: true }]
   });
-
-  const dataHeaders = [
-    'ردیف',
-    'نام',
-    'habitCount',
-    'done',
-    'hard',
-    'special',
-    'habitScore',
-    'standardDayScore',
-    'hardScore',
-    'goalScore',
-    'dayScore',
-    'dayMax',
-    'totalScore',
-    'totalMax',
-    'percent'
-  ];
+  const fields = dataFields();
   const dataHRow = dataSheet.getRow(1);
-  dataHeaders.forEach(function (h, idx) {
+  fields.forEach(function (f, idx) {
     const cell = dataHRow.getCell(idx + 1);
-    cell.value = h;
+    cell.value = f.header;
     cell.font = { name: 'Tahoma', size: 9, bold: true };
     cell.alignment = { horizontal: 'center' };
   });
-
-  members.forEach(function (p, idx) {
-    const rNum = idx + 2;
-    const row = dataSheet.getRow(rNum);
-    const rec = (cohort.records && cohort.records[p.id] && cohort.records[p.id][dayN]) || null;
-    const totals = Scoring.personTotals(p, cohort, group, dayN);
-
-    const d = rec && rec.done != null ? Number(rec.done) : null;
-    const h = rec && rec.hard != null ? Number(rec.hard) : null;
-    const s = rec && rec.special != null ? Number(rec.special) : null;
-
-    const sc = rec && (d != null || h != null || s != null) ? Scoring.dayScore(p, rec, dayCfg) : null;
-    const mx = rec && (d != null || h != null || s != null) ? Scoring.dayMax(p, dayCfg, rec) : null;
-
-    const bd = rec ? Scoring.dayBreakdown(p, rec, dayCfg) : null;
-    const hasAny = d != null || h != null || s != null;
-
-    const rowData = [
-      idx + 1,
-      p.name,
-      p.habitCount != null ? p.habitCount : null,
-      d,
-      h,
-      s,
-      hasAny && bd ? bd.habits : null,
-      hasAny && bd ? bd.standard : null,
-      hasAny && bd ? bd.hard : null,
-      hasAny && bd ? bd.goal : null,
-      sc,
-      mx,
-      totals.totalScore,
-      totals.totalMax,
-      totals.percent
-    ];
-
-    rowData.forEach(function (val, cIdx) {
-      const cell = row.getCell(cIdx + 1);
+  report.rows.forEach(function (r, idx) {
+    const row = dataSheet.getRow(idx + 2);
+    fields.forEach(function (f, cIdx) {
+      const val = f.value(r);
       if (val !== null && val !== undefined) {
-        cell.value = val;
+        row.getCell(cIdx + 1).value = val;
       }
     });
   });
@@ -375,6 +248,119 @@ function exportGroupDayReport(cohort: Cohort, group: Group, dayN: number, includ
 }
 
 /**
+ * شیت ماتریس کل دوره برای یک گروه (روزها در ستون‌ها)
+ * variant 'single': سرستون روز با تاریخ، عرض ستون‌ها و شیت داده؛ 'all': نسخهٔ فشرده برای فایل همهٔ گروه‌ها
+ */
+function buildFullCohortSheets(
+  workbook: ExcelJSLib,
+  cohort: Cohort,
+  group: Group,
+  includeFrozen: boolean | undefined,
+  variant: 'single' | 'all'
+) {
+  const single = variant === 'single';
+  const { mainDays, rows } = buildCohortMatrix(cohort, group, { includeFrozen: includeFrozen });
+  const totCol = mainDays.length + 3;
+  const maxCol = mainDays.length + 4;
+  const pctCol = mainDays.length + 5;
+
+  const sheet = workbook.addWorksheet(sanitizeSheetName(group.name, single ? 'ماتریس' : 'گروه'), {
+    views: [{ rightToLeft: true, state: 'frozen', xSplit: 2, ySplit: 2 }]
+  });
+
+  // سطر ۱: عنوان گروه
+  sheet.mergeCells(1, 1, 1, mainDays.length + 5);
+  const titleCell = sheet.getCell('A1');
+  titleCell.value = 'گزارش کل دوره — ' + cohort.name + ' — ' + group.name;
+  titleCell.font = FONT_TITLE;
+  titleCell.alignment = { horizontal: 'center', vertical: 'middle' };
+  sheet.getRow(1).height = 24;
+
+  // سطر ۲: سرستون‌ها
+  const hRow = sheet.getRow(2);
+  hRow.height = 28;
+  styleHeaderCell(hRow.getCell(1), MATRIX_TITLES.rowNum);
+  styleHeaderCell(hRow.getCell(2), MATRIX_TITLES.name);
+  sheet.getColumn(1).width = 7;
+  sheet.getColumn(2).width = 22;
+
+  mainDays.forEach(function (d, dIdx) {
+    const col = dIdx + 3;
+    const cell = hRow.getCell(col);
+    const shamsi = Names.formatShamsiShort(Names.addDaysToIso(cohort.startDate, d.n - 1));
+    cell.value = 'روز ' + Names.toPersianDigits(d.n) + (single ? '\n' + shamsi : '');
+    cell.font = { name: 'Tahoma', size: 8, bold: true, color: { argb: 'FFFFFFFF' } };
+    cell.fill = FILL_HEADER;
+    cell.alignment = single
+      ? { horizontal: 'center', vertical: 'middle', wrapText: true }
+      : { horizontal: 'center', vertical: 'middle' };
+    cell.border = BORDER_THIN;
+    sheet.getColumn(col).width = single ? 10 : 9;
+  });
+
+  styleHeaderCell(hRow.getCell(totCol), MATRIX_TITLES.total);
+  styleHeaderCell(hRow.getCell(maxCol), MATRIX_TITLES.max);
+  styleHeaderCell(hRow.getCell(pctCol), MATRIX_TITLES.percent);
+  if (single) {
+    sheet.getColumn(totCol).width = 12;
+    sheet.getColumn(maxCol).width = 12;
+    sheet.getColumn(pctCol).width = 10;
+  }
+
+  // سطرهای افراد
+  const centered = { horizontal: 'center', vertical: 'middle' };
+  rows.forEach(function (r, mIdx) {
+    const row = sheet.getRow(mIdx + 3);
+    row.height = 20;
+
+    const put = function (col: number, value: string, align: object) {
+      const cell = row.getCell(col);
+      cell.value = value;
+      cell.font = FONT_TAHOMA;
+      cell.alignment = align;
+      cell.border = BORDER_THIN;
+    };
+    put(1, Names.toPersianDigits(r.rowNum), centered);
+    put(2, r.name, { horizontal: 'right', vertical: 'middle' });
+    r.dayScores.forEach(function (sc, dIdx) {
+      // فقط اگر روز بسته شده باشد امتیاز را نشان بده، وگرنه خالی
+      put(dIdx + 3, sc == null ? '' : Names.toPersianDigits(sc), centered);
+    });
+    put(totCol, Names.toPersianDigits(r.totalScore), centered);
+    put(maxCol, Names.toPersianDigits(r.totalMax), centered);
+    put(pctCol, Names.toPersianDigits(r.percent) + '٪', centered);
+  });
+
+  if (!single) return;
+
+  // شیت داده لاتین
+  const dataSheet = workbook.addWorksheet(sanitizeSheetName(group.name + '-داده', 'داده'), {
+    views: [{ rightToLeft: true }]
+  });
+  const dataHeaders = ['ردیف', 'نام'].concat(
+    mainDays.map(function (d) {
+      return 'Day' + d.n;
+    }),
+    [MATRIX_TITLES.dataTotal, MATRIX_TITLES.dataMax, MATRIX_TITLES.dataPercent]
+  );
+  const dHRow = dataSheet.getRow(1);
+  dataHeaders.forEach(function (dh, idx) {
+    dHRow.getCell(idx + 1).value = dh;
+  });
+  rows.forEach(function (r, mIdx) {
+    const row = dataSheet.getRow(mIdx + 2);
+    row.getCell(1).value = r.rowNum;
+    row.getCell(2).value = r.rawName;
+    r.dayScores.forEach(function (sc, dIdx) {
+      if (sc != null) row.getCell(dIdx + 3).value = sc;
+    });
+    row.getCell(totCol).value = r.totalScore;
+    row.getCell(maxCol).value = r.totalMax;
+    row.getCell(pctCol).value = r.percent;
+  });
+}
+
+/**
  * ۲. خروجی اکسل گزارش کل دوره یک گروه
  */
 function exportGroupFullCohortReport(cohort: Cohort, group: Group, includeFrozen?: boolean) {
@@ -383,166 +369,7 @@ function exportGroupFullCohortReport(cohort: Cohort, group: Group, includeFrozen
     workbook.creator = 'Bushido Support Tool';
     workbook.created = new Date();
 
-    const mainDays = (cohort.days || []).filter(function (d) {
-      return d.type === 'main';
-    });
-    const closedDays = group.closedDays || [];
-
-    const members = (cohort.participants || []).filter(function (p) {
-      if (p.groupId !== group.id) return false;
-      if (!includeFrozen && (p.status === 'frozen' || p.status === 'left')) return false;
-      return true;
-    });
-
-    // شیت ماتریس گزارش
-    const sheet = workbook.addWorksheet(sanitizeSheetName(group.name, 'ماتریس'), {
-      views: [{ rightToLeft: true, state: 'frozen', xSplit: 2, ySplit: 2 }]
-    });
-
-    // سطر ۱: عنوان گروه
-    const title = 'گزارش کل دوره — ' + cohort.name + ' — ' + group.name;
-    sheet.mergeCells(1, 1, 1, mainDays.length + 5);
-    const titleCell = sheet.getCell('A1');
-    titleCell.value = title;
-    titleCell.font = FONT_TITLE;
-    titleCell.alignment = { horizontal: 'center', vertical: 'middle' };
-    sheet.getRow(1).height = 24;
-
-    // سطر ۲: سرستون‌ها
-    const hRow = sheet.getRow(2);
-    hRow.height = 28;
-    hRow.getCell(1).value = 'ردیف';
-    hRow.getCell(1).font = FONT_HEADER;
-    hRow.getCell(1).fill = FILL_HEADER;
-    hRow.getCell(1).border = BORDER_THIN;
-    sheet.getColumn(1).width = 7;
-
-    hRow.getCell(2).value = 'نام';
-    hRow.getCell(2).font = FONT_HEADER;
-    hRow.getCell(2).fill = FILL_HEADER;
-    hRow.getCell(2).border = BORDER_THIN;
-    sheet.getColumn(2).width = 22;
-
-    mainDays.forEach(function (d, dIdx) {
-      const col = dIdx + 3;
-      const dayDate = Names.addDaysToIso(cohort.startDate, d.n - 1);
-      const shamsi = Names.formatShamsiShort(dayDate);
-      const cell = hRow.getCell(col);
-      cell.value = 'روز ' + Names.toPersianDigits(d.n) + '\n' + shamsi;
-      cell.font = { name: 'Tahoma', size: 8, bold: true, color: { argb: 'FFFFFFFF' } };
-      cell.fill = FILL_HEADER;
-      cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
-      cell.border = BORDER_THIN;
-      sheet.getColumn(col).width = 10;
-    });
-
-    const totCol = mainDays.length + 3;
-    const maxCol = mainDays.length + 4;
-    const pctCol = mainDays.length + 5;
-
-    hRow.getCell(totCol).value = 'مجموع';
-    hRow.getCell(totCol).font = FONT_HEADER;
-    hRow.getCell(totCol).fill = FILL_HEADER;
-    hRow.getCell(totCol).border = BORDER_THIN;
-    sheet.getColumn(totCol).width = 12;
-
-    hRow.getCell(maxCol).value = 'حداکثر';
-    hRow.getCell(maxCol).font = FONT_HEADER;
-    hRow.getCell(maxCol).fill = FILL_HEADER;
-    hRow.getCell(maxCol).border = BORDER_THIN;
-    sheet.getColumn(maxCol).width = 12;
-
-    hRow.getCell(pctCol).value = 'درصد';
-    hRow.getCell(pctCol).font = FONT_HEADER;
-    hRow.getCell(pctCol).fill = FILL_HEADER;
-    hRow.getCell(pctCol).border = BORDER_THIN;
-    sheet.getColumn(pctCol).width = 10;
-
-    // سطرهای افراد
-    members.forEach(function (p, mIdx) {
-      const row = sheet.getRow(mIdx + 3);
-      row.height = 20;
-
-      row.getCell(1).value = Names.toPersianDigits(mIdx + 1);
-      row.getCell(1).font = FONT_TAHOMA;
-      row.getCell(1).alignment = { horizontal: 'center', vertical: 'middle' };
-      row.getCell(1).border = BORDER_THIN;
-
-      row.getCell(2).value =
-        p.name + (p.status === 'frozen' ? ' (فریز)' : p.status === 'left' ? ' (خارج)' : '');
-      row.getCell(2).font = FONT_TAHOMA;
-      row.getCell(2).alignment = { horizontal: 'right', vertical: 'middle' };
-      row.getCell(2).border = BORDER_THIN;
-
-      mainDays.forEach(function (d, dIdx) {
-        const col = dIdx + 3;
-        const cell = row.getCell(col);
-        cell.border = BORDER_THIN;
-        cell.alignment = { horizontal: 'center', vertical: 'middle' };
-        cell.font = FONT_TAHOMA;
-
-        // فقط اگر روز بسته شده باشد امتیاز را نشان بده، وگرنه خالی
-        if (closedDays.indexOf(d.n) !== -1) {
-          const rec = (cohort.records && cohort.records[p.id] && cohort.records[p.id][d.n]) || null;
-          const sc = Scoring.dayScore(p, rec, d);
-          cell.value = Names.toPersianDigits(sc);
-        } else {
-          cell.value = '';
-        }
-      });
-
-      const totals = Scoring.personTotals(p, cohort, group);
-      row.getCell(totCol).value = Names.toPersianDigits(totals.totalScore);
-      row.getCell(totCol).font = FONT_TAHOMA;
-      row.getCell(totCol).alignment = { horizontal: 'center', vertical: 'middle' };
-      row.getCell(totCol).border = BORDER_THIN;
-
-      row.getCell(maxCol).value = Names.toPersianDigits(totals.totalMax);
-      row.getCell(maxCol).font = FONT_TAHOMA;
-      row.getCell(maxCol).alignment = { horizontal: 'center', vertical: 'middle' };
-      row.getCell(maxCol).border = BORDER_THIN;
-
-      row.getCell(pctCol).value = Names.toPersianDigits(totals.percent) + '٪';
-      row.getCell(pctCol).font = FONT_TAHOMA;
-      row.getCell(pctCol).alignment = { horizontal: 'center', vertical: 'middle' };
-      row.getCell(pctCol).border = BORDER_THIN;
-    });
-
-    // شیت داده لاتین
-    const dataSheet = workbook.addWorksheet(sanitizeSheetName(group.name + '-داده', 'داده'), {
-      views: [{ rightToLeft: true }]
-    });
-
-    const dataHeaders = ['ردیف', 'نام'].concat(
-      mainDays.map(function (d) {
-        return 'Day' + d.n;
-      }),
-      ['totalScore', 'totalMax', 'percent']
-    );
-
-    const dHRow = dataSheet.getRow(1);
-    dataHeaders.forEach(function (dh, idx) {
-      dHRow.getCell(idx + 1).value = dh;
-    });
-
-    members.forEach(function (p, mIdx) {
-      const row = dataSheet.getRow(mIdx + 2);
-      row.getCell(1).value = mIdx + 1;
-      row.getCell(2).value = p.name;
-
-      mainDays.forEach(function (d, dIdx) {
-        const col = dIdx + 3;
-        if (closedDays.indexOf(d.n) !== -1) {
-          const rec = (cohort.records && cohort.records[p.id] && cohort.records[p.id][d.n]) || null;
-          row.getCell(col).value = Scoring.dayScore(p, rec, d);
-        }
-      });
-
-      const totals = Scoring.personTotals(p, cohort, group);
-      row.getCell(totCol).value = totals.totalScore;
-      row.getCell(maxCol).value = totals.totalMax;
-      row.getCell(pctCol).value = totals.percent;
-    });
+    buildFullCohortSheets(workbook, cohort, group, includeFrozen, 'single');
 
     const filename = 'بوشیدو-' + cohort.name + '-' + group.name + '-کل-دوره';
     return downloadWorkbook(workbook, filename);
@@ -580,126 +407,14 @@ function exportAllMyGroupsReport(
       });
       const fn = 'بوشیدو-' + cohort.name + '-همه-گروه‌ها-روز' + dayN;
       return downloadWorkbook(workbook, fn);
-    } else {
-      // گزارش کل دوره برای همه گروه‌ها
-      myGroups.forEach(function (g) {
-        const mainDays = (cohort.days || []).filter(function (d) {
-          return d.type === 'main';
-        });
-        const closedDays = g.closedDays || [];
-        const members = (cohort.participants || []).filter(function (p) {
-          if (p.groupId !== g.id) return false;
-          if (!includeFrozen && (p.status === 'frozen' || p.status === 'left')) return false;
-          return true;
-        });
-
-        const sheet = workbook.addWorksheet(sanitizeSheetName(g.name, 'گروه'), {
-          views: [{ rightToLeft: true, state: 'frozen', xSplit: 2, ySplit: 2 }]
-        });
-
-        sheet.mergeCells(1, 1, 1, mainDays.length + 5);
-        const titleCell = sheet.getCell('A1');
-        titleCell.value = 'گزارش کل دوره — ' + cohort.name + ' — ' + g.name;
-        titleCell.font = FONT_TITLE;
-        titleCell.alignment = { horizontal: 'center', vertical: 'middle' };
-        sheet.getRow(1).height = 24;
-
-        const hRow = sheet.getRow(2);
-        hRow.height = 28;
-        hRow.getCell(1).value = 'ردیف';
-        hRow.getCell(1).font = FONT_HEADER;
-        hRow.getCell(1).fill = FILL_HEADER;
-        hRow.getCell(1).border = BORDER_THIN;
-        sheet.getColumn(1).width = 7;
-
-        hRow.getCell(2).value = 'نام';
-        hRow.getCell(2).font = FONT_HEADER;
-        hRow.getCell(2).fill = FILL_HEADER;
-        hRow.getCell(2).border = BORDER_THIN;
-        sheet.getColumn(2).width = 22;
-
-        mainDays.forEach(function (d, dIdx) {
-          const col = dIdx + 3;
-          const cell = hRow.getCell(col);
-          cell.value = 'روز ' + Names.toPersianDigits(d.n);
-          cell.font = { name: 'Tahoma', size: 8, bold: true, color: { argb: 'FFFFFFFF' } };
-          cell.fill = FILL_HEADER;
-          cell.alignment = { horizontal: 'center', vertical: 'middle' };
-          cell.border = BORDER_THIN;
-          sheet.getColumn(col).width = 9;
-        });
-
-        const totCol = mainDays.length + 3;
-        const maxCol = mainDays.length + 4;
-        const pctCol = mainDays.length + 5;
-
-        hRow.getCell(totCol).value = 'مجموع';
-        hRow.getCell(totCol).font = FONT_HEADER;
-        hRow.getCell(totCol).fill = FILL_HEADER;
-        hRow.getCell(totCol).border = BORDER_THIN;
-
-        hRow.getCell(maxCol).value = 'حداکثر';
-        hRow.getCell(maxCol).font = FONT_HEADER;
-        hRow.getCell(maxCol).fill = FILL_HEADER;
-        hRow.getCell(maxCol).border = BORDER_THIN;
-
-        hRow.getCell(pctCol).value = 'درصد';
-        hRow.getCell(pctCol).font = FONT_HEADER;
-        hRow.getCell(pctCol).fill = FILL_HEADER;
-        hRow.getCell(pctCol).border = BORDER_THIN;
-
-        members.forEach(function (p, mIdx) {
-          const row = sheet.getRow(mIdx + 3);
-          row.height = 20;
-
-          row.getCell(1).value = Names.toPersianDigits(mIdx + 1);
-          row.getCell(1).font = FONT_TAHOMA;
-          row.getCell(1).alignment = { horizontal: 'center', vertical: 'middle' };
-          row.getCell(1).border = BORDER_THIN;
-
-          row.getCell(2).value =
-            p.name + (p.status === 'frozen' ? ' (فریز)' : p.status === 'left' ? ' (خارج)' : '');
-          row.getCell(2).font = FONT_TAHOMA;
-          row.getCell(2).alignment = { horizontal: 'right', vertical: 'middle' };
-          row.getCell(2).border = BORDER_THIN;
-
-          mainDays.forEach(function (d, dIdx) {
-            const col = dIdx + 3;
-            const cell = row.getCell(col);
-            cell.border = BORDER_THIN;
-            cell.alignment = { horizontal: 'center', vertical: 'middle' };
-            cell.font = FONT_TAHOMA;
-
-            if (closedDays.indexOf(d.n) !== -1) {
-              const rec = (cohort.records && cohort.records[p.id] && cohort.records[p.id][d.n]) || null;
-              const sc = Scoring.dayScore(p, rec, d);
-              cell.value = Names.toPersianDigits(sc);
-            } else {
-              cell.value = '';
-            }
-          });
-
-          const totals = Scoring.personTotals(p, cohort, g);
-          row.getCell(totCol).value = Names.toPersianDigits(totals.totalScore);
-          row.getCell(totCol).font = FONT_TAHOMA;
-          row.getCell(totCol).alignment = { horizontal: 'center', vertical: 'middle' };
-          row.getCell(totCol).border = BORDER_THIN;
-
-          row.getCell(maxCol).value = Names.toPersianDigits(totals.totalMax);
-          row.getCell(maxCol).font = FONT_TAHOMA;
-          row.getCell(maxCol).alignment = { horizontal: 'center', vertical: 'middle' };
-          row.getCell(maxCol).border = BORDER_THIN;
-
-          row.getCell(pctCol).value = Names.toPersianDigits(totals.percent) + '٪';
-          row.getCell(pctCol).font = FONT_TAHOMA;
-          row.getCell(pctCol).alignment = { horizontal: 'center', vertical: 'middle' };
-          row.getCell(pctCol).border = BORDER_THIN;
-        });
-      });
-
-      const fullFn = 'بوشیدو-' + cohort.name + '-همه-گروه‌ها-کل-دوره';
-      return downloadWorkbook(workbook, fullFn);
     }
+
+    // گزارش کل دوره برای همه گروه‌ها
+    myGroups.forEach(function (g) {
+      buildFullCohortSheets(workbook, cohort, g, includeFrozen, 'all');
+    });
+    const fullFn = 'بوشیدو-' + cohort.name + '-همه-گروه‌ها-کل-دوره';
+    return downloadWorkbook(workbook, fullFn);
   });
 }
 
