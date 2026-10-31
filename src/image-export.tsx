@@ -862,7 +862,7 @@ function renderSingleCanvasPart(
 }
 
 /**
- * تولید تصاویر گزارش روز یک گروه (با تکه‌بندی خودکار اگر بیشتر از ۱۵ نفر باشد)
+ * تولید تصویر گزارش روز یک گروه (تمام افراد گروه در یک تصویر با ارتفاع متناسب)
  */
 function generateGroupDayReportImages(
   cohort: Cohort,
@@ -879,31 +879,23 @@ function generateGroupDayReportImages(
       throw new Error('فردی در این گروه نیست. اول افراد را به گروه اضافه کن.');
     }
 
-    const chunks = chunkArray(rows, 15);
-    const totalParts = chunks.length;
-
-    const promises = chunks.map(function (chunkRows, idx): Promise<ImagePart> {
-      return renderSingleCanvasPart(reportData, chunkRows, idx, totalParts, brand).then(function (res) {
-        const baseFilename = Names.sanitizeFilename(group.name + '_روز-' + dayN);
-        const filename = totalParts > 1 ? baseFilename + '_بخش-' + (idx + 1) + '.png' : baseFilename + '.png';
-        return {
-          partIndex: idx,
-          totalParts: totalParts,
-          filename: filename,
-          blob: res.blob,
-          dataUrl: res.dataUrl,
-          width: res.width,
-          height: res.height,
-          rowsCount: chunkRows.length
-        };
-      });
-    });
-
-    return Promise.all(promises).then(function (parts) {
+    // تمام افراد گروه در یک تصویر واحد قرار می‌گیرند و ارتفاع بوم متناسب با تمام سطرها افزایش می‌یابد
+    return renderSingleCanvasPart(reportData, rows, 0, 1, brand).then(function (res) {
+      const filename = Names.sanitizeFilename(group.name + '_روز-' + dayN) + '.png';
+      const part: ImagePart = {
+        partIndex: 0,
+        totalParts: 1,
+        filename: filename,
+        blob: res.blob,
+        dataUrl: res.dataUrl,
+        width: res.width,
+        height: res.height,
+        rowsCount: rows.length
+      };
       return {
         reportData: reportData,
-        parts: parts,
-        totalParts: totalParts
+        parts: [part],
+        totalParts: 1
       };
     });
   });
