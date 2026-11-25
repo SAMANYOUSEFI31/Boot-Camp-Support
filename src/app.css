@@ -356,9 +356,26 @@ th.bsh-sticky-right { z-index: calc(var(--layer-raised) + 1); }
 .bsh-responsive-cards > .bsh-card,
 .bsh-assignment-grid > .bsh-card,
 .bsh-daily-cards > .bsh-card { min-inline-size: 0; }
-.bsh-dialog { max-block-size: calc(var(--app-dvh) - var(--space-8)); }
-.bsh-dialog__body { min-block-size: 0; overflow-y: auto; }
+.bsh-dialog {
+  display: flex;
+  flex-direction: column;
+  max-block-size: calc(var(--app-dvh) - var(--space-8));
+  overflow: hidden;
+}
+.bsh-dialog__grab,
+.bsh-dialog__head,
+.bsh-dialog__desc,
+.bsh-dialog__foot { flex-shrink: 0; }
+.bsh-dialog__body {
+  min-block-size: 0;
+  overflow: auto;
+  overscroll-behavior-y: contain;
+  scrollbar-gutter: stable;
+}
+.bsh-import-group-row { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--space-3); }
+.bsh-import-file { max-inline-size: 100%; }
 @media (min-width: 640px) {
+  .bsh-import-group-row { grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; }
   .bsh-registration-form,
   .bsh-assignment-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .bsh-registration-toolbar { grid-template-columns: repeat(2, minmax(0, 1fr)); }

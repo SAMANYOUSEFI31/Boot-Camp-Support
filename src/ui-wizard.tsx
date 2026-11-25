@@ -3,13 +3,16 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { useEffect, useState, type ChangeEvent } from 'react';
+import { useEffect, useRef, useState, type ChangeEvent } from 'react';
 import { B } from './bushido';
 import { HelpHint } from './help-hint';
 import { Names } from './names';
 import { errorMessage } from './errors';
 import { Store } from './store';
-import { Importer, type GroupConfig, type ImportFile, type ImportReport } from './importer';
+import { Excel } from './excel';
+import { saveFileBlob, saveJsonFile } from './ui-common';
+import { registrationComplete } from './registration';
+import { Importer, type GroupConfig, type ImportFile, type ImportReport, type ImportDecisions } from './importer';
 import type { Cohort, Toast } from './types';
 
 /**
@@ -41,9 +44,14 @@ function ImportWizardModal(props: ImportWizardModalProps) {
   const [newStartDate, setNewStartDate] = useState<Date>(new Date());
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
+  const [decisions, setDecisions] = useState<ImportDecisions>({});
+  const [downloadFormat, setDownloadFormat] = useState('xlsx');
+  const [downloadScope, setDownloadScope] = useState('template');
+  const readRequest = useRef(0);
 
   useEffect(
     function () {
+      readRequest.current++;
       if (open) {
         setStep(1);
         setFilesData([]);
@@ -55,10 +63,13 @@ function ImportWizardModal(props: ImportWizardModalProps) {
         setNewStartDate(new Date());
         setLoading(false);
         setErrorMsg('');
+        setDecisions({});
+        setDownloadScope('template');
       }
     },
     [open]
   );
+  useEffect(() => { setDecisions({}); }, [target, targetCohortId, groupConfigMap]);
 
   if (!open) return null;
 
@@ -89,6 +100,7 @@ function ImportWizardModal(props: ImportWizardModalProps) {
   }
 
   function processSelectedFiles(files: File[]) {
+    const request = ++readRequest.current;
     setLoading(true);
     setErrorMsg('');
 
@@ -98,6 +110,7 @@ function ImportWizardModal(props: ImportWizardModalProps) {
 
     Promise.all(readPromises)
       .then(function (results) {
+        if (request !== readRequest.current) return;
         const parsedFiles = results.map(function (res) {
           const detected = Importer.detectStructureType(res.rawRows);
           return {
@@ -127,6 +140,7 @@ function ImportWizardModal(props: ImportWizardModalProps) {
         setStep(2);
       })
       .catch(function (err) {
+        if (request !== readRequest.current) return;
         setLoading(false);
         setErrorMsg('فایل خوانده نشد: ' + errorMessage(err) + ' فایل دیگری را امتحان کن.');
       });
@@ -178,6 +192,34 @@ function ImportWizardModal(props: ImportWizardModalProps) {
   const targetCohort = cohorts.find((c) => c.id === targetCohortId) || null;
   const targetLabel =
     target === 'new' ? newName.trim() + ' (دورهٔ تازه)' : targetCohort ? targetCohort.name : '';
+  const emptyTarget: Cohort = {
+    id: 'new-import', name: newName, startDate: '', archived: false,
+    groups: [], participants: [], records: {}, days: []
+  };
+  let preview: ReturnType<typeof Importer.prepareImport> | null = null;
+  let previewError = '';
+  if (analyzedReport) {
+    try {
+      if (target === 'existing' && !targetCohort) throw new Error('دورهٔ مقصد را انتخاب کن.');
+      preview = Importer.prepareImport(target === 'new' ? emptyTarget : targetCohort!, analyzedReport, groupConfigMap, decisions);
+    } catch (err) { previewError = errorMessage(err); }
+  }
+  const unresolved = preview?.conflicts.filter((c) => !decisions[c.key]).length || 0;
+
+  async function download() {
+    setLoading(true);
+    setErrorMsg('');
+    try {
+      const current = cohorts.find((c) => c.id === activeCohortId);
+      if (downloadScope === 'current' && !current) throw new Error('ابتدا دورهٔ فعال را انتخاب کن.');
+      const rows = Importer.registrationFileRows(downloadScope === 'current' ? current : undefined);
+      const filename = downloadScope === 'current' ? 'registrations-' + Names.sanitizeFilename(current!.name) : 'registration-template';
+      if (downloadFormat === 'xlsx') await Excel.exportRegistrationRows(rows, filename);
+      else if (downloadFormat === 'csv') saveFileBlob(filename + '.csv', new Blob([Importer.serializeCSV(rows)], { type: 'text/csv;charset=utf-8' }));
+      else saveJsonFile(filename + '.json', Importer.registrationJSON(rows));
+    } catch (err) { setErrorMsg('دانلود انجام نشد: ' + errorMessage(err)); }
+    finally { setLoading(false); }
+  }
 
   // نهایی‌سازی و اعمال ادغام
   // «مال من است» برای همهٔ گروه‌ها یکجا
@@ -194,6 +236,8 @@ function ImportWizardModal(props: ImportWizardModalProps) {
   function handleFinalApply() {
     if (!analyzedReport) return;
     try {
+      if (previewError) throw new Error(previewError);
+      if (!preview || unresolved) throw new Error('برای همهٔ تفاوت‌ها تصمیم بگیر.');
       let cohortId = targetCohortId;
       if (target === 'new') {
         const trimmed = newName.trim();
@@ -211,7 +255,8 @@ function ImportWizardModal(props: ImportWizardModalProps) {
         setStep(2);
         return;
       }
-      Importer.applyImport(cohortId, analyzedReport, groupConfigMap);
+      Importer.applyImport(cohortId, analyzedReport, groupConfigMap, decisions);
+      Store.setActiveCohortId(cohortId);
       if (toast) {
         toast.show({
           intent: 'success',
@@ -239,9 +284,17 @@ function ImportWizardModal(props: ImportWizardModalProps) {
     <B.Dialog
       open={open}
       onClose={onClose}
-      title={'ورود افراد از Excel یا CSV (مرحلهٔ ' + Names.toPersianDigits(step) + ' از ۴)'}
-      description="گروه‌ها و افراد را از فایل وارد کن. فقط نام، گروه و آیدی تلگرام خوانده می‌شود."
+      title={'ورود افراد از فایل (مرحلهٔ ' + Names.toPersianDigits(step) + ' از ۴)'}
+      description="Excel، CSV یا JSON: نام، موبایل، سن و جنسیت؛ تلگرام و گروه اختیاری. گروه خالی یعنی ثبت‌نام بدون گروه."
       size="lg"
+      footer={step > 1 ? <div className="bsh-dialog-actions">
+        <B.Button variant="ghost" onClick={() => setStep(step - 1)}>قبلی</B.Button>
+        {step < 4 ? <B.Button variant="primary" onClick={() => setStep(step + 1)}>
+          {step === 2 ? 'ادامه: ناهمخوانی‌ها' : 'ادامه: ورود'}
+        </B.Button> : <B.Button variant="primary" disabled={!preview || !!previewError || unresolved > 0} onClick={handleFinalApply}>
+          وارد کن
+        </B.Button>}
+      </div> : undefined}
     >
       <div className="bsh-stack" style={{ padding: 'var(--space-2) 0' }}>
         {errorMsg && <B.Alert intent="danger">{errorMsg}</B.Alert>}
@@ -273,17 +326,37 @@ function ImportWizardModal(props: ImportWizardModalProps) {
                 className="text-brand"
                 style={{ margin: '0 auto var(--space-2)' }}
               />
-              <h3 className="heading-xs">فایل Excel (.xlsx) یا CSV را انتخاب کن</h3>
+              <h3 className="heading-xs">فایل Excel (.xlsx)، CSV یا JSON را انتخاب کن</h3>
               <p className="body-sm" style={{ color: 'var(--text-subtle)', margin: 'var(--space-2) 0' }}>
-                «جدول گروه‌بندی»، «لیست ثبت‌نامی» یا هر دو را با هم انتخاب کن.
+                یک فهرست افراد، یک جدول گروه‌بندی قدیمی یا هر دو را انتخاب کن. فایل بکاپ JSON را از «بازگردانی بکاپ» وارد کن.
               </p>
               <input
                 type="file"
                 multiple={true}
-                accept=".xlsx,.csv"
+                accept=".xlsx,.csv,.json"
+                className="bsh-import-file"
+                aria-label="انتخاب فایل افراد یا گروه‌بندی"
+                disabled={loading}
                 onChange={handleFilesChosen}
                 style={{ margin: 'var(--space-3) auto', display: 'block', color: 'var(--text-default)' }}
               />
+            </B.Card>
+            <B.Card padding="md">
+              <div className="bsh-stack">
+                <h3 className="heading-sm">دانلود برای تکمیل در دستگاه خودت</h3>
+                <p className="body-sm">قالب یک ردیف ساختگی دارد؛ آن را حذف یا جایگزین کن. برای گروه‌بندی، نام گروه را در ستون «گروه» بنویس؛ خالی بماند، فرد بدون گروه وارد می‌شود. موبایل را به‌صورت متن نگه دار.</p>
+                <div className="bsh-registration-form">
+                  <B.Select label="محتوای دانلود" value={downloadScope}
+                    options={[{ value: 'template', label: 'قالب نمونه برای افراد جدید' },
+                      { value: 'current', label: 'افراد دورهٔ فعال با گروه‌های فعلی', disabled: !activeCohortId }]}
+                    onChange={(e) => setDownloadScope(e.target.value)} />
+                  <B.Select label="فرمت" value={downloadFormat}
+                    options={[{ value: 'xlsx', label: 'Excel (.xlsx)' }, { value: 'csv', label: 'CSV' }, { value: 'json', label: 'JSON افراد' }]}
+                    onChange={(e) => setDownloadFormat(e.target.value)} />
+                </div>
+                <B.Alert intent="warning">خروجی افراد شامل مشخصات خصوصی است. فقط با افراد مجاز به اشتراک بگذار. این فایل جای بکاپ کامل امتیازها و پرداخت‌ها نیست.</B.Alert>
+                <B.Button variant="secondary" loading={loading} onClick={download}>دانلود فایل</B.Button>
+              </div>
             </B.Card>
             <B.Card padding="md">
               <div
@@ -369,8 +442,12 @@ function ImportWizardModal(props: ImportWizardModalProps) {
             </B.Card>
             <B.Alert intent="info">
               نام هر گروه را اصلاح کن. گروهی که تیکش را برداری وارد نمی‌شود. گروهی که «گروه من» نباشد،
-              به‌عنوان گروه دیگران وارد می‌شود.
+              به‌عنوان گروه دیگران وارد می‌شود. افراد بدون گروه هم در بخش ثبت‌نام اضافه می‌شوند.
+              {' تعداد بدون گروه: ' + Names.toPersianDigits(analyzedReport.participants.filter((p) => !p.groupId).length)}
             </B.Alert>
+            {analyzedReport.participants.some((p) => !registrationComplete(p)) && <B.Alert intent="warning">
+              {'مشخصات ثبت‌نام ' + Names.toPersianDigits(analyzedReport.participants.filter((p) => !registrationComplete(p)).length) + ' نفر ناقص است؛ مشخصات غایب حدس زده نمی‌شود. برای انتخاب آن‌ها از فهرست ثبت‌نامی‌ها، ابتدا مشخصات را تکمیل کن.'}
+            </B.Alert>}
             <div style={{ display: 'flex', gap: 'var(--space-2)', flexWrap: 'wrap' }}>
               <B.Button
                 variant="ghost"
@@ -406,15 +483,9 @@ function ImportWizardModal(props: ImportWizardModalProps) {
 
                 return (
                   <B.Card key={g.id} padding="md">
-                    <div
-                      style={{
-                        display: 'grid',
-                        gridTemplateColumns: 'auto 1fr auto',
-                        gap: 'var(--space-3)',
-                        alignItems: 'center'
-                      }}
-                    >
+                    <div className="bsh-import-group-row">
                       <B.Checkbox
+                        label="ورود این گروه"
                         checked={cfg.selected}
                         onChange={function (e) {
                           const updated = Object.assign({}, groupConfigMap);
@@ -452,24 +523,6 @@ function ImportWizardModal(props: ImportWizardModalProps) {
                   </B.Card>
                 );
               })}
-            </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-              <B.Button
-                variant="ghost"
-                onClick={function () {
-                  setStep(1);
-                }}
-              >
-                قبلی
-              </B.Button>
-              <B.Button
-                variant="primary"
-                onClick={function () {
-                  setStep(3);
-                }}
-              >
-                ادامه: ناهمخوانی‌ها
-              </B.Button>
             </div>
           </div>
         )}
@@ -509,24 +562,6 @@ function ImportWizardModal(props: ImportWizardModalProps) {
                 <B.Stat label="نام تکراری" value={Names.toPersianDigits(analyzedReport.duplicates.length)} />
               </div>
             </B.Card>
-            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-              <B.Button
-                variant="ghost"
-                onClick={function () {
-                  setStep(2);
-                }}
-              >
-                قبلی
-              </B.Button>
-              <B.Button
-                variant="primary"
-                onClick={function () {
-                  setStep(4);
-                }}
-              >
-                ادامه: ورود
-              </B.Button>
-            </div>
           </div>
         )}
         {step === 4 && analyzedReport && (
@@ -535,9 +570,31 @@ function ImportWizardModal(props: ImportWizardModalProps) {
               <HelpHint help="importStep4" visibleLabel />
             </div>
             <B.Alert intent="info" title="چه اتفاقی می‌افتد؟">
-              افراد تازه اضافه می‌شوند. فرد موجود (با همان نام) عوض نمی‌شود؛ فقط آیدی تلگرام خالی‌اش پر می‌شود
-              و اگر فایل فریزش کرده باشد، فریز می‌شود. چیزی حذف نمی‌شود.
+              افراد با موبایل تطبیق داده می‌شوند؛ فایل قدیمی بدون موبایل فقط با نام یکتا تطبیق می‌خورد.
+              مشخصات خالی تکمیل می‌شود. برای هر مقدار متفاوت و تغییر گروه، انتخاب تو لازم است؛ هیچ فرد، امتیاز یا پرداختی حذف نمی‌شود.
             </B.Alert>
+            {previewError && <B.Alert intent="danger">{previewError}</B.Alert>}
+            {!!preview?.conflicts.length && <B.Button variant="secondary" onClick={() =>
+              setDecisions(Object.fromEntries(preview!.conflicts.map((c) => [c.key, 'keep' as const])))}>
+              حفظ مقدار فعلی برای همهٔ تفاوت‌ها
+            </B.Button>}
+            {preview?.conflicts.map((conflict) => <B.Card key={conflict.key} padding="md">
+              <div className="bsh-stack bsh-wrap-text">
+                <h3 className="heading-sm">{conflict.name + ' — ' + conflict.field}</h3>
+                <p className="body-sm">این تفاوت فقط با انتخاب تو اعمال می‌شود.</p>
+                {conflict.field === 'گروه' && <B.Alert intent="warning">
+                  ثبت‌ها و پرداخت‌ها پاک نمی‌شوند؛ با تغییر گروه، گزارش‌ها و اخطارها بر اساس روزهای بسته و سابقهٔ حضور در گروه مقصد بازمحاسبه می‌شوند.
+                </B.Alert>}
+                <B.RadioGroup legend="کدام مقدار حفظ شود؟" name={'decision-' + conflict.key}
+                  value={decisions[conflict.key] || ''} orientation="vertical"
+                  options={[{ value: 'keep', label: 'حفظ فعلی: ' + conflict.current },
+                    { value: 'file', label: 'استفاده از فایل: ' + conflict.incoming }]}
+                  onChange={(value) => {
+                    if (value === 'keep' || value === 'file') setDecisions((previous) => ({ ...previous, [conflict.key]: value }));
+                  }} />
+              </div>
+            </B.Card>)}
+            {unresolved > 0 && <B.Alert intent="warning"><span aria-live="polite">{Names.toPersianDigits(unresolved) + ' تفاوت هنوز نیازمند انتخاب است.'}</span></B.Alert>}
             <B.Card padding="md">
               <div className="title" style={{ marginBottom: 'var(--space-2)' }}>
                 {'ورود به دورهٔ: ' + targetLabel}
@@ -546,19 +603,6 @@ function ImportWizardModal(props: ImportWizardModalProps) {
                 بعد از ورود، تا وقتی صفحه را نبسته‌ای می‌توانی «برگرداندن آخرین ورود» را بزنی.
               </p>
             </B.Card>
-            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-              <B.Button
-                variant="ghost"
-                onClick={function () {
-                  setStep(3);
-                }}
-              >
-                قبلی
-              </B.Button>
-              <B.Button variant="primary" onClick={handleFinalApply}>
-                وارد کن
-              </B.Button>
-            </div>
           </div>
         )}
       </div>

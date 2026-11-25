@@ -1166,8 +1166,6 @@ function ImagePreviewModal(props: ImagePreviewModalProps) {
             display: 'flex',
             flexDirection: 'column',
             alignItems: 'center',
-            maxHeight: '60vh',
-            overflowY: 'auto',
             overflowX: 'auto'
           }}
         >

@@ -9,6 +9,16 @@ import { Importer } from './importer';
 import type { Cohort } from './types';
 
 const input = { name: 'علی رضایی', phone: '۰۹۱۲۳۴۵۶۷۸۹', age: '۲۵', gender: 'male' };
+test('تلگرام اختیاری است؛ @ حذف، مقدار ناسالم رد و در ویرایش قبلی حفظ می‌شود', () => {
+  const c = fresh();
+  const p = Store.saveRegistration(c.id, { ...input, telegram: '@sample_user' });
+  assert.equal(p.telegram, 'sample_user');
+  assert.throws(() => Store.saveRegistration(c.id, { ...input, telegram: '12 invalid' }, p.id), /تلگرام/);
+  Store.saveRegistration(c.id, input, p.id);
+  assert.equal(p.telegram, 'sample_user');
+  Store.saveRegistration(c.id, { ...input, telegram: '' }, p.id);
+  assert.equal(p.telegram, '');
+});
 function fresh() {
   Store.getState().cohorts = [];
   const c = Store.createCohort({ name: 'ثبت‌نام', startDate: '2026-11-01' });

@@ -122,7 +122,8 @@ function MainApp() {
               />
             </div>
             {activeTab === 'registrations' && <RegistrationsTab key={activeCohort.id}
-              cohort={activeCohort} toast={toast} onGoToGroups={() => setActiveTab('groups')} />}
+              cohort={activeCohort} toast={toast} onGoToGroups={() => setActiveTab('groups')}
+              onOpenImport={() => setImportWizardOpen(true)} />}
             {activeTab === 'groups' && <GroupsTab key={activeCohort.id} cohort={activeCohort} toast={toast}
               onGoToRegistrations={() => setActiveTab('registrations')} />}
             {activeTab === 'daily' && (

@@ -215,7 +215,7 @@ function EmptyCohortState(props: {
         بازگردانی بکاپ
       </B.Button>
       <B.Button variant="secondary" iconStart="Inbox" onClick={onImport}>
-        ورود افراد از Excel یا CSV
+        ورود فایل / دانلود قالب افراد
       </B.Button>
     </div>
   );
@@ -286,7 +286,7 @@ function RestoreBackupModal(props: { open: boolean; onClose: () => void; toast?:
 
     if (/\.(xlsx|xls|csv|numbers)$/i.test(file.name)) {
       setErrorMsg(
-        'این فایل Excel یا CSV است، نه بکاپ. برای وارد کردن افراد از «ابزارها ← ورود افراد از Excel یا CSV» استفاده کن.'
+        'این فایل Excel یا CSV است، نه بکاپ. برای وارد کردن افراد از «ابزارها ← ورود فایل / دانلود قالب افراد» استفاده کن.'
       );
       return;
     }

@@ -104,6 +104,19 @@ function downloadWorkbook(workbook: ExcelJSLib, filename: string) {
   });
 }
 
+function exportRegistrationRows(rows: string[][], filename: string) {
+  return loadExcelJS().then((lib) => {
+    const workbook = new lib.Workbook();
+    const sheet = workbook.addWorksheet('ثبت‌نام', { views: [{ rightToLeft: true, state: 'frozen', ySplit: 1 }] });
+    sheet.columns = rows[0].map(() => ({ width: 24, style: { numFmt: '@', font: FONT_TAHOMA } }));
+    rows.forEach((row) => sheet.addRow(row));
+    sheet.getRow(1).font = FONT_HEADER;
+    sheet.getRow(1).fill = FILL_HEADER;
+    sheet.autoFilter = { from: { row: 1, column: 1 }, to: { row: Math.max(1, rows.length), column: rows[0].length } };
+    return downloadWorkbook(workbook, filename);
+  });
+}
+
 const colLetter = (n: number) => String.fromCharCode(64 + n);
 
 const styleHeaderCell = (
@@ -419,6 +432,7 @@ function exportAllMyGroupsReport(
 }
 
 export const Excel = {
+  exportRegistrationRows,
   loadExcelJS: loadExcelJS,
   exportGroupDayReport: exportGroupDayReport,
   exportGroupFullCohortReport: exportGroupFullCohortReport,

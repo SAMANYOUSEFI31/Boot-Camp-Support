@@ -8,6 +8,7 @@ export interface RegistrationInput {
   phone: string;
   age: string | number;
   gender: string;
+  telegram?: string;
 }
 
 export type RegistrationErrors = Partial<Record<keyof RegistrationInput, string>>;
@@ -35,7 +36,11 @@ export function validateRegistration(input: RegistrationInput, participants: Par
     errors.age = 'سن را به سال، با عدد صحیح بین ۱ و ۱۲۰ بنویس.';
   }
   if (input.gender !== 'male' && input.gender !== 'female') errors.gender = 'مرد یا زن را انتخاب کن.';
-  return { valid: Object.keys(errors).length === 0, errors, name, phone, age };
+  const telegram = (input.telegram || '').trim().replace(/^@/, '');
+  if (telegram && !/^[a-zA-Z][a-zA-Z0-9_]{4,31}$/.test(telegram)) {
+    errors.telegram = 'نام کاربری تلگرام را با ۵ تا ۳۲ حرف لاتین، عدد یا زیرخط بنویس؛ شروع با حرف.';
+  }
+  return { valid: Object.keys(errors).length === 0, errors, name, phone, age, telegram };
 }
 
 export function registrationComplete(p: Participant): boolean {

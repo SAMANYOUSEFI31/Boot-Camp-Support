@@ -17,10 +17,11 @@ function ProfileDetails({ participant: p }: { participant: Participant }) {
     <div><dt>موبایل</dt><dd>{p.phone ? <bdi className="code" dir="ltr">{p.phone}</bdi> : 'ثبت نشده'}</dd></div>
     <div><dt>سن</dt><dd>{ageLabel(p)}</dd></div>
     <div><dt>جنسیت</dt><dd>{genderLabel(p)}</dd></div>
+    <div><dt>تلگرام</dt><dd>{p.telegram ? <bdi dir="ltr">@{p.telegram}</bdi> : 'ثبت نشده'}</dd></div>
   </dl>;
 }
 
-export function RegistrationsTab(props: { cohort: Cohort; toast?: Toast; onGoToGroups: () => void }) {
+export function RegistrationsTab(props: { cohort: Cohort; toast?: Toast; onGoToGroups: () => void; onOpenImport: () => void }) {
   const { cohort, toast } = props;
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState('all');
@@ -54,6 +55,7 @@ export function RegistrationsTab(props: { cohort: Cohort; toast?: Toast; onGoToG
     { key: 'phone', label: 'موبایل', render: (row) => row.phone ? <bdi dir="ltr" className="code">{row.phone}</bdi> : 'ثبت نشده' },
     { key: 'age', label: 'سن', render: (row) => ageLabel(row) },
     { key: 'gender', label: 'جنسیت', render: (row) => genderLabel(row) },
+    { key: 'telegram', label: 'تلگرام', render: (row) => row.telegram ? <bdi dir="ltr">@{row.telegram}</bdi> : 'ثبت نشده' },
     { key: 'group', label: 'گروه', render: (row) => groupName(row) },
     { key: 'actions', label: 'اقدام', render: (row) => {
       const p = visible.find((p) => p.id === row.id);
@@ -96,6 +98,7 @@ export function RegistrationsTab(props: { cohort: Cohort; toast?: Toast; onGoToG
             گروه‌بندی ثبت‌نامی‌ها
           </B.Button>
           <B.Button variant="ghost" onClick={props.onGoToGroups}>مدیریت گروه‌ها</B.Button>
+          <B.Button variant="secondary" iconStart="Inbox" onClick={props.onOpenImport}>ورود فایل / دانلود قالب</B.Button>
         </div>
       </div>
     </B.Card>
@@ -142,7 +145,8 @@ export function RegistrationDialog(props: { cohort: Cohort; participant: Partici
   const { cohort, participant: p, onClose, toast } = props;
   const formId = useId();
   const [input, setInput] = useState<RegistrationInput>({
-    name: p?.name || '', phone: p?.phone || '', age: p?.age !== undefined ? String(p.age) : '', gender: p?.gender || ''
+    name: p?.name || '', phone: p?.phone || '', age: p?.age !== undefined ? String(p.age) : '', gender: p?.gender || '',
+    telegram: p?.telegram || ''
   });
   const [errors, setErrors] = useState<RegistrationErrors>({});
   const [error, setError] = useState('');
@@ -177,6 +181,9 @@ export function RegistrationDialog(props: { cohort: Cohort; participant: Partici
           value={input.phone} error={errors.phone} onChange={(e) => change('phone', e.target.value)} />
         <B.TextField label="سن (سال)" required inputMode="numeric" maxLength={3}
           value={input.age} error={errors.age} onChange={(e) => change('age', e.target.value)} />
+        <B.TextField label="آیدی تلگرام (اختیاری)" dir="ltr" autoComplete="off" maxLength={33}
+          hint="نام کاربری با یا بدون @؛ نه شماره یا شناسه عددی."
+          value={input.telegram} error={errors.telegram} onChange={(e) => change('telegram', e.target.value)} />
         <B.RadioGroup legend="جنسیت" name={formId + '-gender'} required orientation="horizontal"
           value={input.gender} error={errors.gender} options={[{ value: 'male', label: 'مرد' }, { value: 'female', label: 'زن' }]}
           onChange={(value) => change('gender', value)} />

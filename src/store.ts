@@ -738,8 +738,9 @@ function saveRegistration(cohortId: string, input: RegistrationInput, participan
   if (!result.valid) throw new Error(Object.values(result.errors).join(' '));
   const gender = input.gender;
   if (gender !== 'male' && gender !== 'female') throw new Error('جنسیت را انتخاب کن.');
-  const fields: Pick<Participant, 'name' | 'phone' | 'age' | 'gender'> = {
-    name: result.name, phone: result.phone, age: result.age, gender
+  const fields: Pick<Participant, 'name' | 'phone' | 'age' | 'gender' | 'telegram'> = {
+    name: result.name, phone: result.phone, age: result.age, gender,
+    telegram: input.telegram === undefined ? existing?.telegram || '' : result.telegram
   };
   if (existing) {
     updateParticipant(cohortId, existing.id, fields);
@@ -747,7 +748,7 @@ function saveRegistration(cohortId: string, input: RegistrationInput, participan
   }
   const p: Participant = {
     id: 'p_' + Date.now() + '_' + Math.random().toString(36).slice(2, 9),
-    ...fields, nameKey: Names.normalizeName(result.name), telegram: '', groupId: '',
+    ...fields, nameKey: Names.normalizeName(result.name), groupId: '',
     status: 'active', habitCount: MAX_HABITS, habits: [...REQUIRED_HABITS, '']
   };
   c.participants.push(p);
