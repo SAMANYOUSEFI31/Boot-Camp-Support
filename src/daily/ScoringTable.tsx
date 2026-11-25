@@ -8,6 +8,7 @@ import { B } from '../bushido';
 import { Names } from '../names';
 import { Scoring, standardDay } from '../scoring';
 import { HabitChips } from './HabitChips';
+import { membership } from '../membership';
 import type { ParticipantCardProps, RowsViewProps } from './types';
 
 /**
@@ -88,7 +89,7 @@ export function DailyScoringTable(props: RowsViewProps) {
               {'کار سخت (۰ تا ' + Names.toPersianDigits(dayCfg.hardLevels) + ')'}
             </th>
             <th className="label-sm is-num" style={{ textAlign: 'center', width: 'calc(var(--space-24) + var(--space-4))' }}>
-              گزارش هدف (۲ امتیاز)
+              مأموریت ویژه (۱ امتیاز)
             </th>
             <th className="label-sm is-num" style={{ textAlign: 'center', width: 'calc(var(--space-24) + var(--space-4))' }}>
               امتیاز این روز
@@ -165,6 +166,9 @@ const TableRowItem = memo(function TableRowItem(props: TableRowItemProps) {
         }}
       >
         {p.name}
+        <div className="caption">
+          {Names.toPersianDigits(membership(p).warnings) + ' اخطار · ' + Names.toPersianDigits(membership(p).remaining) + ' جان'}
+        </div>
         {p.status === 'frozen' && (
           <span
             className="caption"
@@ -211,6 +215,7 @@ const TableRowItem = memo(function TableRowItem(props: TableRowItemProps) {
               inputRefs.current[rowIdx + '_hard'] = el;
             }}
             type="text"
+            aria-label={'سطح کار سخت ' + p.name}
             inputMode="numeric"
             className="bsh-field__input bsh-cell-input body-md"
             value={hardVal !== '' ? Names.toPersianDigits(hardVal) : ''}
@@ -223,7 +228,10 @@ const TableRowItem = memo(function TableRowItem(props: TableRowItemProps) {
               }
               const latin = Names.toLatinDigits(raw);
               const hVal = parseInt(latin, 10);
-              if (isNaN(hVal)) return;
+              if (!/^\d+$/.test(latin) || isNaN(hVal)) {
+                toast?.show({ intent: 'danger', message: 'سطح کار سخت باید عدد صحیح از ۰ تا ۳ باشد.' });
+                return;
+              }
 
               if (hVal > dayCfg.hardLevels) {
                 if (toast)
@@ -251,6 +259,7 @@ const TableRowItem = memo(function TableRowItem(props: TableRowItemProps) {
       </td>
       <td style={{ textAlign: 'center' }}>
         <B.Checkbox
+          label={'گزارش هدف ' + p.name}
           checked={specialVal === 1}
           onChange={function (e) {
             onCellChange(p.id, 'special', e.target.checked ? 1 : 0);

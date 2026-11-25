@@ -16,6 +16,8 @@ import { DailyScoringCardView } from './ParticipantCards';
 import { DailyScoringTable } from './ScoringTable';
 import { ExcelGroupDayExportModal } from './ExcelExportModal';
 import { HelpHint } from '../help-hint';
+import { Scoring } from '../scoring';
+import { membership } from '../membership';
 
 /**
  * محاسبه روز جاری نسبت به تاریخ شروع دوره (۱ تا ۳۰)
@@ -154,8 +156,12 @@ export function DailyScoringTab(props: { cohort: Cohort; toast?: Toast; onGoToGr
   const handleCellChange: CellChange = function (pId, field, value) {
     const patch: Partial<DayRecord> = {};
     patch[field] = value;
-    Store.recordDaily(cohort.id, pId, selectedDayN, patch);
-    triggerSaveIndicator();
+    try {
+      Store.recordDaily(cohort.id, pId, selectedDayN, patch);
+      triggerSaveIndicator();
+    } catch (err) {
+      toast?.show({ intent: 'danger', message: errorMessage(err) });
+    }
   };
 
   // لمس یک عادت مشخص (انجام شد/نشد)
@@ -240,6 +246,9 @@ export function DailyScoringTab(props: { cohort: Cohort; toast?: Toast; onGoToGr
   }).length;
   const progressPercent =
     totalMembersCount > 0 ? Math.round((recordedMembersCount / totalMembersCount) * 100) : 0;
+  const warningCandidates = members.filter((p) => p.status === 'active' &&
+    !Scoring.standardDay(p, cohort.records[p.id]?.[selectedDayN], dayCfg));
+  const expulsionCandidates = warningCandidates.filter((p) => membership(p).remaining === 1);
 
   // «بستن روز» تنها دکمهٔ اصلی صفحه است؛ در هر عرض فقط یک نسخهٔ آن دیده می‌شود
   const closeDayButton = isDayClosed ? (
@@ -268,6 +277,11 @@ export function DailyScoringTab(props: { cohort: Cohort; toast?: Toast; onGoToGr
 
   return (
     <div className="bsh-stack bsh-daily">
+      <B.Alert intent="info" title="سقف روز اصلی: ۱۱ امتیاز، بدون دونیت">
+        چهار عادت اصلی ۴ امتیاز؛ روز استاندارد ۲؛ عادت پنجم ۱؛ کار سخت تا ۳؛ مأموریت ویژه ۱.
+        با انجام نشدن یک یا چند عادت اصلی، فقط یک اخطار برای آن روز ثبت می‌شود.
+        دونیت و خرید جان را در «گروه‌ها و افراد ← مدیریت پرداخت‌ها» ثبت کن.
+      </B.Alert>
       <B.Card padding="md">
         <div className="bsh-row" style={{ justifyContent: 'space-between' }}>
           <div
@@ -615,7 +629,7 @@ export function DailyScoringTab(props: { cohort: Cohort; toast?: Toast; onGoToGr
             setCloseDayModalOpen(false);
           }}
           title={'بستن روز ' + Names.toPersianDigits(selectedDayN)}
-          description="امتیاز این روز در مجموع و درصد افراد گروه حساب می‌شود. هر وقت خواستی می‌شود روز را دوباره باز کرد."
+          description="امتیاز و اخطار این روز نهایی می‌شود. باز کردن روز یا اصلاح عادت‌ها، اخطار و وضعیت خروج را دوباره محاسبه می‌کند؛ پرداخت‌های ثبت‌شده حذف نمی‌شوند."
           footer={
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 'var(--space-2)' }}>
               <B.Button
@@ -654,10 +668,16 @@ export function DailyScoringTab(props: { cohort: Cohort; toast?: Toast; onGoToGr
           size="sm"
         >
           <div style={{ padding: 'var(--space-2) 0' }}>
+            {dayCfg.type === 'main' && warningCandidates.length > 0 && (
+              <B.Alert intent="warning" title={Names.toPersianDigits(warningCandidates.length) + ' نفر یک اخطار می‌گیرند'}>
+                {warningCandidates.map((p) => p.name).join('، ')}
+                {expulsionCandidates.length > 0 && '؛ جان این افراد تمام می‌شود و از اعضای فعال خارج می‌شوند: ' + expulsionCandidates.map((p) => p.name).join('، ')}
+              </B.Alert>
+            )}
             {unrecordedCount > 0 ? (
               <B.Alert intent="warning" title="ثبت‌نشده داریم">
                 {Names.toPersianDigits(unrecordedCount) +
-                  ' نفر در این روز چیزی ثبت نکرده‌اند. امتیازشان صفر حساب می‌شود.'}
+                  ' نفر در این روز چیزی ثبت نکرده‌اند. امتیازشان صفر و اخطارشان یک حساب می‌شود.'}
               </B.Alert>
             ) : (
               <B.Alert intent="success">برای همهٔ افراد این روز ثبت شده است.</B.Alert>

@@ -4,7 +4,8 @@
  */
 
 import { Names } from './names';
-import type { Cohort, DayConfig, DayRecord, Group, Participant } from './types';
+import type { Cohort, DayConfig, DayRecord, Group, Participant, Payment } from './types';
+import { reconcileWarnings, validatePayments } from './membership';
 
 /**
  * ادغام یک دورهٔ فایل بکاپ در یک دورهٔ موجود (چند پشتیبان، یک دید کلی).
@@ -152,6 +153,7 @@ function recordsOf(c: Cohort, participantId: string): Record<number, DayRecord> 
 function countRecords(c: Cohort, groupId: string): number {
   let n = 0;
   peopleOf(c, groupId).forEach((p) => {
+    n += (p.donations || []).length + (p.lifePayments || []).length;
     Object.values(recordsOf(c, p.id)).forEach((r) => {
       if (!isEmptyRec(r)) n++;
     });
@@ -323,11 +325,13 @@ export function mergeIntoCohort(
       closedDays: (fg.closedDays || []).slice()
     };
     cur.groups.push(g);
+    const idMap = new Map<string, string>();
     stats.groupsAdded++;
     peopleOf(file, fg.id).forEach((fp) => {
       const np: Participant = { ...fp, id: newId('p'), nameKey: personKey(fp), groupId: g.id };
       if ((cur.participants || []).some((p) => personKey(p) === personKey(np))) stats.overlaps.push(fp.name);
       cur.participants.push(np);
+      idMap.set(fp.id, np.id);
       stats.peopleAdded++;
       const recs = recordsOf(file, fp.id);
       Object.keys(recs).forEach((d) => {
@@ -336,6 +340,10 @@ export function mergeIntoCohort(
         cur.records[np.id][Number(d)] = { ...recs[Number(d)] };
         stats.recordsAdded++;
       });
+      if (fg.dayParticipants) {
+        g.dayParticipants = Object.fromEntries(Object.entries(fg.dayParticipants).map(([day, ids]) =>
+          [day, ids.map((id) => idMap.get(id)).filter((id): id is string => !!id)]));
+      }
     });
   };
 
@@ -370,6 +378,7 @@ export function mergeIntoCohort(
     }
 
     const curByKey = new Map(peopleOf(cur, tg.id).map((p) => [personKey(p), p]));
+    const idMap = new Map<string, string>();
     peopleOf(file, fg.id).forEach((fp) => {
       const cp = curByKey.get(personKey(fp));
       const frecs = recordsOf(file, fp.id);
@@ -378,6 +387,7 @@ export function mergeIntoCohort(
         if ((cur.participants || []).some((p) => personKey(p) === personKey(np)))
           stats.overlaps.push(fp.name);
         cur.participants.push(np);
+        idMap.set(fp.id, np.id);
         stats.peopleAdded++;
         Object.keys(frecs).forEach((d) => {
           if (isEmptyRec(frecs[Number(d)])) return;
@@ -387,6 +397,26 @@ export function mergeIntoCohort(
         });
         return;
       }
+      idMap.set(fp.id, cp.id);
+      for (const field of ['donations', 'lifePayments'] as const) {
+        const payments = new Map<string, Payment>((cp[field] || []).map((payment) => [payment.id, payment]));
+        for (const payment of fp[field] || []) {
+          const existing = payments.get(payment.id);
+          if (existing && (existing.amount !== payment.amount || existing.dayN !== payment.dayN ||
+              existing.paidAt !== payment.paidAt || existing.warningsAtPurchase !== payment.warningsAtPurchase)) {
+            throw new Error('دو نسخهٔ متفاوت از یک پرداخت وجود دارد؛ دوره را به‌صورت نسخهٔ جدا وارد کن.');
+          }
+          if (!existing) { payments.set(payment.id, payment); stats.fieldsFilled++; }
+        }
+        if (payments.size) {
+          const merged = [...payments.values()];
+          if (!validatePayments(merged, field === 'donations' ? 'donation' : 'life')) {
+            throw new Error('ادغام پرداخت‌ها نامعتبر است یا سقف دونیت را رد می‌کند؛ نسخهٔ جدا وارد کن.');
+          }
+          cp[field] = merged;
+        }
+      }
+      if (fp.expelledForWarnings && cp.status === 'left') cp.expelledForWarnings = true;
 
       // مشخصات فرد
       (['habitCount', 'status', 'telegram', 'habits'] as PersonField[]).forEach((field) => {
@@ -429,8 +459,19 @@ export function mergeIntoCohort(
     const merged = Array.from(closed).sort((a, b) => a - b);
     if (merged.length !== (tg.closedDays || []).length) stats.fieldsFilled++;
     tg.closedDays = merged;
+    for (const [day, ids] of Object.entries(fg.dayParticipants || {})) {
+      tg.dayParticipants ||= {};
+      const dayN = Number(day);
+      const participants = [...new Set([
+        ...(tg.dayParticipants[dayN] || []),
+        ...ids.map((id) => idMap.get(id)).filter((id): id is string => !!id)
+      ])];
+      if (JSON.stringify(participants) !== JSON.stringify(tg.dayParticipants[dayN])) stats.fieldsFilled++;
+      tg.dayParticipants[dayN] = participants;
+    }
   });
 
+  reconcileWarnings(cur);
   stats.nothingNew =
     stats.groupsAdded === 0 &&
     stats.peopleAdded === 0 &&

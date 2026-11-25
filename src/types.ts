@@ -18,6 +18,18 @@ export interface Participant {
   habitCount: number | null;
   /** نام عادت‌ها به ترتیب (اختیاری؛ کوتاه‌تر از habitCount هم می‌تواند باشد) */
   habits?: string[];
+  donations?: Payment[];
+  lifePayments?: Payment[];
+  warningDays?: number[];
+  expelledForWarnings?: boolean;
+}
+
+export interface Payment {
+  id: string;
+  amount: number;
+  dayN: number;
+  paidAt: string;
+  warningsAtPurchase?: number;
 }
 
 export interface Group {
@@ -26,6 +38,8 @@ export interface Group {
   order: number;
   mine: boolean;
   closedDays: number[];
+  /** اعضای فعال هنگام اولین بستن روز؛ باز کردن روز این سابقه را پاک نمی‌کند. */
+  dayParticipants?: Record<number, string[]>;
 }
 
 export interface DayConfig {
@@ -56,7 +70,7 @@ export interface Cohort {
   groups: Group[];
   participants: Participant[];
   records: Records;
-  /** نسخهٔ قاعدهٔ امتیاز این دوره (فعلاً فقط ثبت می‌شود؛ حساب بر اساس آن نیست) */
+  /** نسخهٔ قاعدهٔ فعلی: ۲؛ این نسخه همهٔ دوره‌ها را با قانون جدید محاسبه می‌کند. */
   scoringVersion?: number;
 }
 
