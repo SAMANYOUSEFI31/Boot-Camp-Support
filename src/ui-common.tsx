@@ -205,6 +205,7 @@ function Header(props: HeaderProps) {
           {cohorts.length > 0 && (
             <div className="bsh-header__cohort">
               <B.Select
+                label="دورهٔ فعال"
                 size="sm"
                 options={cohortOptions}
                 value={activeCohort ? activeCohort.id : ''}

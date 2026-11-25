@@ -70,7 +70,7 @@ test('مهاجرت به نسخهٔ ۲: گزارش هدف در روزهای main 
   assert.ok(res.ok);
   if (!res.ok) return;
   const c = res.data.cohorts[0];
-  assert.equal(res.data.schemaVersion, 3);
+  assert.equal(res.data.schemaVersion, 4);
   assert.equal(c.days[0].specialMission, false);
   assert.equal(c.days[1].specialMission, true);
   assert.deepEqual(c.records, old.cohorts[0].records);

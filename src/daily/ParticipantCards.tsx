@@ -32,7 +32,7 @@ export function DailyScoringCardView(props: RowsViewProps) {
   }
 
   return (
-    <div style={{ display: 'grid', gap: 'var(--space-3)' }}>
+    <div className="bsh-daily-cards">
       {members.map(function (p, idx) {
         const rec = (cohort.records && cohort.records[p.id] && cohort.records[p.id][dayCfg.n]) || null;
         return (

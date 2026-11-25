@@ -16,11 +16,13 @@ import { cleanHabitNames, habitLabel, hasHabitNames } from './habits';
 import { calculateCurrentDayNumber } from './daily/DailyScoringTab';
 import { PaymentDialog } from './ui-payments';
 import { membership, donationTotal, donationScore } from './membership';
+import { AssignmentDialog, RegistrationDialog } from './ui-registrations';
+import { registrationComplete } from './registration';
 
 /**
  * تب اصلی مدیریت گروه‌ها و افراد
  */
-function GroupsTab(props: { cohort: Cohort; toast?: Toast }) {
+function GroupsTab(props: { cohort: Cohort; toast?: Toast; onGoToRegistrations?: () => void }) {
   const cohort = props.cohort;
   const toast = props.toast;
 
@@ -37,6 +39,8 @@ function GroupsTab(props: { cohort: Cohort; toast?: Toast }) {
   const [participantModalOpen, setParticipantModalOpen] = useState(false);
   const [participantToEdit, setParticipantToEdit] = useState<Participant | null>(null);
   const [deleteParticipantTarget, setDeleteParticipantTarget] = useState<Participant | null>(null);
+  const [assignmentGroup, setAssignmentGroup] = useState<string | null>(null);
+  const [registrationTarget, setRegistrationTarget] = useState<Participant | null>(null);
 
   const allGroups = cohort.groups || [];
   const visibleGroups = showAllGroups
@@ -71,7 +75,7 @@ function GroupsTab(props: { cohort: Cohort; toast?: Toast }) {
   return (
     <div className="bsh-stack bsh-stack--lg">
       <div className="bsh-row">
-        <h2 className="heading-md">گروه‌ها و افراد</h2>
+        <h2 className="heading-md">گروه‌بندی ثبت‌نامی‌ها</h2>
         <B.Button
           variant="primary"
           iconStart="Plus"
@@ -95,6 +99,10 @@ function GroupsTab(props: { cohort: Cohort; toast?: Toast }) {
           />
           <HelpHint help="mine" />
         </div>
+        <B.Alert intent="info" title={Names.toPersianDigits(cohort.participants.filter((p) => !p.groupId).length) + ' نفر هنوز گروه ندارند'}
+          action={props.onGoToRegistrations ? <B.Button variant="secondary" onClick={props.onGoToRegistrations}>فهرست ثبت‌نامی‌ها</B.Button> : undefined}>
+          افراد را ابتدا ثبت‌نام کن، سپس داخل گروه «انتخاب از ثبت‌نامی‌ها» را بزن. اطلاعات فرد هنگام گروه‌بندی دوباره ساخته نمی‌شود.
+        </B.Alert>
       </div>
       {visibleGroups.length === 0 ? (
         <B.Card padding="lg">
@@ -164,6 +172,7 @@ function GroupsTab(props: { cohort: Cohort; toast?: Toast }) {
           </div>
           {activeGroup && (
             <GroupDetailsView
+              key={activeGroup.id}
               cohort={cohort}
               group={activeGroup}
               allGroups={allGroups}
@@ -177,6 +186,8 @@ function GroupsTab(props: { cohort: Cohort; toast?: Toast }) {
               onAddPaste={function () {
                 setPasteModalOpen(true);
               }}
+              onAssignRegistrants={() => setAssignmentGroup(activeGroup.id)}
+              onEditRegistration={setRegistrationTarget}
               onEditParticipant={function (p) {
                 setParticipantToEdit(p);
                 setParticipantModalOpen(true);
@@ -200,6 +211,10 @@ function GroupsTab(props: { cohort: Cohort; toast?: Toast }) {
           toast={toast}
         />
       )}
+      {assignmentGroup && <AssignmentDialog cohort={cohort} groupId={assignmentGroup}
+        toast={toast} onClose={() => setAssignmentGroup(null)} />}
+      {registrationTarget && <RegistrationDialog cohort={cohort} participant={registrationTarget}
+        toast={toast} onClose={() => setRegistrationTarget(null)} />}
       {deleteGroupTarget && (
         <DeleteGroupAlert
           open={!!deleteGroupTarget}
@@ -259,6 +274,8 @@ interface GroupDetailsViewProps {
   onEditGroup: (g: Group) => void;
   onDeleteGroup: (g: Group) => void;
   onAddPaste: () => void;
+  onAssignRegistrants: () => void;
+  onEditRegistration: (p: Participant) => void;
   onEditParticipant: (p: Participant) => void;
   onDeleteParticipant: (p: Participant) => void;
   toast?: Toast;
@@ -321,6 +338,7 @@ function GroupDetailsView(props: GroupDetailsViewProps) {
                 خارج‌شده
               </B.Badge>
             )}
+            {!registrationComplete(row) && <B.Badge intent="warning">ثبت‌نام ناقص</B.Badge>}
           </div>
         );
       }
@@ -382,6 +400,10 @@ function GroupDetailsView(props: GroupDetailsViewProps) {
       render: function (row) {
         return (
           <div style={{ display: 'flex', gap: 'var(--space-2)' }}>
+            <B.Button variant="ghost" size="sm" onClick={() => {
+              const p = members.find((p) => p.id === row.id);
+              if (p) props.onEditRegistration(p);
+            }}>مشخصات ثبت‌نام</B.Button>
             <B.IconButton
               icon="Pencil"
               size="sm"
@@ -436,14 +458,19 @@ function GroupDetailsView(props: GroupDetailsViewProps) {
           )}
         </div>
         <div style={{ display: 'flex', gap: 'var(--space-2)', flexWrap: 'wrap' }}>
-          <B.Button variant="secondary" size="sm" iconStart="Plus" onClick={onAddPaste}>
-            افزودن افراد با لیست
+          <B.Button variant="secondary" size="sm" iconStart="Plus" onClick={props.onAssignRegistrants}>
+            انتخاب از ثبت‌نامی‌ها
           </B.Button>
           <B.Menu
             label="کارهای گروه"
             align="end"
             trigger={<B.IconButton icon="Ellipsis" label="کارهای بیشتر گروه" variant="ghost" />}
             items={[
+              {
+                label: 'ورود مستقیم لیست قدیمی',
+                icon: 'Inbox',
+                onSelect: onAddPaste
+              },
               {
                 label: 'ویرایش گروه',
                 icon: 'Pencil',
@@ -499,21 +526,36 @@ function GroupDetailsView(props: GroupDetailsViewProps) {
           <B.EmptyState
             icon="User"
             title="فردی در این گروه نیست"
-            description="اسم‌ها را کپی و بچسبان؛ هر خط یک نفر."
+            description="از میان افراد ثبت‌نام‌شده، اعضای این گروه را انتخاب کن."
             action={
-              <B.Button variant="secondary" onClick={onAddPaste}>
-                افزودن افراد
+              <B.Button variant="secondary" onClick={props.onAssignRegistrants}>
+                انتخاب از ثبت‌نامی‌ها
               </B.Button>
             }
           />
         ) : (
-          <B.Table
-            caption={'افراد گروه ' + group.name}
-            columns={columns}
-            rows={members.map(function (m, idx) {
-              return Object.assign({}, m, { rowNum: idx + 1 });
-            })}
-          />
+          <>
+            <div className="bsh-desktop-table"><B.Table
+              caption={'افراد گروه ' + group.name}
+              columns={columns}
+              rows={members.map((m, idx) => ({ ...m, rowNum: idx + 1 }))}
+            /></div>
+            <div className="bsh-responsive-cards">
+              {members.map((p, idx) => {
+                const row = { ...p, rowNum: idx + 1 };
+                return <B.Card key={p.id} padding="md">
+                  <div className="bsh-stack">
+                    {columns.find((c) => c.key === 'name')?.render?.(row)}
+                    <dl className="bsh-profile-details">
+                      {columns.filter((c) => ['telegram', 'habitCount', 'membership'].includes(c.key)).map((c) =>
+                        <div key={c.key}><dt>{c.label}</dt><dd>{c.render?.(row)}</dd></div>)}
+                    </dl>
+                    <div className="bsh-person-actions">{columns.find((c) => c.key === 'actions')?.render?.(row)}</div>
+                  </div>
+                </B.Card>;
+              })}
+            </div>
+          </>
         )
       ) : (
         <GroupMatrixView cohort={cohort} group={group} members={members} />
@@ -648,11 +690,13 @@ function GroupMatrixView(props: { cohort: Cohort; group: Group; members: Partici
                   let content = '—';
                   let cellIntent = null;
 
-                  if (isClosed) {
+                  const attendees = group.dayParticipants?.[d.n];
+                  const attended = !attendees || attendees.includes(p.id);
+                  if (isClosed && attended) {
                     const sc = Scoring.dayScore(p, rec, d);
                     content = Names.toPersianDigits(sc);
                     cellIntent = sc > 0 ? 'var(--text-success)' : 'var(--text-subtlest)';
-                  } else if (hasRec) {
+                  } else if (!isClosed && hasRec) {
                     const tempSc = Scoring.dayScore(p, rec, d);
                     content = Names.toPersianDigits(tempSc);
                     cellIntent = 'var(--text-warning)';

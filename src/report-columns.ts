@@ -474,6 +474,8 @@ export function buildCohortMatrix(
       rawName: p.name,
       dayScores: mainDays.map((d) => {
         if (closed.indexOf(d.n) === -1) return null;
+        const attendees = group.dayParticipants?.[d.n];
+        if (attendees && !attendees.includes(p.id)) return null;
         const rec = (cohort.records && cohort.records[p.id] && cohort.records[p.id][d.n]) || null;
         return Scoring.dayScore(p, rec, d);
       }),

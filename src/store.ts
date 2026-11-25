@@ -7,6 +7,7 @@ import { Names } from './names';
 import { MAX_HABITS, REQUIRED_HABITS, cleanHabitNames, doneIndexes } from './habits';
 import { DONATION_CAP, LIFE_PRICE, donationTotal, membership, reconcileWarnings, validatePayments } from './membership';
 import { Scoring } from './scoring';
+import { canAssign, normalizeMobile, validateRegistration, type RegistrationInput } from './registration';
 import { defaultPlan, findMergeTarget, mergeIntoCohort } from './merge-groups';
 import type {
   AppState,
@@ -21,7 +22,7 @@ import type {
   ValidateResult
 } from './types';
 
-const SCHEMA_VERSION = 3;
+const SCHEMA_VERSION = 4;
 /** قاعدهٔ جدید چهار عادت اصلی، عادت پنجم و مأموریت یک‌امتیازی. */
 const SCORING_VERSION = 2;
 const STORAGE_KEY = 'bsh_support_app_state_v1';
@@ -126,6 +127,8 @@ function migrate(input: unknown): AppState {
       c.participants.forEach((p) => {
         p.habitCount = MAX_HABITS;
         p.habits = [...REQUIRED_HABITS, cleanHabitNames(p.habits)[4] || ''];
+        if (p.phone) p.phone = normalizeMobile(p.phone);
+        if (p.groupId == null) p.groupId = '';
       });
       if (version < 3) {
         Object.values(c.records).forEach((records) =>
@@ -199,6 +202,16 @@ function validateBackup(raw: unknown): ValidateResult {
           (p.lifePayments !== undefined && !validatePayments(p.lifePayments, 'life'))) {
         return { ok: false, error: label + ': پرداخت‌های فرد نامعتبر است؛ فایل سالم را انتخاب کن.' };
       }
+      if ((p.phone !== undefined && (typeof p.phone !== 'string' || !/^09\d{9}$/.test(normalizeMobile(p.phone)))) ||
+          (p.age !== undefined && (typeof p.age !== 'number' || !Number.isInteger(p.age) || p.age < 1 || p.age > 120)) ||
+          (p.gender !== undefined && p.gender !== 'male' && p.gender !== 'female')) {
+        return { ok: false, error: label + ': مشخصات ثبت‌نام نامعتبر است؛ فایل سالم را انتخاب کن.' };
+      }
+    }
+    const phones = c.participants.filter(isPlainObject).map((p) => p.phone)
+      .filter((phone): phone is string => typeof phone === 'string').map(normalizeMobile);
+    if (new Set(phones).size !== phones.length) {
+      return { ok: false, error: label + ': موبایل تکراری دارد؛ ابتدا ثبت‌نام‌ها را اصلاح کن.' };
     }
   }
   return { ok: true, data: migrate(deepClone(raw)) };
@@ -528,7 +541,10 @@ function createCohort(params?: CreateCohortParams): Cohort {
           name: p.name,
           nameKey: p.nameKey || Names.normalizeName(p.name) || p.name,
           telegram: p.telegram || '',
-          groupId: groupMap[p.groupId] || (groups[0] && groups[0].id) || '',
+          groupId: groupMap[p.groupId] || '',
+          ...(p.phone ? { phone: p.phone } : {}),
+          ...(p.age !== undefined ? { age: p.age } : {}),
+          ...(p.gender ? { gender: p.gender } : {}),
           status: p.status || 'active',
           habitCount: MAX_HABITS,
           habits: [...REQUIRED_HABITS, p.habits?.[4] || '']
@@ -672,7 +688,7 @@ function addParticipants(
       name: name,
       nameKey: nameKey,
       telegram: (p.telegram || '').trim().replace(/^@/, ''),
-      groupId: (groupId || p.groupId) as string,
+      groupId: groupId || p.groupId || '',
       status: p.status || 'active',
       habitCount: MAX_HABITS
     };
@@ -711,6 +727,47 @@ function updateParticipant(cohortId: string, participantId: string, updates: Par
   reconcileWarnings(c);
   saveImmediately();
   notifyListeners({ type: 'participant_updated', participant: p });
+}
+
+function saveRegistration(cohortId: string, input: RegistrationInput, participantId?: string): Participant {
+  const c = state.cohorts.find((c) => c.id === cohortId);
+  if (!c) throw new Error('دوره پیدا نشد؛ دوره را دوباره انتخاب کن.');
+  const existing = participantId ? c.participants.find((p) => p.id === participantId) : undefined;
+  if (participantId && !existing) throw new Error('فرد پیدا نشد؛ فهرست را تازه کن.');
+  const result = validateRegistration(input, c.participants, participantId);
+  if (!result.valid) throw new Error(Object.values(result.errors).join(' '));
+  const gender = input.gender;
+  if (gender !== 'male' && gender !== 'female') throw new Error('جنسیت را انتخاب کن.');
+  const fields: Pick<Participant, 'name' | 'phone' | 'age' | 'gender'> = {
+    name: result.name, phone: result.phone, age: result.age, gender
+  };
+  if (existing) {
+    updateParticipant(cohortId, existing.id, fields);
+    return existing;
+  }
+  const p: Participant = {
+    id: 'p_' + Date.now() + '_' + Math.random().toString(36).slice(2, 9),
+    ...fields, nameKey: Names.normalizeName(result.name), telegram: '', groupId: '',
+    status: 'active', habitCount: MAX_HABITS, habits: [...REQUIRED_HABITS, '']
+  };
+  c.participants.push(p);
+  saveImmediately();
+  notifyListeners({ type: 'registration_created', participant: p });
+  return p;
+}
+
+function assignRegistrants(cohortId: string, participantIds: string[], groupId: string) {
+  const c = state.cohorts.find((c) => c.id === cohortId);
+  if (!c || !c.groups.some((g) => g.id === groupId)) throw new Error('گروه مقصد پیدا نشد؛ دوباره انتخابش کن.');
+  const ids = [...new Set(participantIds)];
+  if (!ids.length) throw new Error('حداقل یک ثبت‌نامی را انتخاب کن.');
+  const participants = ids.map((id) => c.participants.find((p) => p.id === id));
+  if (participants.some((p) => !p || !canAssign(p))) {
+    throw new Error('یکی از افراد گروه دارد، فعال نیست یا ثبت‌نامش ناقص است؛ انتخاب را بررسی کن.');
+  }
+  for (const p of participants) if (p) p.groupId = groupId;
+  saveImmediately();
+  notifyListeners({ type: 'registrants_assigned', count: ids.length, groupId });
 }
 
 function deleteParticipant(cohortId: string, participantId: string) {
@@ -1019,6 +1076,8 @@ export const Store = {
   deleteGroup: deleteGroup,
   addParticipants: addParticipants,
   updateParticipant: updateParticipant,
+  saveRegistration: saveRegistration,
+  assignRegistrants: assignRegistrants,
   recordPayment: recordPayment,
   deleteParticipant: deleteParticipant,
   recordDaily: recordDaily,

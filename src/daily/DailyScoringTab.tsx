@@ -57,7 +57,7 @@ export function DailyScoringTab(props: { cohort: Cohort; toast?: Toast; onGoToGr
   const [saveIndicator, setSaveIndicator] = useState(false);
 
   // حالت نمایش: در موبایل پیش‌فرض 'cards' و در دسکتاپ 'table'
-  const isSmallScreen = typeof window !== 'undefined' ? window.innerWidth < 680 : false;
+  const isSmallScreen = typeof window !== 'undefined' ? window.innerWidth < 1024 : false;
   const [viewMode, setViewMode] = useState<'cards' | 'table'>(isSmallScreen ? 'cards' : 'table');
 
   // دیالوگ بستن روز
@@ -89,7 +89,7 @@ export function DailyScoringTab(props: { cohort: Cohort; toast?: Toast; onGoToGr
   useEffect(
     function () {
       function onResize() {
-        if (window.innerWidth < 680 && viewMode === 'table') {
+        if (window.innerWidth < 1024 && viewMode === 'table') {
           setViewMode('cards');
         }
       }

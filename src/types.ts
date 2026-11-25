@@ -7,12 +7,17 @@
 
 export type ParticipantStatus = 'active' | 'frozen' | 'left';
 export type DayType = 'warmup' | 'main' | 'review';
+export type Gender = 'male' | 'female';
 
 export interface Participant {
   id: string;
   name: string;
   nameKey: string;
   telegram: string;
+  phone?: string;
+  age?: number;
+  gender?: Gender;
+  /** رشتهٔ خالی یعنی ثبت‌نام شده ولی هنوز گروه‌بندی نشده است. */
   groupId: string;
   status: ParticipantStatus;
   habitCount: number | null;

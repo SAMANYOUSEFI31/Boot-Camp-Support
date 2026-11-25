@@ -6,6 +6,8 @@
 import { Names } from './names';
 import { Store } from './store';
 import { Excel } from './excel';
+import { MAX_HABITS, REQUIRED_HABITS } from './habits';
+import { canAssign } from './registration';
 import type { Cohort, Group, Participant, ParticipantStatus } from './types';
 
 export type RawRows = string[][];
@@ -566,8 +568,8 @@ function applyImport(
     records: JSON.parse(JSON.stringify(cohort.records || {}))
   };
 
-  const targetGroups = cohort.groups || [];
-  const targetParticipants = cohort.participants || [];
+  const targetGroups: Group[] = JSON.parse(JSON.stringify(cohort.groups || []));
+  const targetParticipants: Participant[] = JSON.parse(JSON.stringify(cohort.participants || []));
 
   // مپ کردن گروه‌های واردشده به گروه‌های واقعی دوره
   const importedToRealGroupId: Record<string, string> = {};
@@ -604,9 +606,10 @@ function applyImport(
   });
 
   // ادغام افراد
-  const existingParticipantsByKey: Record<string, Participant> = {};
+  const existingParticipantsByKey = new Map<string, Participant[]>();
   targetParticipants.forEach(function (p) {
-    existingParticipantsByKey[p.nameKey] = p;
+    const key = p.nameKey || Names.normalizeName(p.name);
+    existingParticipantsByKey.set(key, [...(existingParticipantsByKey.get(key) || []), p]);
   });
 
   analyzedReport.participants.forEach(function (ip) {
@@ -616,8 +619,16 @@ function applyImport(
       return;
     }
 
-    const existingP = existingParticipantsByKey[ip.nameKey];
+    const matches = existingParticipantsByKey.get(ip.nameKey) || [];
+    if (matches.length > 1) {
+      throw new Error('چند ثبت‌نامی هم‌نام هستند؛ آن‌ها را از فهرست ثبت‌نام با انتخاب فرد گروه‌بندی کن.');
+    }
+    const existingP = matches[0];
     if (existingP) {
+      if (!existingP.groupId) {
+        if (!canAssign(existingP)) throw new Error('ثبت‌نام فرد بدون گروه ناقص یا غیرفعال است؛ ابتدا تکمیلش کن.');
+        existingP.groupId = realGId;
+      }
       // نام موجود: حفظ کن و اگر آیدی تلگرام نداشت پر کن
       if (!existingP.telegram && ip.telegram) {
         existingP.telegram = ip.telegram;
@@ -634,10 +645,11 @@ function applyImport(
         telegram: ip.telegram || '',
         groupId: realGId,
         status: ip.status || 'active',
-        habitCount: null
+        habitCount: MAX_HABITS,
+        habits: [...REQUIRED_HABITS, '']
       };
       targetParticipants.push(newP);
-      existingParticipantsByKey[ip.nameKey] = newP;
+      existingParticipantsByKey.set(ip.nameKey, [newP]);
     }
   });
 

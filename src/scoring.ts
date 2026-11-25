@@ -37,6 +37,7 @@ interface CohortInput {
 interface GroupInput {
   id?: string;
   closedDays?: number[];
+  dayParticipants?: Record<number, string[]>;
 }
 
 const toInt = (v: Num): number => parseInt(toLatinDigits(v), 10);
@@ -232,6 +233,8 @@ function personTotals(
 
     // روز باید حتماً بسته شده باشد تا در مجموع تجمعی بیاید
     if (closedDays.indexOf(dayCfg.n) === -1) continue;
+    const attendees = group.dayParticipants?.[dayCfg.n];
+    if (attendees && !attendees.includes(participant.id)) continue;
 
     if (uptoDay != null && dayCfg.n > uptoDay) continue;
 

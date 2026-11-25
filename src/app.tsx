@@ -15,10 +15,11 @@ import { ReportsTab } from './ui-reports';
 import { SettingsTab } from './ui-settings';
 import { ImportWizardModal } from './ui-wizard';
 import { BackupDialog } from './ui-backup';
+import { RegistrationsTab } from './ui-registrations';
 
 function MainApp() {
   const [appState, setAppState] = useState(Store.getState());
-  const [activeTab, setActiveTab] = useState('groups'); // 'groups' | 'daily' | 'reports' | 'settings'
+  const [activeTab, setActiveTab] = useState('registrations');
 
   // دیالوگ‌های سراسری
   const [cohortModalOpen, setCohortModalOpen] = useState(false);
@@ -40,7 +41,8 @@ function MainApp() {
 
   // ناوبری تب‌های اصلی
   const navTabs = [
-    { id: 'groups', label: 'گروه‌ها و افراد' },
+    { id: 'registrations', label: 'ثبت‌نام' },
+    { id: 'groups', label: 'گروه‌بندی' },
     { id: 'daily', label: 'ثبت روزانه' },
     { id: 'reports', label: 'گزارش‌ها' },
     { id: 'settings', label: 'تنظیمات' }
@@ -109,7 +111,7 @@ function MainApp() {
           />
         ) : (
           <div className="bsh-stack bsh-stack--lg">
-            <div style={{ maxWidth: '100%' }}>
+            <div className="bsh-main-navigation">
               <B.Tabs
                 label="بخش‌های اصلی"
                 items={navTabs}
@@ -119,9 +121,13 @@ function MainApp() {
                 }}
               />
             </div>
-            {activeTab === 'groups' && <GroupsTab cohort={activeCohort} toast={toast} />}
+            {activeTab === 'registrations' && <RegistrationsTab key={activeCohort.id}
+              cohort={activeCohort} toast={toast} onGoToGroups={() => setActiveTab('groups')} />}
+            {activeTab === 'groups' && <GroupsTab key={activeCohort.id} cohort={activeCohort} toast={toast}
+              onGoToRegistrations={() => setActiveTab('registrations')} />}
             {activeTab === 'daily' && (
               <DailyScoringTab
+                key={activeCohort.id}
                 cohort={activeCohort}
                 toast={toast}
                 onGoToGroups={function () {
