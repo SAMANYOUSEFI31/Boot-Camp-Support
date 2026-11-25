@@ -239,6 +239,7 @@ function Header(props: HeaderProps) {
             بکاپ
           </B.Button>
           <B.Menu
+            label="ابزارهای دوره"
             trigger={
               <B.Button variant="secondary" size="sm" iconStart="Settings">
                 ابزارها

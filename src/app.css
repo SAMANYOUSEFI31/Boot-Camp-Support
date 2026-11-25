@@ -69,6 +69,15 @@ html, body {
 }
 
 /* ---------- منو، پاپ‌اور و تقویم ---------- */
+.bsh-popover__panel {
+  max-block-size: calc(var(--app-dvh) - var(--space-8));
+  overflow: auto;
+  overscroll-behavior: contain;
+  overflow-wrap: anywhere;
+}
+.bsh-menu__item > span { min-inline-size: 0; }
+.bsh-menu__item > .bsh-icon { flex-shrink: 0; }
+.bsh-dialog--open-popover { animation: none; }
 /* موبایل و گوشی افقی: شیت پایین با حاشیهٔ امن، هیچ‌وقت از لبهٔ صفحه بیرون نمی‌زند */
 @media (max-width: 640px), (max-height: 520px) {
   .bsh-popover__panel,

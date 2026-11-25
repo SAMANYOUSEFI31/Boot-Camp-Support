@@ -16,6 +16,7 @@ import { SettingsTab } from './ui-settings';
 import { ImportWizardModal } from './ui-wizard';
 import { BackupDialog } from './ui-backup';
 import { RegistrationsTab } from './ui-registrations';
+import { watchOverlayPositioning } from './overlay-positioning';
 
 function MainApp() {
   const [appState, setAppState] = useState(Store.getState());
@@ -29,6 +30,7 @@ function MainApp() {
   const [backupOpen, setBackupOpen] = useState(false);
 
   const toast = B.useToast();
+  useEffect(watchOverlayPositioning, []);
 
   useEffect(function () {
     const unsubscribe = Store.subscribe(function (newState) {
