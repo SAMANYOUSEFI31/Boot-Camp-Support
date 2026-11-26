@@ -506,7 +506,7 @@ interface CreateCohortParams {
 function createCohort(params?: CreateCohortParams): Cohort {
   const name = (params && params.name) || 'دوره جدید';
   const startDate = (params && params.startDate) || new Date().toISOString().slice(0, 10);
-  const warmup = params && params.warmupDays != null ? params.warmupDays : 7;
+  const warmup = params && params.warmupDays != null ? params.warmupDays : 0;
   const main = params && params.mainDays != null ? params.mainDays : 21;
   const review = params && params.reviewDays != null ? params.reviewDays : 2;
 

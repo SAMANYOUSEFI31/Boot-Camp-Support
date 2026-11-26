@@ -1,4 +1,4 @@
-/**
+﻿/**
  * @license
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -36,7 +36,7 @@ function CohortModal(props: CohortModalProps) {
 
   const [name, setName] = useState(isEdit ? cohort.name : 'دوره آبان ۱۴۰۵');
   const [startDate, setStartDate] = useState(isEdit ? new Date(cohort.startDate) : new Date());
-  const [warmupDays, setWarmupDays] = useState<number | string>(7);
+  const [warmupDays, setWarmupDays] = useState<number | string>(0);
   const [mainDays, setMainDays] = useState<number | string>(21);
   const [reviewDays, setReviewDays] = useState<number | string>(2);
   const [copyFromPrevious, setCopyFromPrevious] = useState(false);
@@ -52,7 +52,7 @@ function CohortModal(props: CohortModalProps) {
         } else {
           setName('دوره ' + Names.formatShamsi(new Date(), { month: 'long', year: 'numeric' }));
           setStartDate(new Date());
-          setWarmupDays(7);
+          setWarmupDays(0);
           setMainDays(21);
           setReviewDays(2);
           setCopyFromPrevious(false);
@@ -84,7 +84,7 @@ function CohortModal(props: CohortModalProps) {
       Store.createCohort({
         name: trimmed,
         startDate: isoStart,
-        warmupDays: parseInt(String(warmupDays), 10) || 7,
+        warmupDays: parseInt(String(warmupDays), 10) || 0,
         mainDays: parseInt(String(mainDays), 10) || 21,
         reviewDays: parseInt(String(reviewDays), 10) || 2,
         copyFromCohortId: copyFromPrevious ? copyCohortId : null
@@ -110,7 +110,7 @@ function CohortModal(props: CohortModalProps) {
       onClose={onClose}
       title={isEdit ? 'ویرایش دوره' : 'ساخت دوره جدید'}
       description={
-        isEdit ? 'نام یا تاریخ شروع دوره را عوض کن.' : 'نام و تاریخ شروع را بنویس. دوره ۳۰ روز است.'
+        isEdit ? 'نام یا تاریخ شروع دوره را عوض کن.' : 'نام و تاریخ شروع را بنویس. دوره شامل ۲۱ روز اصلی و ۲ روز مرور است.'
       }
       footer={footer}
       size="md"
