@@ -1,4 +1,4 @@
-/**
+﻿/**
  * @license
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -431,10 +431,100 @@ function exportAllMyGroupsReport(
   });
 }
 
+
+/**
+ * خروجی اکسل گزارش جمع‌بندی پایانی ۲۱ روز اصلی یک گروه
+ */
+function exportGroupSummary21Report(cohort: Cohort, group: Group, includeFrozen?: boolean) {
+  return loadExcelJS().then(function (ExcelJS) {
+    const workbook = new ExcelJS.Workbook();
+    workbook.creator = 'Bushido Support Tool';
+    workbook.created = new Date();
+
+    const { mainDays, rows } = buildCohortMatrix(cohort, group, { includeFrozen: includeFrozen });
+    const summary21Days = mainDays.slice(0, 21);
+    const closedSet = new Set(group.closedDays || []);
+    const closedMain21Count = summary21Days.filter(function (d) {
+      return closedSet.has(d.n);
+    }).length;
+
+    const sheet = workbook.addWorksheet(sanitizeSheetName(group.name + '-جمع‌بندی-۲۱روز', 'جمع‌بندی'), {
+      views: [{ rightToLeft: true, state: 'frozen', xSplit: 2, ySplit: 2 }]
+    });
+
+    const totalCols = 7;
+    sheet.mergeCells(1, 1, 1, totalCols);
+    const titleCell = sheet.getCell('A1');
+    titleCell.value =
+      'گزارش جمع‌بندی پایانی ۲۱ روز — ' +
+      cohort.name +
+      ' — ' +
+      group.name +
+      ' (روز اصلی بسته‌شده: ' +
+      Names.toPersianDigits(closedMain21Count) +
+      ' از ' +
+      Names.toPersianDigits(summary21Days.length) +
+      ')';
+    titleCell.font = FONT_TITLE;
+    titleCell.alignment = { horizontal: 'center', vertical: 'middle' };
+    sheet.getRow(1).height = 24;
+
+    const headers = [
+      MATRIX_TITLES.rowNum,
+      MATRIX_TITLES.name,
+      'روزهای بسته‌شده',
+      'امتیاز دونیت',
+      MATRIX_TITLES.total,
+      MATRIX_TITLES.max,
+      MATRIX_TITLES.percent
+    ];
+    const hRow = sheet.getRow(2);
+    hRow.height = 28;
+    const widths = [7, 24, 16, 15, 13, 13, 11];
+    headers.forEach(function (h, idx) {
+      styleHeaderCell(hRow.getCell(idx + 1), h);
+      sheet.getColumn(idx + 1).width = widths[idx];
+    });
+
+    const centered = { horizontal: 'center', vertical: 'middle' };
+    rows.forEach(function (r, idx) {
+      const row = sheet.getRow(idx + 3);
+      row.height = 20;
+      const put = function (col: number, val: string, align: object) {
+        const cell = row.getCell(col);
+        cell.value = val;
+        cell.font = FONT_TAHOMA;
+        cell.alignment = align;
+        cell.border = BORDER_THIN;
+      };
+      const participant = (cohort.participants || []).find(function (p) {
+        return p.name === r.rawName && p.groupId === group.id;
+      });
+      const doneClosedCount = r.dayScores.slice(0, summary21Days.length).filter(function (sc) {
+        return sc != null;
+      }).length;
+      const donPts = participant ? (participant.donations || []).reduce(function (s, d) {
+        return s + (d.dayN <= (summary21Days[summary21Days.length - 1]?.n ?? 21) ? Math.floor(d.amount / 200000) : 0);
+      }, 0) : 0;
+
+      put(1, Names.toPersianDigits(r.rowNum), centered);
+      put(2, r.name, { horizontal: 'right', vertical: 'middle' });
+      put(3, Names.toPersianDigits(doneClosedCount), centered);
+      put(4, Names.toPersianDigits(Math.min(5, donPts)), centered);
+      put(5, Names.toPersianDigits(r.totalScore), centered);
+      put(6, Names.toPersianDigits(r.totalMax), centered);
+      put(7, Names.toPersianDigits(r.percent) + '٪', centered);
+    });
+
+    const filename = 'بوشیدو-' + cohort.name + '-' + group.name + '-جمع‌بندی-۲۱روز';
+    return downloadWorkbook(workbook, filename);
+  });
+}
 export const Excel = {
   exportRegistrationRows,
   loadExcelJS: loadExcelJS,
   exportGroupDayReport: exportGroupDayReport,
   exportGroupFullCohortReport: exportGroupFullCohortReport,
-  exportAllMyGroupsReport: exportAllMyGroupsReport
+  exportAllMyGroupsReport: exportAllMyGroupsReport,
+  exportGroupSummary21Report: exportGroupSummary21Report
 };
