@@ -149,7 +149,7 @@ function ReportsTab(props: { cohort: Cohort; toast?: Toast }) {
         if (toast)
           toast.show({
             intent: 'success',
-            message: 'گزارش جمع‌بندی ۲۱ روز ' + activeGroup.name + ' دانلود شد.'
+            message: 'گزارش جمع‌بندی روزهای اصلی ' + activeGroup.name + ' دانلود شد.'
           });
       })
       .catch(function (err) {
@@ -368,10 +368,10 @@ function ReportsTab(props: { cohort: Cohort; toast?: Toast }) {
               }}
             >
               <B.Icon name="CircleCheck" size="lg" className="text-brand" />
-              <h4 className="title">جمع‌بندی پایانی ۲۱ روز</h4>
+              <h4 className="title">جمع‌بندی پایانی روزهای اصلی</h4>
             </div>
             <p className="body-sm" style={{ color: 'var(--text-subtle)', marginBottom: 'var(--space-4)' }}>
-              خلاصهٔ نهایی ۲۱ روز اصلی گروه شامل تعداد روزهای بسته‌شده، امتیاز دونیت، مجموع و درصد.
+              خلاصهٔ نهایی روزهای اصلی گروه شامل تعداد روزهای بسته‌شده، امتیاز دونیت، مجموع و درصد.
             </p>
           </div>
           <B.Button
@@ -380,7 +380,7 @@ function ReportsTab(props: { cohort: Cohort; toast?: Toast }) {
             loading={loadingReport === 'summary21'}
             onClick={handleExportSummary21}
           >
-            {'دانلود جمع‌بندی ۲۱ روز ' + (activeGroup ? activeGroup.name : '')}
+            {'دانلود جمع‌بندی اصلی ' + (activeGroup ? activeGroup.name : '')}
           </B.Button>
         </B.Card>
         <B.Card

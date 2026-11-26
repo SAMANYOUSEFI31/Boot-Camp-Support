@@ -442,13 +442,13 @@ function exportGroupSummary21Report(cohort: Cohort, group: Group, includeFrozen?
     workbook.created = new Date();
 
     const { mainDays, rows } = buildCohortMatrix(cohort, group, { includeFrozen: includeFrozen });
-    const summary21Days = mainDays.slice(0, 21);
+    const summaryDays = mainDays;
     const closedSet = new Set(group.closedDays || []);
-    const closedMain21Count = summary21Days.filter(function (d) {
+    const closedMainCount = summaryDays.filter(function (d) {
       return closedSet.has(d.n);
     }).length;
 
-    const sheet = workbook.addWorksheet(sanitizeSheetName(group.name + '-جمع‌بندی-۲۱روز', 'جمع‌بندی'), {
+    const sheet = workbook.addWorksheet(sanitizeSheetName(group.name + '-جمع‌بندی-اصلی', 'جمع‌بندی'), {
       views: [{ rightToLeft: true, state: 'frozen', xSplit: 2, ySplit: 2 }]
     });
 
@@ -456,14 +456,14 @@ function exportGroupSummary21Report(cohort: Cohort, group: Group, includeFrozen?
     sheet.mergeCells(1, 1, 1, totalCols);
     const titleCell = sheet.getCell('A1');
     titleCell.value =
-      'گزارش جمع‌بندی پایانی ۲۱ روز — ' +
+      'گزارش جمع‌بندی پایانی روزهای اصلی — ' +
       cohort.name +
       ' — ' +
       group.name +
       ' (روز اصلی بسته‌شده: ' +
-      Names.toPersianDigits(closedMain21Count) +
+      Names.toPersianDigits(closedMainCount) +
       ' از ' +
-      Names.toPersianDigits(summary21Days.length) +
+      Names.toPersianDigits(summaryDays.length) +
       ')';
     titleCell.font = FONT_TITLE;
     titleCell.alignment = { horizontal: 'center', vertical: 'middle' };
@@ -500,11 +500,11 @@ function exportGroupSummary21Report(cohort: Cohort, group: Group, includeFrozen?
       const participant = (cohort.participants || []).find(function (p) {
         return p.name === r.rawName && p.groupId === group.id;
       });
-      const doneClosedCount = r.dayScores.slice(0, summary21Days.length).filter(function (sc) {
+      const doneClosedCount = r.dayScores.slice(0, summaryDays.length).filter(function (sc) {
         return sc != null;
       }).length;
       const donPts = participant ? (participant.donations || []).reduce(function (s, d) {
-        return s + (d.dayN <= (summary21Days[summary21Days.length - 1]?.n ?? 21) ? Math.floor(d.amount / 200000) : 0);
+        return s + (d.dayN <= (summaryDays[summaryDays.length - 1]?.n ?? (cohort.days?.length || 90)) ? Math.floor(d.amount / 200000) : 0);
       }, 0) : 0;
 
       put(1, Names.toPersianDigits(r.rowNum), centered);
@@ -516,7 +516,7 @@ function exportGroupSummary21Report(cohort: Cohort, group: Group, includeFrozen?
       put(7, Names.toPersianDigits(r.percent) + '٪', centered);
     });
 
-    const filename = 'بوشیدو-' + cohort.name + '-' + group.name + '-جمع‌بندی-۲۱روز';
+    const filename = 'بوشیدو-' + cohort.name + '-' + group.name + '-جمع‌بندی-اصلی';
     return downloadWorkbook(workbook, filename);
   });
 }

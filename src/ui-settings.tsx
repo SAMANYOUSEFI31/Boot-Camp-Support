@@ -76,7 +76,7 @@ function SettingsTab(props: { cohort: Cohort; toast?: Toast }) {
       if (toast)
         toast.show({
           intent: 'danger',
-          message: 'بازه درست نیست. «از» و «تا» را بین ۱ و ۹۰ بنویس و «از» را کوچک‌تر یا مساوی «تا» بگذار.'
+          message: 'بازه درست نیست. «از» و «تا» را بین ۱ و حداکثر روز دوره (تا ۹۰) بنویس و «از» را کوچک‌تر یا مساوی «تا» بگذار.'
         });
       return;
     }
