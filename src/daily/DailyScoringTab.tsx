@@ -125,7 +125,7 @@ export function DailyScoringTab(props: { cohort: Cohort; toast?: Toast; onGoToGr
     return d.n === selectedDayN;
   }) || {
     n: selectedDayN,
-    type: selectedDayN <= 7 ? 'warmup' : selectedDayN >= 29 ? 'review' : 'main',
+    type: 'main',
     hardLevels: 3,
     specialMission: true
   };

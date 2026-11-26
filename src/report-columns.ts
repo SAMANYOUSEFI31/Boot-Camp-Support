@@ -344,7 +344,7 @@ export function resolveDayConfig(cohort: Cohort, dayN: number): DayConfig {
   return (
     (cohort.days || []).find((d) => d.n === dayN) || {
       n: dayN,
-      type: dayN <= 7 ? 'warmup' : dayN >= 29 ? 'review' : 'main',
+      type: 'main',
       hardLevels: 3,
       specialMission: true
     }

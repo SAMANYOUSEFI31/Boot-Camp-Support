@@ -84,9 +84,9 @@ function CohortModal(props: CohortModalProps) {
       Store.createCohort({
         name: trimmed,
         startDate: isoStart,
-        warmupDays: parseInt(String(warmupDays), 10) || 0,
-        mainDays: parseInt(String(mainDays), 10) || 21,
-        reviewDays: parseInt(String(reviewDays), 10) || 2,
+        warmupDays: Math.max(0, parseInt(String(warmupDays), 10) || 0),
+        mainDays: Math.max(0, parseInt(String(mainDays), 10) || 0),
+        reviewDays: Math.max(0, parseInt(String(reviewDays), 10) || 0),
         copyFromCohortId: copyFromPrevious ? copyCohortId : null
       });
     }
