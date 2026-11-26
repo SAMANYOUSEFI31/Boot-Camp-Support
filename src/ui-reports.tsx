@@ -367,7 +367,7 @@ function ReportsTab(props: { cohort: Cohort; toast?: Toast }) {
                 marginBottom: 'var(--space-2)'
               }}
             >
-              <B.Icon name="Award" size="lg" className="text-brand" />
+              <B.Icon name="CircleCheck" size="lg" className="text-brand" />
               <h4 className="title">جمع‌بندی پایانی ۲۱ روز</h4>
             </div>
             <p className="body-sm" style={{ color: 'var(--text-subtle)', marginBottom: 'var(--space-4)' }}>
@@ -376,7 +376,7 @@ function ReportsTab(props: { cohort: Cohort; toast?: Toast }) {
           </div>
           <B.Button
             variant="secondary"
-            iconStart="Award"
+            iconStart="CircleCheck"
             loading={loadingReport === 'summary21'}
             onClick={handleExportSummary21}
           >
