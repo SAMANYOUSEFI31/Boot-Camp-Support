@@ -792,6 +792,7 @@ function recordPayment(cohortId: string, participantId: string, kind: 'donation'
   if (!c || !p) throw new Error('فرد پیدا نشد؛ دوباره انتخابش کن.');
   if (!Number.isSafeInteger(amount) || amount <= 0) throw new Error('مبلغ باید عدد صحیح و بیشتر از صفر باشد.');
   if (!c.days.some((d) => d.n === dayN)) throw new Error('روز پرداخت نامعتبر است.');
+  if (kind !== 'donation') throw new Error('خرید جان غیرفعال است.');
   if (kind === 'donation' && donationTotal(p) + amount > DONATION_CAP) {
     throw new Error('مجموع دونیت نمی‌تواند بیشتر از ۱٬۰۰۰٬۰۰۰ تومان باشد.');
   }

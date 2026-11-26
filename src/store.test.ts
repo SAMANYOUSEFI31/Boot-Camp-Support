@@ -1,4 +1,4 @@
-import { test } from 'vitest';
+﻿import { test } from 'vitest';
 import assert from 'node:assert/strict';
 import { Store } from './store';
 import type { AppState, Cohort } from './types';
@@ -100,16 +100,15 @@ test('هر روز ناقص یک اخطار؛ بعد از سه اخطار خرو�
   assert.equal(p.status, 'left');
   assert.equal(p.expelledForWarnings, true);
   for (let day = 4; day <= 12; day++) {
-    Store.recordPayment(c.id, p.id, 'life', 200000, day);
-    assert.equal(p.status, 'active');
-    assert.equal(membership(p).remaining, 1);
-    assert.equal(donationScore(p), 0);
     assert.throws(() => Store.recordPayment(c.id, p.id, 'life', 200000, day));
-    Store.toggleCloseDay(c.id, 'g1', day, true);
+
     assert.equal(p.status, 'left');
+
     assert.equal(membership(p).remaining, 0);
+
+    assert.equal(donationScore(p), 0);
   }
-  assert.equal(p.lifePayments?.length, 9);
+  assert.deepEqual(p.lifePayments ?? [], []);
 });
 
 test('عادت پنجم اخطار ندارد؛ فریز و خارج در بستن روز تازه اخطار نمی‌گیرند', () => {
@@ -161,7 +160,6 @@ test('دونیت سقف قطعی دارد؛ مبالغ کوچک جمع می‌ش
 test('بکاپ نسخهٔ جدید، پرداخت‌ها و اخطارها را حفظ و پرداخت ناسالم را رد می‌کند', () => {
   const c = freshCohort();
   for (let day = 1; day <= 3; day++) Store.toggleCloseDay(c.id, 'g1', day, true);
-  Store.recordPayment(c.id, 'p1', 'life', 200000, 4);
   Store.recordPayment(c.id, 'p1', 'donation', 400000, 4);
   const backup = { ...state(c), schemaVersion: 3 };
   const result = Store.validateBackup(JSON.parse(JSON.stringify(backup)));
@@ -181,9 +179,10 @@ test('پس از اصلاح روزهای قدیمی، خرید جان همچنا�
   }
   for (let day = 1; day <= 4; day++) Store.recordDaily(c.id, p.id, day, { done: 0, doneHabits: [] });
   assert.equal(membership(p).warnings, 4);
-  Store.recordPayment(c.id, p.id, 'life', 200000, 5);
-  assert.equal(membership(p).remaining, 1);
-  assert.equal(p.status, 'active');
-  Store.toggleCloseDay(c.id, 'g1', 5, true);
+
+  assert.throws(() => Store.recordPayment(c.id, p.id, 'life', 200000, 5));
+
+  assert.equal(membership(p).remaining, 0);
+
   assert.equal(p.status, 'left');
 });
