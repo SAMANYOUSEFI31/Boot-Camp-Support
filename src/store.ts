@@ -1,4 +1,4 @@
-/**
+﻿/**
  * @license
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -795,15 +795,11 @@ function recordPayment(cohortId: string, participantId: string, kind: 'donation'
   if (kind === 'donation' && donationTotal(p) + amount > DONATION_CAP) {
     throw new Error('مجموع دونیت نمی‌تواند بیشتر از ۱٬۰۰۰٬۰۰۰ تومان باشد.');
   }
-  if (kind === 'life' && (amount !== LIFE_PRICE || !p.expelledForWarnings || membership(p).remaining !== 0)) {
-    throw new Error('خرید جان فقط پس از تمام شدن جان‌ها و با پرداخت ۲۰۰٬۰۰۰ تومان امکان دارد.');
-  }
   const payment = {
     id: 'pay_' + Date.now() + '_' + Math.random().toString(36).slice(2, 9),
     amount, dayN, paidAt: new Date().toISOString()
   };
-  if (kind === 'donation') (p.donations ||= []).push(payment);
-  else (p.lifePayments ||= []).push({ ...payment, warningsAtPurchase: membership(p).warnings });
+  (p.donations ||= []).push(payment);
   reconcileWarnings(c);
   saveImmediately();
   notifyListeners({ type: 'payment_recorded', participantId, kind });

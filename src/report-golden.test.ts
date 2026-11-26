@@ -1,6 +1,7 @@
 import { test } from 'vitest';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
+import path from 'node:path';
 import { Excel } from './excel';
 import { REPORT_COLUMNS, buildReportRows, cellText, visibleColumns } from './report-columns';
 import type { ReportColumn } from './report-columns';
@@ -11,7 +12,7 @@ import type { Cohort } from './types';
  * ExcelJS با یک ورک‌بوک ساختگی جایگزین می‌شود که همهٔ مقدارهای سلول‌ها را ثبت می‌کند.
  * اگر عمداً ستون یا متنی را عوض کردید: GOLDEN_WRITE=1 npx vitest run src/report-golden.test.ts
  */
-const GOLDEN = new URL('./fixtures/report-golden.json', import.meta.url);
+const GOLDEN = path.resolve(process.cwd(), 'src/fixtures/report-golden.json');
 
 type Sheet = {
   name: string;
