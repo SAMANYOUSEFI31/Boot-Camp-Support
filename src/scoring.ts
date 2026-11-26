@@ -5,6 +5,8 @@
 
 import { Names } from './names';
 import { doneIndexes } from './habits';
+import { donationScore } from './membership';
+import type { Payment } from './types';
 
 const toLatinDigits = Names.toLatinDigits;
 
@@ -19,6 +21,7 @@ export interface RecordInput {
 export interface ParticipantInput {
   id: string;
   habitCount?: Num;
+  donations?: Payment[];
 }
 export interface DayInput {
   n: number;
@@ -34,24 +37,19 @@ interface CohortInput {
 interface GroupInput {
   id?: string;
   closedDays?: number[];
+  dayParticipants?: Record<number, string[]>;
 }
 
-const toInt = (v: Num): number => parseInt(String(v), 10);
+const toInt = (v: Num): number => parseInt(toLatinDigits(v), 10);
 
 /** امتیاز «گزارش هدف» (فیلد داده‌ای قدیمی: special) */
-const GOAL_REPORT_POINTS = 2;
+const GOAL_REPORT_POINTS = 1;
 /** امتیاز اضافهٔ «روز استاندارد» */
 const STANDARD_DAY_POINTS = 2;
 
 /** سقف عادت‌های یک فرد در یک روز (با قاعدهٔ موقت وقتی habitCount هنوز null است) */
-function habitCap(participant: ParticipantInput | null | undefined, record?: RecordInput | null): number {
-  if (participant && participant.habitCount != null) {
-    return Math.max(0, toInt(participant.habitCount) || 0);
-  }
-  if (record && record.done != null && record.done !== '') {
-    return Math.max(0, parseInt(toLatinDigits(record.done), 10) || 0);
-  }
-  return 0;
+function habitCap(_participant: ParticipantInput | null | undefined, _record?: RecordInput | null): number {
+  return 5;
 }
 
 /** تعداد عادت‌های انجام‌شده (نسبت به سقف) */
@@ -60,9 +58,9 @@ function habitsDone(
   record: RecordInput | null | undefined
 ): number {
   // ثبت تک‌تک عادت‌ها: شمارش از روی همان‌ها (done فقط نسخهٔ هم‌گام است)
-  if (record && Array.isArray(record.doneHabits) && participant && participant.habitCount != null) {
+  if (record && Array.isArray(record.doneHabits)) {
     const idx = doneIndexes(
-      { habitCount: toInt(participant.habitCount) || 0 },
+      { habitCount: 5 },
       { doneHabits: record.doneHabits }
     );
     return idx ? idx.length : 0;
@@ -78,7 +76,7 @@ const isScoredDay = (dayCfg: DayInput | null | undefined): dayCfg is DayInput =>
   !!dayCfg && dayCfg.type !== 'warmup' && dayCfg.type !== 'review';
 
 /**
- * «روز استاندارد»: habitCount ≥ ۱ و همهٔ عادت‌های انتخابی انجام شده باشد.
+ * «روز استاندارد»: چهار عادت اصلی انجام شده باشد؛ عادت پنجم اثری ندارد.
  * کاملاً مشتق‌شده است؛ کار سخت و گزارش هدف نقشی ندارند.
  */
 export function standardDay(
@@ -87,14 +85,14 @@ export function standardDay(
   dayCfg: DayInput | null | undefined
 ): boolean {
   if (!record || !isScoredDay(dayCfg)) return false;
-  if (!participant || participant.habitCount == null) return false;
-  const cap = Math.max(0, toInt(participant.habitCount) || 0);
-  return cap >= 1 && habitsDone(participant, record) === cap;
+  const indices = doneIndexes({ habitCount: 5 }, { doneHabits: record.doneHabits });
+  // رکوردهای قدیمی با تعداد کمتر از پنج، هویت عادت‌های انجام‌شده را مشخص نمی‌کنند.
+  return indices ? [0, 1, 2, 3].every((i) => indices.includes(i)) : habitsDone(participant, record) === 5;
 }
 
 /**
  * حداکثر امتیاز ممکن یک فرد در یک روز:
- * habitCount + (habitCount≥۱ ? ۲ : ۰) + hardLevels + ۲
+ * ۵ عادت + ۲ روز استاندارد + سطح کار سخت + ۱ مأموریت ویژه؛ بدون دونیت.
  */
 function dayMax(
   participant: ParticipantInput | null | undefined,
@@ -105,8 +103,8 @@ function dayMax(
 
   const cap = habitCap(participant, record);
   // روز استاندارد فقط وقتی معنا دارد که habitCount ثبت شده باشد
-  const standardMax = participant && participant.habitCount != null && cap >= 1 ? STANDARD_DAY_POINTS : 0;
-  const hardMax = Math.max(0, toInt(dayCfg.hardLevels != null ? dayCfg.hardLevels : 0) || 0);
+  const standardMax = STANDARD_DAY_POINTS;
+  const hardMax = Math.min(3, Math.max(0, toInt(dayCfg.hardLevels != null ? dayCfg.hardLevels : 0) || 0));
 
   return cap + standardMax + hardMax + GOAL_REPORT_POINTS;
 }
@@ -137,13 +135,13 @@ function dayBreakdown(
   res.standard = standardDay(participant, record, dayCfg) ? STANDARD_DAY_POINTS : 0;
 
   // کار سخت (سطحِ بالاترین مرحله، نه جمع مراحل)
-  const hardCap = Math.max(0, toInt(dayCfg.hardLevels != null ? dayCfg.hardLevels : 0) || 0);
+  const hardCap = Math.min(3, Math.max(0, toInt(dayCfg.hardLevels != null ? dayCfg.hardLevels : 0) || 0));
   if (hardCap > 0 && record.hard != null && record.hard !== '') {
     const h = parseInt(toLatinDigits(record.hard), 10);
     if (!isNaN(h)) res.hard = Math.max(0, Math.min(h, hardCap));
   }
 
-  // گزارش هدف (special: ۱ ← ۲ امتیاز)
+  // مأموریت ویژه: گزارش کار در راستای هدف.
   if (record.special != null && record.special !== '') {
     const s = parseInt(toLatinDigits(record.special), 10);
     if (!isNaN(s) && s > 0) res.goal = GOAL_REPORT_POINTS;
@@ -168,19 +166,24 @@ function validateRecord(
   if (dayCfg.type === 'warmup' || dayCfg.type === 'review') {
     return { valid: true, errors: errors };
   }
+  for (const value of [record.done, record.hard, record.special]) {
+    if (value != null && value !== '' && !/^\d+$/.test(toLatinDigits(value))) {
+      errors.push('مقدار باید عدد صحیح و نامنفی باشد.');
+    }
+  }
 
   if (record.done != null && record.done !== '') {
     const d = parseInt(toLatinDigits(record.done), 10);
     if (isNaN(d) || d < 0) {
       errors.push('تعداد عادت‌ها نامعتبر است.');
-    } else if (participant && participant.habitCount != null && d > toInt(participant.habitCount)) {
+    } else if (d > 5) {
       errors.push('انجام‌شده‌ها نمی‌تواند از انتخابی‌ها بیشتر باشد.');
     }
   }
 
   if (record.hard != null && record.hard !== '') {
     const h = parseInt(toLatinDigits(record.hard), 10);
-    const maxH = Math.max(0, toInt(dayCfg.hardLevels != null ? dayCfg.hardLevels : 0) || 0);
+    const maxH = Math.min(3, Math.max(0, toInt(dayCfg.hardLevels != null ? dayCfg.hardLevels : 0) || 0));
     if (isNaN(h) || h < 0) {
       errors.push('سطح کار سخت نامعتبر است.');
     } else if (h > maxH) {
@@ -214,7 +217,8 @@ function personTotals(
     totalScore: 0,
     totalMax: 0,
     percent: 0,
-    closedDaysCount: 0
+    closedDaysCount: 0,
+    donationScore: 0
   };
 
   if (!participant || !cohort || !group) return res;
@@ -229,6 +233,8 @@ function personTotals(
 
     // روز باید حتماً بسته شده باشد تا در مجموع تجمعی بیاید
     if (closedDays.indexOf(dayCfg.n) === -1) continue;
+    const attendees = group.dayParticipants?.[dayCfg.n];
+    if (attendees && !attendees.includes(participant.id)) continue;
 
     if (uptoDay != null && dayCfg.n > uptoDay) continue;
 
@@ -242,6 +248,9 @@ function personTotals(
     res.totalMax += mx;
   }
 
+  res.donationScore = donationScore(participant, uptoDay ?? Infinity);
+  res.totalScore += res.donationScore;
+  res.totalMax += 5;
   res.percent = res.totalMax > 0 ? Math.round((res.totalScore / res.totalMax) * 100) : 0;
   return res;
 }

@@ -4,7 +4,9 @@
  */
 
 import { Names } from './names';
-import type { Cohort, DayConfig, DayRecord, Group, Participant } from './types';
+import type { Cohort, DayConfig, DayRecord, Group, Participant, Payment } from './types';
+import { reconcileWarnings, validatePayments } from './membership';
+import { GENDER_LABELS, canAssign, normalizeMobile } from './registration';
 
 /**
  * ادغام یک دورهٔ فایل بکاپ در یک دورهٔ موجود (چند پشتیبان، یک دید کلی).
@@ -13,7 +15,8 @@ import type { Cohort, DayConfig, DayRecord, Group, Participant } from './types';
 
 export type GroupPolicy = 'current' | 'file' | 'both';
 export type Side = 'current' | 'file';
-export type PersonField = 'habitCount' | 'status' | 'telegram' | 'habits';
+export type PersonField = 'habitCount' | 'status' | 'telegram' | 'habits' | 'phone' | 'age' | 'gender';
+const PERSON_FIELDS: PersonField[] = ['habitCount', 'status', 'telegram', 'habits', 'phone', 'age', 'gender'];
 
 export interface GroupPlan {
   /** «بیاور»؛ پیش‌فرض: فقط گروهی که دست‌کم یک رکورد دارد */
@@ -84,7 +87,11 @@ export interface MergeResult {
 
 // ───────── کمک‌ها ─────────
 
-const personKey = (p: Participant) => p.nameKey || Names.normalizeName(p.name) || p.name;
+const personKey = (p: Participant) => p.phone ? 'phone:' + normalizeMobile(p.phone) :
+  p.nameKey || Names.normalizeName(p.name) || p.name;
+function setPersonField<K extends PersonField>(p: Participant, field: K, value: Participant[K]) {
+  p[field] = value;
+}
 
 /** «۱»، «1»، «گروه ۱»، «گروه 1» یکی گرفته می‌شوند */
 export function normalizeGroupName(name: string): string {
@@ -138,6 +145,8 @@ function show(field: PersonField, v: unknown): string {
   if (field === 'status') return STATUS_FA[String(v)] || String(v);
   if (field === 'habits') return (v as string[]).filter(Boolean).join('، ');
   if (field === 'habitCount') return Names.toPersianDigits(String(v)) + ' عادت';
+  if (field === 'age') return Names.toPersianDigits(String(v)) + ' سال';
+  if (field === 'gender') return v === 'male' || v === 'female' ? GENDER_LABELS[v] : String(v);
   return String(v);
 }
 
@@ -152,6 +161,8 @@ function recordsOf(c: Cohort, participantId: string): Record<number, DayRecord> 
 function countRecords(c: Cohort, groupId: string): number {
   let n = 0;
   peopleOf(c, groupId).forEach((p) => {
+    if (p.phone) n++;
+    n += (p.donations || []).length + (p.lifePayments || []).length;
     Object.values(recordsOf(c, p.id)).forEach((r) => {
       if (!isEmptyRec(r)) n++;
     });
@@ -210,7 +221,7 @@ export function analyzeGroups(current: Cohort, file: Cohort, plan: MergePlan): G
     filePeople.forEach((fp) => {
       const cp = curByKey.get(personKey(fp));
       if (cp) {
-        (['habitCount', 'status', 'telegram', 'habits'] as PersonField[]).forEach((field) => {
+        PERSON_FIELDS.forEach((field) => {
           const a = cp[field];
           const b = fp[field];
           if (isEmptyField(field, a) || isEmptyField(field, b)) return;
@@ -304,6 +315,14 @@ export function mergeIntoCohort(
     overlaps: [],
     nothingNew: false
   };
+  const findPoolPerson = (fp: Participant) => {
+    const matches = cur.participants.filter((p) => !p.groupId &&
+      (fp.phone ? personKey(p) === personKey(fp) : Names.normalizeName(p.name) === Names.normalizeName(fp.name)));
+    if (matches.length > 1) throw new Error('چند ثبت‌نامی هم‌نام هستند؛ گروه‌بندی آن‌ها را با انتخاب فرد انجام بده.');
+    const match = matches[0];
+    if (match && !canAssign(match)) throw new Error('ثبت‌نام فرد بدون گروه ناقص یا غیرفعال است؛ ابتدا تکمیلش کن.');
+    return match;
+  };
 
   // تنظیم روزها
   if (plan.days === 'file' && (file.days || []).length) {
@@ -323,12 +342,17 @@ export function mergeIntoCohort(
       closedDays: (fg.closedDays || []).slice()
     };
     cur.groups.push(g);
+    const idMap = new Map<string, string>();
     stats.groupsAdded++;
     peopleOf(file, fg.id).forEach((fp) => {
-      const np: Participant = { ...fp, id: newId('p'), nameKey: personKey(fp), groupId: g.id };
+      const pooled = findPoolPerson(fp);
+      const np: Participant = pooled || { ...fp, id: newId('p'), nameKey: fp.nameKey || Names.normalizeName(fp.name), groupId: g.id };
+      np.groupId = g.id;
       if ((cur.participants || []).some((p) => personKey(p) === personKey(np))) stats.overlaps.push(fp.name);
-      cur.participants.push(np);
-      stats.peopleAdded++;
+      if (!pooled) cur.participants.push(np);
+      idMap.set(fp.id, np.id);
+      if (pooled) stats.fieldsFilled++;
+      else stats.peopleAdded++;
       const recs = recordsOf(file, fp.id);
       Object.keys(recs).forEach((d) => {
         if (isEmptyRec(recs[Number(d)])) return;
@@ -337,6 +361,10 @@ export function mergeIntoCohort(
         stats.recordsAdded++;
       });
     });
+    if (fg.dayParticipants) {
+      g.dayParticipants = Object.fromEntries(Object.entries(fg.dayParticipants).map(([day, ids]) =>
+        [day, ids.map((id) => idMap.get(id)).filter((id): id is string => !!id)]));
+    }
   };
 
   const copySuffix = (name: string) => {
@@ -370,14 +398,22 @@ export function mergeIntoCohort(
     }
 
     const curByKey = new Map(peopleOf(cur, tg.id).map((p) => [personKey(p), p]));
+    const idMap = new Map<string, string>();
     peopleOf(file, fg.id).forEach((fp) => {
-      const cp = curByKey.get(personKey(fp));
+      const nameMatches = fp.phone ? [] : peopleOf(cur, tg.id)
+        .filter((p) => Names.normalizeName(p.name) === Names.normalizeName(fp.name));
+      if (nameMatches.length > 1) throw new Error('چند فرد هم‌نام در گروه هستند؛ از بکاپ دارای موبایل یا گروه‌بندی دستی استفاده کن.');
+      const existingPerson = curByKey.get(personKey(fp)) || nameMatches[0];
+      const pooled = existingPerson ? undefined : findPoolPerson(fp);
+      const cp = existingPerson || pooled;
+      if (pooled) { pooled.groupId = tg.id; stats.fieldsFilled++; }
       const frecs = recordsOf(file, fp.id);
       if (!cp) {
-        const np: Participant = { ...fp, id: newId('p'), nameKey: personKey(fp), groupId: tg.id };
+        const np: Participant = { ...fp, id: newId('p'), nameKey: fp.nameKey || Names.normalizeName(fp.name), groupId: tg.id };
         if ((cur.participants || []).some((p) => personKey(p) === personKey(np)))
           stats.overlaps.push(fp.name);
         cur.participants.push(np);
+        idMap.set(fp.id, np.id);
         stats.peopleAdded++;
         Object.keys(frecs).forEach((d) => {
           if (isEmptyRec(frecs[Number(d)])) return;
@@ -387,18 +423,38 @@ export function mergeIntoCohort(
         });
         return;
       }
+      idMap.set(fp.id, cp.id);
+      for (const field of ['donations', 'lifePayments'] as const) {
+        const payments = new Map<string, Payment>((cp[field] || []).map((payment) => [payment.id, payment]));
+        for (const payment of fp[field] || []) {
+          const existing = payments.get(payment.id);
+          if (existing && (existing.amount !== payment.amount || existing.dayN !== payment.dayN ||
+              existing.paidAt !== payment.paidAt || existing.warningsAtPurchase !== payment.warningsAtPurchase)) {
+            throw new Error('دو نسخهٔ متفاوت از یک پرداخت وجود دارد؛ دوره را به‌صورت نسخهٔ جدا وارد کن.');
+          }
+          if (!existing) { payments.set(payment.id, payment); stats.fieldsFilled++; }
+        }
+        if (payments.size) {
+          const merged = [...payments.values()];
+          if (!validatePayments(merged, field === 'donations' ? 'donation' : 'life')) {
+            throw new Error('ادغام پرداخت‌ها نامعتبر است یا سقف دونیت را رد می‌کند؛ نسخهٔ جدا وارد کن.');
+          }
+          cp[field] = merged;
+        }
+      }
+      if (fp.expelledForWarnings && cp.status === 'left') cp.expelledForWarnings = true;
 
       // مشخصات فرد
-      (['habitCount', 'status', 'telegram', 'habits'] as PersonField[]).forEach((field) => {
+      PERSON_FIELDS.forEach((field) => {
         const a = cp[field];
         const b = fp[field];
         if (isEmptyField(field, a) && !isEmptyField(field, b)) {
-          (cp as unknown as Record<string, unknown>)[field] = b;
+          setPersonField(cp, field, b);
           stats.fieldsFilled++;
         } else if (!isEmptyField(field, a) && !isEmptyField(field, b) && !sameField(field, a, b)) {
           const choice = plan.personChoices[fg.id + '|' + personKey(fp) + '|' + field] || 'current';
           if (choice === 'file') {
-            (cp as unknown as Record<string, unknown>)[field] = b;
+            setPersonField(cp, field, b);
             stats.fieldsReplaced++;
           }
         }
@@ -429,8 +485,59 @@ export function mergeIntoCohort(
     const merged = Array.from(closed).sort((a, b) => a - b);
     if (merged.length !== (tg.closedDays || []).length) stats.fieldsFilled++;
     tg.closedDays = merged;
+    for (const [day, ids] of Object.entries(fg.dayParticipants || {})) {
+      tg.dayParticipants ||= {};
+      const dayN = Number(day);
+      const participants = [...new Set([
+        ...(tg.dayParticipants[dayN] || []),
+        ...ids.map((id) => idMap.get(id)).filter((id): id is string => !!id)
+      ])];
+      if (JSON.stringify(participants) !== JSON.stringify(tg.dayParticipants[dayN])) stats.fieldsFilled++;
+      tg.dayParticipants[dayN] = participants;
+    }
   });
 
+  for (const fp of file.participants.filter((p) => !p.groupId)) {
+    const cp = cur.participants.find((p) => personKey(p) === personKey(fp));
+    if (!cp) {
+      const np = { ...fp, id: newId('p'), groupId: '' };
+      cur.participants.push(np);
+      if (file.records[fp.id]) cur.records[np.id] = file.records[fp.id];
+      stats.peopleAdded++;
+      continue;
+    }
+    for (const field of ['phone', 'age', 'gender'] as const) {
+      const a = cp[field];
+      const b = fp[field];
+      if (b === undefined) continue;
+      if (a !== undefined && a !== b) {
+        throw new Error('مشخصات ثبت‌نامی با همین موبایل متفاوت است؛ مشخصات را بررسی کن یا نسخهٔ جدا وارد کن.');
+      }
+      if (a === undefined) { setPersonField(cp, field, b); stats.fieldsFilled++; }
+    }
+    for (const field of ['donations', 'lifePayments'] as const) {
+      if (!fp[field]?.length) continue;
+      if (cp[field]?.length && JSON.stringify(cp[field]) !== JSON.stringify(fp[field])) {
+        throw new Error('پرداخت‌های ثبت‌نامی بدون گروه متفاوت است؛ نسخهٔ جدا وارد کن.');
+      }
+      if (!cp[field]?.length) { cp[field] = fp[field]; stats.fieldsFilled++; }
+    }
+    for (const [day, record] of Object.entries(file.records[fp.id] || {})) {
+      const dayN = Number(day);
+      const existing = cur.records[cp.id]?.[dayN];
+      if (existing && !sameRec(existing, record)) throw new Error('رکورد ثبت‌نامی متفاوت است؛ نسخهٔ جدا وارد کن.');
+      if (!existing) {
+        cur.records[cp.id] ||= {};
+        cur.records[cp.id][dayN] = record;
+        stats.recordsAdded++;
+      }
+    }
+  }
+  const phones = cur.participants.map((p) => p.phone).filter((phone): phone is string => !!phone).map(normalizeMobile);
+  if (new Set(phones).size !== phones.length) {
+    throw new Error('یک موبایل در چند گروه تکرار می‌شود؛ گروه مقصد را بررسی کن یا دورهٔ جدا وارد کن.');
+  }
+  reconcileWarnings(cur);
   stats.nothingNew =
     stats.groupsAdded === 0 &&
     stats.peopleAdded === 0 &&

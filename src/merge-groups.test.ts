@@ -68,6 +68,36 @@ const supporterB = () =>
     records: { pb1: { 8: rec(1) } }
   });
 
+test('ادغام رسیدها و سابقهٔ روز: ورود تکراری امتیاز یا اخطار تازه نمی‌سازد', () => {
+  const cur = supporterA();
+  cur.participants[0].donations = [{ id: 'd1', amount: 200000, dayN: 8, paidAt: '2026-11-01T00:00:00Z' }];
+  const file = supporterA();
+  file.participants[0].id = 'file-person';
+  file.participants[0].donations = [{ id: 'd2', amount: 400000, dayN: 8, paidAt: '2026-11-01T00:00:00Z' }];
+  file.groups[0].dayParticipants = { 8: ['file-person'] };
+  file.records = { 'file-person': { 8: rec(2, 1, 1) } };
+  const merged = mergeIntoCohort(cur, file, defaultPlan(cur, file)).cohort;
+  assert.equal(merged.participants[0].donations?.length, 2);
+  assert.deepEqual(merged.groups[0].dayParticipants?.[8], ['pa1']);
+  assert.deepEqual(merged.participants[0].warningDays, [8]);
+  const again = mergeIntoCohort(merged, file, defaultPlan(merged, file));
+  assert.deepEqual(again.cohort, merged);
+  assert.equal(again.stats.nothingNew, true);
+});
+
+test('ادغام دونیت بالاتر از سقف یا رسید متعارض، دادهٔ فعلی را تغییر نمی‌دهد', () => {
+  const cur = supporterA();
+  cur.participants[0].donations = [{ id: 'a', amount: 800000, dayN: 8, paidAt: '2026-11-01T00:00:00Z' }];
+  const file = supporterA();
+  file.participants[0].donations = [{ id: 'b', amount: 400000, dayN: 8, paidAt: '2026-11-01T00:00:00Z' }];
+  const before = JSON.stringify(cur);
+  assert.throws(() => mergeIntoCohort(cur, file, defaultPlan(cur, file)));
+  assert.equal(JSON.stringify(cur), before);
+  file.participants[0].donations[0].id = 'a';
+  assert.throws(() => mergeIntoCohort(cur, file, defaultPlan(cur, file)));
+  assert.equal(JSON.stringify(cur), before);
+});
+
 test('تطبیق نام گروه: «۱»، «1»، «گروه ۱»، «گروه 1» یکی‌اند؛ نام دوره با ارقام فارسی/لاتین', () => {
   const k = normalizeGroupName('گروه ۱');
   assert.equal(normalizeGroupName('1'), k);

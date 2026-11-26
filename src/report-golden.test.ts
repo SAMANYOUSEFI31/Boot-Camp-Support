@@ -2,8 +2,7 @@ import { test } from 'vitest';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import { Excel } from './excel';
-import { ImageExport } from './image-export';
-import { REPORT_COLUMNS, cellText, visibleColumns } from './report-columns';
+import { REPORT_COLUMNS, buildReportRows, cellText, visibleColumns } from './report-columns';
 import type { ReportColumn } from './report-columns';
 import type { Cohort } from './types';
 
@@ -12,7 +11,7 @@ import type { Cohort } from './types';
  * ExcelJS با یک ورک‌بوک ساختگی جایگزین می‌شود که همهٔ مقدارهای سلول‌ها را ثبت می‌کند.
  * اگر عمداً ستون یا متنی را عوض کردید: GOLDEN_WRITE=1 npx vitest run src/report-golden.test.ts
  */
-const GOLDEN = process.cwd() + '/src/fixtures/report-golden.json';
+const GOLDEN = new URL('./fixtures/report-golden.json', import.meta.url);
 
 type Sheet = {
   name: string;
@@ -80,9 +79,14 @@ function sampleCohort(): Cohort {
     name,
     nameKey: name,
     telegram: '',
+    phone: id === 'p1' ? '09123456789' : undefined,
+    age: id === 'p1' ? 25 : undefined,
+    gender: id === 'p1' ? 'female' : undefined,
     groupId: g,
     status,
-    habitCount
+    habitCount: 5,
+    habits: ['تنظیم خواب', 'مطالعه', 'ورزش', 'ژورنال‌نویسی', 'مدیتیشن'],
+    donations: id === 'p1' ? [{ id: 'don1', amount: 400000, dayN: 8, paidAt: '2026-11-01T00:00:00Z' }] : []
   });
   return {
     id: 'c1',
@@ -104,7 +108,7 @@ function sampleCohort(): Cohort {
       mk('p7', 'سارا نوروزی', 'g2', 'left', 2)
     ],
     records: {
-      p1: { 8: { done: 2, hard: 2, special: 1 }, 9: { done: 2, hard: null, special: 0 } },
+      p1: { 8: { done: 4, doneHabits: [0, 1, 2, 3], hard: 2, special: 1 }, 9: { done: 2, doneHabits: [0, 4], hard: null, special: 0 } },
       p2: { 8: { done: 1, hard: 0, special: 0 }, 9: { done: 3, hard: null, special: 1 } },
       p3: { 8: { done: 2, hard: 1, special: null } },
       p4: { 8: { done: 3, hard: 3, special: 1 } },
@@ -148,7 +152,7 @@ export function imageView(c: Cohort) {
     ['d10', 0, 10, false],
     ['g2d8', 1, 8, false]
   ] as const) {
-    const rd = ImageExport.getGroupDayReportRows(c, c.groups[g], d, f);
+    const rd = buildReportRows(c, c.groups[g], d, { includeFrozen: f });
     const text = (id: string, r: (typeof rd.rows)[number]) =>
       cellText(REPORT_COLUMNS.find((col) => col.id === id) as ReportColumn, r, rd.ctx, 'excel');
     out[key] = {
@@ -209,7 +213,7 @@ test('افزودن یک ستون به فهرست مشترک: هم اکسل (گز
     assert.ok(Object.values(data.cells).includes('trialData'));
     assert.ok(Object.values(data.cells).includes(7));
 
-    const rd = ImageExport.getGroupDayReportRows(c, c.groups[0], 8, false);
+    const rd = buildReportRows(c, c.groups[0], 8, { includeFrozen: false });
     const imageCols = visibleColumns('image', rd.ctx);
     assert.ok(imageCols.some((col) => col.id === 'trial'));
     assert.equal(cellText(trial, rd.rows[0], rd.ctx, 'image'), 'X');

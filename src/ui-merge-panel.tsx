@@ -9,6 +9,7 @@ import { HelpHint } from './help-hint';
 import { analyzeGroups, diffDays, mergeIntoCohort } from './merge-groups';
 import type { GroupPlan, GroupPolicy, MergePlan, Side } from './merge-groups';
 import type { Cohort } from './types';
+import { errorMessage } from './errors';
 
 const fa = Names.toPersianDigits;
 
@@ -16,7 +17,10 @@ const FIELD_FA = {
   habitCount: 'تعداد عادت',
   status: 'وضعیت',
   telegram: 'آیدی تلگرام',
-  habits: 'نام عادت‌ها'
+  habits: 'نام عادت‌ها',
+  phone: 'موبایل',
+  age: 'سن',
+  gender: 'جنسیت'
 };
 
 const daysText = (days: number[]) =>
@@ -34,7 +38,12 @@ export function MergePanel(props: {
 }) {
   const { current, file, plan, onChange } = props;
   const analysis = analyzeGroups(current, file, plan);
-  const result = mergeIntoCohort(current, file, plan);
+  let result;
+  try {
+    result = mergeIntoCohort(current, file, plan);
+  } catch (err) {
+    return <B.Alert intent="danger" title="ادغام با این انتخاب‌ها انجام نمی‌شود">{errorMessage(err)}</B.Alert>;
+  }
   const s = result.stats;
   const daysDiff = diffDays(current, file);
 

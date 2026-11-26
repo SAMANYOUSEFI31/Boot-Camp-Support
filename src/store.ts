@@ -4,7 +4,10 @@
  */
 
 import { Names } from './names';
-import { MAX_HABITS, cleanHabitNames, doneIndexes } from './habits';
+import { MAX_HABITS, REQUIRED_HABITS, cleanHabitNames, doneIndexes } from './habits';
+import { DONATION_CAP, LIFE_PRICE, donationTotal, membership, reconcileWarnings, validatePayments } from './membership';
+import { Scoring } from './scoring';
+import { canAssign, normalizeMobile, validateRegistration, type RegistrationInput } from './registration';
 import { defaultPlan, findMergeTarget, mergeIntoCohort } from './merge-groups';
 import type {
   AppState,
@@ -19,9 +22,9 @@ import type {
   ValidateResult
 } from './types';
 
-const SCHEMA_VERSION = 2;
-/** نسخهٔ قاعدهٔ امتیاز (سند مرجع ۱.۲)؛ هر دوره با نسخهٔ خودش ثبت می‌شود */
-const SCORING_VERSION = 1;
+const SCHEMA_VERSION = 4;
+/** قاعدهٔ جدید چهار عادت اصلی، عادت پنجم و مأموریت یک‌امتیازی. */
+const SCORING_VERSION = 2;
 const STORAGE_KEY = 'bsh_support_app_state_v1';
 const TAB_CHANNEL_NAME = 'bsh_support_tab_sync';
 const currentTabId = 'tab_' + Math.random().toString(36).slice(2, 9);
@@ -120,6 +123,18 @@ function migrate(input: unknown): AppState {
           if (d.type === 'main') d.specialMission = true;
         });
       }
+      c.scoringVersion = SCORING_VERSION;
+      c.participants.forEach((p) => {
+        p.habitCount = MAX_HABITS;
+        p.habits = [...REQUIRED_HABITS, cleanHabitNames(p.habits)[4] || ''];
+        if (p.phone) p.phone = normalizeMobile(p.phone);
+        if (p.groupId == null) p.groupId = '';
+      });
+      if (version < 3) {
+        Object.values(c.records).forEach((records) =>
+          Object.values(records).forEach((record) => { delete record.doneHabits; }));
+      }
+      reconcileWarnings(c as Cohort);
     });
     data.schemaVersion = SCHEMA_VERSION;
   }
@@ -170,12 +185,33 @@ function validateBackup(raw: unknown): ValidateResult {
       if (!isPlainObject(g) || typeof g.id !== 'string') {
         return { ok: false, error: label + ': یکی از گروه‌ها خراب است.' };
       }
+      if (g.dayParticipants !== undefined) {
+        if (!isPlainObject(g.dayParticipants) || Object.entries(g.dayParticipants).some(([day, ids]) =>
+          !/^\d+$/.test(day) || Number(day) < 1 || Number(day) > 30 ||
+          !Array.isArray(ids) || ids.some((id) => typeof id !== 'string'))) {
+          return { ok: false, error: label + ': سابقهٔ اعضای روز نامعتبر است؛ فایل سالم را انتخاب کن.' };
+        }
+      }
     }
     for (let pi = 0; pi < c.participants.length; pi++) {
       const p: unknown = c.participants[pi];
       if (!isPlainObject(p) || typeof p.id !== 'string' || typeof p.name !== 'string') {
         return { ok: false, error: label + ': اطلاعات یکی از افراد خراب است.' };
       }
+      if ((p.donations !== undefined && !validatePayments(p.donations, 'donation')) ||
+          (p.lifePayments !== undefined && !validatePayments(p.lifePayments, 'life'))) {
+        return { ok: false, error: label + ': پرداخت‌های فرد نامعتبر است؛ فایل سالم را انتخاب کن.' };
+      }
+      if ((p.phone !== undefined && (typeof p.phone !== 'string' || !/^09\d{9}$/.test(normalizeMobile(p.phone)))) ||
+          (p.age !== undefined && (typeof p.age !== 'number' || !Number.isInteger(p.age) || p.age < 1 || p.age > 120)) ||
+          (p.gender !== undefined && p.gender !== 'male' && p.gender !== 'female')) {
+        return { ok: false, error: label + ': مشخصات ثبت‌نام نامعتبر است؛ فایل سالم را انتخاب کن.' };
+      }
+    }
+    const phones = c.participants.filter(isPlainObject).map((p) => p.phone)
+      .filter((phone): phone is string => typeof phone === 'string').map(normalizeMobile);
+    if (new Set(phones).size !== phones.length) {
+      return { ok: false, error: label + ': موبایل تکراری دارد؛ ابتدا ثبت‌نام‌ها را اصلاح کن.' };
     }
   }
   return { ok: true, data: migrate(deepClone(raw)) };
@@ -505,9 +541,13 @@ function createCohort(params?: CreateCohortParams): Cohort {
           name: p.name,
           nameKey: p.nameKey || Names.normalizeName(p.name) || p.name,
           telegram: p.telegram || '',
-          groupId: groupMap[p.groupId] || (groups[0] && groups[0].id) || '',
+          groupId: groupMap[p.groupId] || '',
+          ...(p.phone ? { phone: p.phone } : {}),
+          ...(p.age !== undefined ? { age: p.age } : {}),
+          ...(p.gender ? { gender: p.gender } : {}),
           status: p.status || 'active',
-          habitCount: p.habitCount
+          habitCount: MAX_HABITS,
+          habits: [...REQUIRED_HABITS, p.habits?.[4] || '']
         });
       });
     }
@@ -648,11 +688,11 @@ function addParticipants(
       name: name,
       nameKey: nameKey,
       telegram: (p.telegram || '').trim().replace(/^@/, ''),
-      groupId: (groupId || p.groupId) as string,
+      groupId: groupId || p.groupId || '',
       status: p.status || 'active',
-      habitCount: p.habitCount != null ? parseInt(String(p.habitCount), 10) : null
+      habitCount: MAX_HABITS
     };
-    const names = cleanHabitNames(p.habits);
+    const names = [...REQUIRED_HABITS, cleanHabitNames(p.habits)[4] || ''];
     if (names.some(Boolean)) newP.habits = names;
     c.participants.push(newP);
     added.push(newP);
@@ -682,9 +722,53 @@ function updateParticipant(cohortId: string, participantId: string, updates: Par
     if (!updates.habits.some(Boolean)) delete p.habits;
   }
   Object.assign(p, updates);
-  if (updates.habits && !updates.habits.some(Boolean)) delete p.habits;
+  p.habitCount = MAX_HABITS;
+  p.habits = [...REQUIRED_HABITS, p.habits?.[4] || ''];
+  reconcileWarnings(c);
   saveImmediately();
   notifyListeners({ type: 'participant_updated', participant: p });
+}
+
+function saveRegistration(cohortId: string, input: RegistrationInput, participantId?: string): Participant {
+  const c = state.cohorts.find((c) => c.id === cohortId);
+  if (!c) throw new Error('دوره پیدا نشد؛ دوره را دوباره انتخاب کن.');
+  const existing = participantId ? c.participants.find((p) => p.id === participantId) : undefined;
+  if (participantId && !existing) throw new Error('فرد پیدا نشد؛ فهرست را تازه کن.');
+  const result = validateRegistration(input, c.participants, participantId);
+  if (!result.valid) throw new Error(Object.values(result.errors).join(' '));
+  const gender = input.gender;
+  if (gender !== 'male' && gender !== 'female') throw new Error('جنسیت را انتخاب کن.');
+  const fields: Pick<Participant, 'name' | 'phone' | 'age' | 'gender' | 'telegram'> = {
+    name: result.name, phone: result.phone, age: result.age, gender,
+    telegram: input.telegram === undefined ? existing?.telegram || '' : result.telegram
+  };
+  if (existing) {
+    updateParticipant(cohortId, existing.id, fields);
+    return existing;
+  }
+  const p: Participant = {
+    id: 'p_' + Date.now() + '_' + Math.random().toString(36).slice(2, 9),
+    ...fields, nameKey: Names.normalizeName(result.name), groupId: '',
+    status: 'active', habitCount: MAX_HABITS, habits: [...REQUIRED_HABITS, '']
+  };
+  c.participants.push(p);
+  saveImmediately();
+  notifyListeners({ type: 'registration_created', participant: p });
+  return p;
+}
+
+function assignRegistrants(cohortId: string, participantIds: string[], groupId: string) {
+  const c = state.cohorts.find((c) => c.id === cohortId);
+  if (!c || !c.groups.some((g) => g.id === groupId)) throw new Error('گروه مقصد پیدا نشد؛ دوباره انتخابش کن.');
+  const ids = [...new Set(participantIds)];
+  if (!ids.length) throw new Error('حداقل یک ثبت‌نامی را انتخاب کن.');
+  const participants = ids.map((id) => c.participants.find((p) => p.id === id));
+  if (participants.some((p) => !p || !canAssign(p))) {
+    throw new Error('یکی از افراد گروه دارد، فعال نیست یا ثبت‌نامش ناقص است؛ انتخاب را بررسی کن.');
+  }
+  for (const p of participants) if (p) p.groupId = groupId;
+  saveImmediately();
+  notifyListeners({ type: 'registrants_assigned', count: ids.length, groupId });
 }
 
 function deleteParticipant(cohortId: string, participantId: string) {
@@ -702,6 +786,29 @@ function deleteParticipant(cohortId: string, participantId: string) {
   notifyListeners({ type: 'participant_deleted' });
 }
 
+function recordPayment(cohortId: string, participantId: string, kind: 'donation' | 'life', amount: number, dayN: number) {
+  const c = state.cohorts.find((c) => c.id === cohortId);
+  const p = c?.participants.find((p) => p.id === participantId);
+  if (!c || !p) throw new Error('فرد پیدا نشد؛ دوباره انتخابش کن.');
+  if (!Number.isSafeInteger(amount) || amount <= 0) throw new Error('مبلغ باید عدد صحیح و بیشتر از صفر باشد.');
+  if (!c.days.some((d) => d.n === dayN)) throw new Error('روز پرداخت نامعتبر است.');
+  if (kind === 'donation' && donationTotal(p) + amount > DONATION_CAP) {
+    throw new Error('مجموع دونیت نمی‌تواند بیشتر از ۱٬۰۰۰٬۰۰۰ تومان باشد.');
+  }
+  if (kind === 'life' && (amount !== LIFE_PRICE || !p.expelledForWarnings || membership(p).remaining !== 0)) {
+    throw new Error('خرید جان فقط پس از تمام شدن جان‌ها و با پرداخت ۲۰۰٬۰۰۰ تومان امکان دارد.');
+  }
+  const payment = {
+    id: 'pay_' + Date.now() + '_' + Math.random().toString(36).slice(2, 9),
+    amount, dayN, paidAt: new Date().toISOString()
+  };
+  if (kind === 'donation') (p.donations ||= []).push(payment);
+  else (p.lifePayments ||= []).push({ ...payment, warningsAtPurchase: membership(p).warnings });
+  reconcileWarnings(c);
+  saveImmediately();
+  notifyListeners({ type: 'payment_recorded', participantId, kind });
+}
+
 /**
  * ثبت روزانه نتیجه یک فرد
  */
@@ -717,8 +824,22 @@ function recordDaily(cohortId: string, participantId: string, dayN: number, reco
   const updated = Object.assign({}, existing, recordData);
   // تعداد دستی (بدون فهرست عادت‌ها) فهرست قبلی را بی‌اعتبار می‌کند
   if ('done' in recordData && !('doneHabits' in recordData)) delete updated.doneHabits;
+  const p = c.participants.find((p) => p.id === participantId);
+  const day = c.days.find((d) => d.n === dayN);
+  if (!p || !day || day.type !== 'main') throw new Error('فرد یا روز اصلی پیدا نشد.');
+  const validation = Scoring.validateRecord(p, updated, day);
+  if (!validation.valid) throw new Error(validation.errors.join(' '));
+  if (updated.doneHabits !== undefined) {
+    if (!Array.isArray(updated.doneHabits) ||
+        updated.doneHabits.some((i) => !Number.isInteger(i) || i < 0 || i >= MAX_HABITS)) {
+      throw new Error('فهرست عادت‌ها نامعتبر است.');
+    }
+    updated.doneHabits = [...new Set(updated.doneHabits)].sort((a, b) => a - b);
+    updated.done = updated.doneHabits.length;
+  }
 
   c.records[participantId][dayN] = updated;
+  reconcileWarnings(c);
   scheduleSave();
   notifyListeners({ type: 'record_updated', participantId: participantId, dayN: dayN });
 }
@@ -735,7 +856,7 @@ function toggleHabit(cohortId: string, participantId: string, dayN: number, inde
   const p = c.participants.find(function (item) {
     return item.id === participantId;
   });
-  if (!p || p.habitCount == null || index < 0 || index >= Math.min(MAX_HABITS, p.habitCount)) return;
+  if (!p || !Number.isInteger(index) || index < 0 || index >= MAX_HABITS) return;
   const rec = (c.records && c.records[participantId] && c.records[participantId][dayN]) || null;
   const set = new Set(doneIndexes(p, rec) || []);
   if (set.has(index)) set.delete(index);
@@ -782,14 +903,8 @@ function batchRecordDay(
     const cur = c.records[p.id][dayN] || { done: null, hard: null, special: null };
 
     if (action === 'all_habits_done') {
-      cur.done = p.habitCount != null ? p.habitCount : 3;
-      // ثبت تک‌تک: همهٔ عادت‌ها انجام شده (فرد بدون تعداد عادت فقط شمارش قدیمی دارد)
-      if (p.habitCount != null) {
-        cur.doneHabits = Array.from({ length: Math.max(0, Math.min(MAX_HABITS, p.habitCount)) }, (_v, i) => i);
-        cur.done = cur.doneHabits.length;
-      } else {
-        delete cur.doneHabits;
-      }
+      cur.doneHabits = [0, 1, 2, 3, 4];
+      cur.done = MAX_HABITS;
     } else if (action === 'all_special_done') {
       cur.special = 1;
     } else if (action === 'clear_day') {
@@ -801,6 +916,7 @@ function batchRecordDay(
     c.records[p.id][dayN] = cur;
   });
 
+  reconcileWarnings(c);
   saveImmediately();
   notifyListeners({ type: 'batch_record_applied', action: action });
 
@@ -815,6 +931,7 @@ function batchRecordDay(
         c.records[p.id][dayN] = previous;
       }
     });
+    reconcileWarnings(c);
     saveImmediately();
     notifyListeners({ type: 'batch_record_rolled_back' });
   };
@@ -836,6 +953,11 @@ function toggleCloseDay(cohortId: string, groupId: string, dayN: number, shouldC
 
   const idx = g.closedDays.indexOf(dayN);
   if (shouldClose && idx === -1) {
+    if (!g.dayParticipants) g.dayParticipants = {};
+    if (!g.dayParticipants[dayN]) {
+      g.dayParticipants[dayN] = c.participants
+        .filter((p) => p.groupId === groupId && p.status === 'active').map((p) => p.id);
+    }
     g.closedDays.push(dayN);
     g.closedDays.sort(function (a, b) {
       return a - b;
@@ -843,6 +965,7 @@ function toggleCloseDay(cohortId: string, groupId: string, dayN: number, shouldC
   } else if (!shouldClose && idx !== -1) {
     g.closedDays.splice(idx, 1);
   }
+  reconcileWarnings(c);
   saveImmediately();
   notifyListeners({ type: 'day_closed_toggled', dayN: dayN, closed: shouldClose });
 }
@@ -856,6 +979,7 @@ function updateDaysConfig(cohortId: string, updatedDays: DayConfig[]) {
   });
   if (!c) return;
   c.days = updatedDays;
+  reconcileWarnings(c);
   saveImmediately();
   notifyListeners({ type: 'days_config_updated' });
 }
@@ -953,6 +1077,9 @@ export const Store = {
   deleteGroup: deleteGroup,
   addParticipants: addParticipants,
   updateParticipant: updateParticipant,
+  saveRegistration: saveRegistration,
+  assignRegistrants: assignRegistrants,
+  recordPayment: recordPayment,
   deleteParticipant: deleteParticipant,
   recordDaily: recordDaily,
   toggleHabit: toggleHabit,

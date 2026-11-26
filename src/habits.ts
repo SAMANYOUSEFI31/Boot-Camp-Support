@@ -13,7 +13,8 @@ import type { DayRecord, Participant } from './types';
  * رکورد قدیمی فقط done دارد: «چند تا» معلوم است ولی «کدام‌ها» نه.
  */
 
-export const MAX_HABITS = 4;
+export const MAX_HABITS = 5;
+export const REQUIRED_HABITS = ['تنظیم خواب', 'مطالعه', 'ورزش', 'ژورنال‌نویسی'];
 export const MAX_HABIT_NAME = 24;
 
 export type HabitState = 'done' | 'missed' | 'unknown' | 'none';
@@ -34,22 +35,20 @@ export function cleanHabitNames(names: unknown): string[] {
   return names.slice(0, MAX_HABITS).map((n) => String(n == null ? '' : n).replace(/\s+/g, ' ').trim().slice(0, MAX_HABIT_NAME));
 }
 
-export function habitCapOf(p: Pick<Participant, 'habitCount'>): number {
-  const n = p.habitCount == null ? 0 : parseInt(String(p.habitCount), 10);
-  return Math.max(0, Math.min(MAX_HABITS, isNaN(n) ? 0 : n));
+export function habitCapOf(_p: Pick<Participant, 'habitCount'>): number {
+  return MAX_HABITS;
 }
 
 /** نام نمایشی عادت شمارهٔ i (از ۰) */
 export function habitLabel(p: Pick<Participant, 'habits'>, i: number): { label: string; named: boolean } {
+  if (i < REQUIRED_HABITS.length) return { label: REQUIRED_HABITS[i], named: true };
   const raw = p.habits && p.habits[i] ? String(p.habits[i]).trim() : '';
   return raw ? { label: raw, named: true } : { label: 'عادت ' + Names.toPersianDigits(i + 1), named: false };
 }
 
 /** آیا دست‌کم یکی از عادت‌های این فرد (در حد تعدادش) اسم دارد؟ */
-export function hasHabitNames(p: Pick<Participant, 'habits' | 'habitCount'>): boolean {
-  const cap = habitCapOf(p);
-  for (let i = 0; i < cap; i++) if (p.habits && p.habits[i] && String(p.habits[i]).trim()) return true;
-  return false;
+export function hasHabitNames(_p: Pick<Participant, 'habits' | 'habitCount'>): boolean {
+  return true;
 }
 
 /** اندیس‌های انجام‌شده (یکتا و در حد تعداد عادت)، یا null اگر رکورد قدیمی فقط تعداد دارد */

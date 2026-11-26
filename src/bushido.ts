@@ -35,6 +35,7 @@ export interface BushidoLib {
   Menu: C<D.MenuProps>;
   Popover: C<D.PopoverProps>;
   Table: C<D.TableProps>;
+  Pagination: C<D.PaginationProps>;
   DatePicker: C<D.DatePickerProps>;
   ToastProvider: C<D.ToastProviderProps>;
   useToast: () => Toast;

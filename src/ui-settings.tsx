@@ -137,7 +137,7 @@ function SettingsTab(props: { cohort: Cohort; toast?: Toast }) {
               تنظیم سریع چند روز
             </div>
             <p className="caption" style={{ color: 'var(--text-subtle)', marginBlockEnd: 'var(--space-3)' }}>
-              گزارش هدف هر روز ۲ امتیاز و اختیاری است.
+              مأموریت ویژه (گزارش هدف) هر روز ۱ امتیاز و اختیاری است.
             </p>
             <div className="bsh-help-row" style={{ marginBlockEnd: 'var(--space-3)' }}>
               <HelpHint help="dayTypes" visibleLabel />

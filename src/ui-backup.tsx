@@ -100,6 +100,9 @@ export function BackupDialog(props: {
       size="sm"
     >
       <div style={{ display: 'grid', gap: 'var(--space-4)', padding: 'var(--space-2) 0' }}>
+        <B.Alert intent="warning" title="بکاپ حاوی مشخصات خصوصی افراد است">
+          موبایل، سن، جنسیت و پرداخت‌ها هم در فایل هستند. فقط افراد مجاز باید به آن دسترسی داشته باشند.
+        </B.Alert>
         {error && <B.Alert intent="danger">{error}</B.Alert>}
         {cohortCount > 1 && activeCohort && (
           <B.RadioGroup

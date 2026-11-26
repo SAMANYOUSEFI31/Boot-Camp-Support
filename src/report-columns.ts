@@ -12,6 +12,7 @@
 import { Names } from './names';
 import { SCORING_RULES } from './copy';
 import { Scoring } from './scoring';
+import { donationScore, donationTotal, membership } from './membership';
 import { habitStatuses, hasHabitNames, MAX_HABITS } from './habits';
 import type { HabitStatus } from './habits';
 import type { Cohort, DayConfig, Group, Participant, ParticipantStatus, DayRecord } from './types';
@@ -27,6 +28,8 @@ export interface ReportRow {
   rawName: string;
   status: ParticipantStatus;
   participant: Participant;
+  donationAmount: number;
+  donationPoints: number;
   record: DayRecord | null;
   hasRecord: boolean;
   standardDay: boolean;
@@ -218,7 +221,7 @@ export const REPORT_COLUMNS: ReportColumn[] = [
   },
   {
     id: 'goal',
-    title: 'گزارش هدف',
+    title: 'مأموریت ویژه',
     kind: 'text',
     excelWidth: 14,
     imageWidth: 140,
@@ -233,8 +236,35 @@ export const REPORT_COLUMNS: ReportColumn[] = [
     ]
   },
   {
+    id: 'donation',
+    title: 'دونیت کل تا این روز',
+    kind: 'text',
+    excelWidth: 30,
+    imageWidth: 0,
+    image: () => false,
+    text: (r) => fa(r.donationAmount) + ' تومان · ' + fa(r.donationPoints) + ' از ۵ امتیاز',
+    data: [
+      { header: 'donationAmount', group: 'input', value: (r) => r.donationAmount },
+      { header: 'donationScore', group: 'score', value: (r) => r.donationPoints }
+    ]
+  },
+  {
+    id: 'membership',
+    title: 'اخطار و جان (وضعیت فعلی)',
+    kind: 'text',
+    excelWidth: 24,
+    imageWidth: 0,
+    image: () => false,
+    text: (r) => fa(membership(r.participant).warnings) + ' اخطار · ' + fa(membership(r.participant).remaining) + ' جان',
+    data: [
+      { header: 'warningCount', group: 'input', value: (r) => membership(r.participant).warnings },
+      { header: 'purchasedLives', group: 'input', value: (r) => membership(r.participant).purchasedLives },
+      { header: 'remainingLives', group: 'input', value: (r) => membership(r.participant).remaining }
+    ]
+  },
+  {
     id: 'dayScore',
-    title: 'امتیاز این روز',
+    title: 'امتیاز روز (بدون دونیت)',
     kind: 'text',
     excelWidth: 14,
     imageWidth: 140,
@@ -280,6 +310,7 @@ export function scoringRules(dayCfg: DayConfig): string[] {
   const rules = [SCORING_RULES.habit.short, SCORING_RULES.standardDay.short];
   if (dayCfg.hardLevels > 0) rules.push(SCORING_RULES.hard.short(fa(dayCfg.hardLevels)));
   rules.push(SCORING_RULES.goal.short);
+  rules.push('دونیت کل دوره: هر ۲۰۰٬۰۰۰ تومان ۱ امتیاز؛ سقف ۱٬۰۰۰٬۰۰۰ تومان و ۵ امتیاز در مجموع');
   return rules;
 }
 
@@ -370,6 +401,8 @@ export function buildReportRows(
       rawName: p.name,
       status: p.status,
       participant: p,
+      donationAmount: donationTotal(p, dayN),
+      donationPoints: donationScore(p, dayN),
       record: rec,
       hasRecord: hasRecord,
       standardDay: Scoring.standardDay(p, rec, dayCfg),
@@ -441,6 +474,8 @@ export function buildCohortMatrix(
       rawName: p.name,
       dayScores: mainDays.map((d) => {
         if (closed.indexOf(d.n) === -1) return null;
+        const attendees = group.dayParticipants?.[d.n];
+        if (attendees && !attendees.includes(p.id)) return null;
         const rec = (cohort.records && cohort.records[p.id] && cohort.records[p.id][d.n]) || null;
         return Scoring.dayScore(p, rec, d);
       }),

@@ -40,6 +40,10 @@ function formatRelativeBackupTime(isoDate: string | null | undefined): string {
  */
 function saveJsonFile(filename: string, data: unknown) {
   const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+  saveFileBlob(filename, blob);
+}
+
+function saveFileBlob(filename: string, blob: Blob) {
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
@@ -133,7 +137,7 @@ function Header(props: HeaderProps) {
   // بکاپ دکمهٔ جدا دارد؛ منو فقط کارهای کم‌تکرار را نگه می‌دارد
   const menuItems: MenuProps['items'] = [
     {
-      label: 'ورود افراد از Excel یا CSV',
+      label: 'ورود فایل / دانلود قالب افراد',
       icon: 'Inbox',
       onSelect: onOpenImportWizard
     },
@@ -205,6 +209,7 @@ function Header(props: HeaderProps) {
           {cohorts.length > 0 && (
             <div className="bsh-header__cohort">
               <B.Select
+                label="دورهٔ فعال"
                 size="sm"
                 options={cohortOptions}
                 value={activeCohort ? activeCohort.id : ''}
@@ -234,6 +239,7 @@ function Header(props: HeaderProps) {
             بکاپ
           </B.Button>
           <B.Menu
+            label="ابزارهای دوره"
             trigger={
               <B.Button variant="secondary" size="sm" iconStart="Settings">
                 ابزارها
@@ -323,6 +329,7 @@ function MultiTabWarningBanner() {
 export {
   formatRelativeBackupTime,
   saveJsonFile,
+  saveFileBlob,
   shareJsonFile,
   canShareFiles,
   downloadBeforeRestoreBackup,

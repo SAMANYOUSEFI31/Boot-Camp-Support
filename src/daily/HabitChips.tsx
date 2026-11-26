@@ -37,7 +37,7 @@ export function HabitChips(props: {
                 onToggle(p.id, h.index);
               }}
             >
-              <span className="bsh-habit-chip__text">{(on ? '✓ ' : '') + h.label}</span>
+              <span className="bsh-habit-chip__text">{(on ? '✓ ' : '') + (h.index === 4 ? 'عادت پنجم: ' : '') + h.label}</span>
             </button>
           );
         })}

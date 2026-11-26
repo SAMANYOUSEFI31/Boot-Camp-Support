@@ -8,6 +8,7 @@ import { B } from '../bushido';
 import { Names } from '../names';
 import { Scoring, standardDay } from '../scoring';
 import { HabitChips } from './HabitChips';
+import { membership } from '../membership';
 import type { CellChange, ParticipantCardProps, RowsViewProps } from './types';
 
 export function DailyScoringCardView(props: RowsViewProps) {
@@ -31,7 +32,7 @@ export function DailyScoringCardView(props: RowsViewProps) {
   }
 
   return (
-    <div style={{ display: 'grid', gap: 'var(--space-3)' }}>
+    <div className="bsh-daily-cards">
       {members.map(function (p, idx) {
         const rec = (cohort.records && cohort.records[p.id] && cohort.records[p.id][dayCfg.n]) || null;
         return (
@@ -65,6 +66,7 @@ const ParticipantCard = memo(function ParticipantCard(props: ParticipantCardProp
 
   const hasRecord = rec && (rec.done != null || rec.hard != null || rec.special != null);
   const isStandard = standardDay(p, rec, dayCfg);
+  const life = membership(p);
   let dayScoreVal = '—';
   if (hasRecord) {
     const sc = Scoring.dayScore(p, rec, dayCfg);
@@ -116,6 +118,9 @@ const ParticipantCard = memo(function ParticipantCard(props: ParticipantCardProp
             <span className="body-md" style={{ fontWeight: 700 }}>
               {p.name}
             </span>
+            <B.Badge intent={p.expelledForWarnings ? 'warning' : 'neutral'}>
+              {Names.toPersianDigits(life.warnings) + ' اخطار · ' + Names.toPersianDigits(life.remaining) + ' جان'}
+            </B.Badge>
             {p.status === 'frozen' && (
               <B.Badge intent="info" emphasis="subtle">
                 فریز
@@ -182,9 +187,10 @@ const ParticipantCard = memo(function ParticipantCard(props: ParticipantCardProp
         )}
         <div className="bsh-special-row">
           <span className="body-sm" style={{ fontWeight: 500 }}>
-            گزارش هدف (۲ امتیاز)
+            مأموریت ویژه: گزارش هدف (۱ امتیاز)
           </span>
           <B.Switch
+            label={'گزارش هدف ' + p.name}
             checked={specialVal === 1}
             onChange={function (e) {
               onCellChange(p.id, 'special', e.target.checked ? 1 : 0);

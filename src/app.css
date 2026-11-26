@@ -69,6 +69,15 @@ html, body {
 }
 
 /* ---------- منو، پاپ‌اور و تقویم ---------- */
+.bsh-popover__panel {
+  max-block-size: calc(var(--app-dvh) - var(--space-8));
+  overflow: auto;
+  overscroll-behavior: contain;
+  overflow-wrap: anywhere;
+}
+.bsh-menu__item > span { min-inline-size: 0; }
+.bsh-menu__item > .bsh-icon { flex-shrink: 0; }
+.bsh-dialog--open-popover { animation: none; }
 /* موبایل و گوشی افقی: شیت پایین با حاشیهٔ امن، هیچ‌وقت از لبهٔ صفحه بیرون نمی‌زند */
 @media (max-width: 640px), (max-height: 520px) {
   .bsh-popover__panel,
@@ -298,3 +307,115 @@ th.bsh-sticky-right { z-index: calc(var(--layer-raised) + 1); }
 }
 .bsh-habit-chip { justify-content: center; text-align: center; padding-inline: var(--space-3); }
 .bsh-habit-chip__text { overflow-wrap: anywhere; }
+
+/* ---------- ثبت‌نام و گروه‌بندی: موبایل، تبلت، دسکتاپ ---------- */
+.bsh-main-navigation {
+  max-inline-size: 100%;
+  overflow-x: auto;
+  padding-block: var(--space-1);
+}
+.bsh-main-navigation .bsh-tabs { min-inline-size: max-content; }
+.bsh-workflow-heading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+}
+.bsh-workflow-heading > div { flex: 1; min-inline-size: 0; }
+.bsh-workflow-heading p { margin-block-end: 0; }
+.bsh-workflow-stats,
+.bsh-registration-form,
+.bsh-registration-toolbar,
+.bsh-responsive-cards,
+.bsh-assignment-grid,
+.bsh-daily-cards {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-4);
+  min-inline-size: 0;
+}
+.bsh-workflow-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.bsh-desktop-table { display: none; min-inline-size: 0; }
+.bsh-profile-details {
+  display: grid;
+  gap: var(--space-3);
+  margin: 0;
+  min-inline-size: 0;
+}
+.bsh-profile-details > div {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 2fr);
+  align-items: start;
+  gap: var(--space-3);
+}
+.bsh-profile-details dt { color: var(--text-subtle); }
+.bsh-profile-details dd { margin: 0; overflow-wrap: anywhere; }
+.bsh-wrap-text { overflow-wrap: anywhere; }
+.bsh-responsive-cards .body-md,
+.bsh-assignment-grid .bsh-check { overflow-wrap: anywhere; }
+.bsh-person-actions,
+.bsh-person-actions > div,
+.bsh-dialog-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+.bsh-responsive-cards > .bsh-card,
+.bsh-assignment-grid > .bsh-card,
+.bsh-daily-cards > .bsh-card { min-inline-size: 0; }
+.bsh-dialog {
+  display: flex;
+  flex-direction: column;
+  max-block-size: calc(var(--app-dvh) - var(--space-8));
+  overflow: hidden;
+}
+.bsh-dialog__grab,
+.bsh-dialog__head,
+.bsh-dialog__desc,
+.bsh-dialog__foot { flex-shrink: 0; }
+.bsh-dialog__body {
+  min-block-size: 0;
+  overflow: auto;
+  overscroll-behavior-y: contain;
+  scrollbar-gutter: stable;
+}
+.bsh-import-group-row { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--space-3); }
+.bsh-import-file { max-inline-size: 100%; }
+@media (min-width: 640px) {
+  .bsh-import-group-row { grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; }
+  .bsh-registration-form,
+  .bsh-assignment-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .bsh-registration-toolbar { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .bsh-registration-toolbar > :first-child { grid-column: 1 / -1; }
+}
+@media (min-width: 768px) {
+  .bsh-workflow-stats { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .bsh-responsive-cards,
+  .bsh-daily-cards { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (min-width: 1024px) {
+  .bsh-desktop-table { display: block; }
+  .bsh-responsive-cards { display: none; }
+  .bsh-registration-toolbar { grid-template-columns: minmax(0, 2fr) repeat(2, minmax(0, 1fr)); }
+  .bsh-registration-toolbar > :first-child { grid-column: auto; }
+}
+@media (min-width: 1280px) {
+  .bsh-workflow-heading { gap: var(--space-6); }
+  .bsh-workflow-stats { gap: var(--space-6); }
+}
+@media (max-width: 639px) {
+  .bsh-workflow-heading { align-items: stretch; }
+  .bsh-workflow-heading > div { flex-basis: 100%; }
+  .bsh-workflow-heading > .bsh-btn,
+  .bsh-dialog-actions > .bsh-btn { inline-size: 100%; white-space: normal; }
+  .bsh-profile-details > div { grid-template-columns: minmax(0, 1fr); gap: var(--space-1); }
+  .bsh-registration-toolbar .bsh-field,
+  .bsh-registration-form .bsh-field { min-inline-size: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .bsh-progress__fill,
+  .bsh-card-pressable { transition: none; }
+  .bsh-opt:active { transform: none; }
+}

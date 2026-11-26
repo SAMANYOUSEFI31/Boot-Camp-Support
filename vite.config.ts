@@ -7,6 +7,8 @@ const root = (file: string) => fileURLToPath(new URL(file, import.meta.url));
 // دو صفحه: برنامهٔ اصلی و صفحهٔ آزمون‌ها
 export default defineConfig({
   plugins: [react()],
+  server: { host: '127.0.0.1', headers: { 'Allow-Connection-Allowlist-From': '*' } },
+  preview: { host: '127.0.0.1', headers: { 'Allow-Connection-Allowlist-From': '*' } },
   build: {
     rollupOptions: {
       input: {
