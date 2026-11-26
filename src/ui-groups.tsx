@@ -1,4 +1,4 @@
-/**
+﻿/**
  * @license
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -379,17 +379,14 @@ function GroupDetailsView(props: GroupDetailsViewProps) {
     },
     {
       key: 'membership',
-      label: 'اخطار، جان و پرداخت',
+      label: 'دونیت و پرداخت',
       render: (row) => {
         const p = cohort.participants.find((p) => p.id === row.id)!;
         const life = membership(p);
         return <div className="bsh-stack">
-          <B.Badge intent={p.expelledForWarnings ? 'warning' : 'neutral'}>
-            {Names.toPersianDigits(life.warnings) + ' اخطار · ' + Names.toPersianDigits(life.remaining) + ' جان'}
-          </B.Badge>
           <span className="caption">{'دونیت: ' + Names.toPersianDigits(donationTotal(p)) + ' تومان · ' + Names.toPersianDigits(donationScore(p)) + ' امتیاز'}</span>
           <B.Button variant="secondary" size="sm" onClick={() => setPaymentTarget(p)}>
-            {p.expelledForWarnings ? 'ثبت پرداخت و بازگشت' : 'مدیریت پرداخت‌ها'}
+            'مدیریت دونیت'
           </B.Button>
         </div>;
       }

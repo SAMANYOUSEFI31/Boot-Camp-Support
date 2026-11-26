@@ -1,4 +1,4 @@
-/**
+﻿/**
  * @license
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -93,7 +93,7 @@ const habitsText = (r: ReportRow, _ctx?: ReportContext): string => {
   const hc = r.participant.habitCount;
   if (hc == null) return '—';
   const has = r.record && (r.record.done != null || Array.isArray(r.record.doneHabits));
-  return has ? ofText(r.breakdown.habits, hc) : '— از ' + fa(hc);
+  return has ? fa(r.breakdown.habits) : '—';
 };
 
 /** «✓ مطالعه، ✗ ورزش»؛ برای رکورد قدیمی فقط تعداد معلوم است */
@@ -242,7 +242,7 @@ export const REPORT_COLUMNS: ReportColumn[] = [
     excelWidth: 30,
     imageWidth: 0,
     image: () => false,
-    text: (r) => fa(r.donationAmount) + ' تومان · ' + fa(r.donationPoints) + ' از ۵ امتیاز',
+    text: (r) => fa(r.donationAmount) + ' تومان · ' + fa(r.donationPoints) + ' امتیاز',
     data: [
       { header: 'donationAmount', group: 'input', value: (r) => r.donationAmount },
       { header: 'donationScore', group: 'score', value: (r) => r.donationPoints }
@@ -250,16 +250,15 @@ export const REPORT_COLUMNS: ReportColumn[] = [
   },
   {
     id: 'membership',
-    title: 'اخطار و جان (وضعیت فعلی)',
+    title: 'وضعیت اخطار',
     kind: 'text',
     excelWidth: 24,
     imageWidth: 0,
     image: () => false,
-    text: (r) => fa(membership(r.participant).warnings) + ' اخطار · ' + fa(membership(r.participant).remaining) + ' جان',
+    text: (r) => fa(membership(r.participant).warnings) + ' اخطار',
     data: [
       { header: 'warningCount', group: 'input', value: (r) => membership(r.participant).warnings },
-      { header: 'purchasedLives', group: 'input', value: (r) => membership(r.participant).purchasedLives },
-      { header: 'remainingLives', group: 'input', value: (r) => membership(r.participant).remaining }
+
     ]
   },
   {
