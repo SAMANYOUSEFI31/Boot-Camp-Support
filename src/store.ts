@@ -32,15 +32,46 @@ const currentTabId = 'tab_' + Math.random().toString(36).slice(2, 9);
 /**
  * ساخت ۳۰ روز پیش‌فرض دوره
  */
+const MAX_COHORT_DAYS = 90;
+
+function normalizePhaseCounts(
+  warmupCount?: number | null,
+  mainCount?: number | null,
+  reviewCount?: number | null
+): { warmup: number; main: number; review: number; total: number } {
+  let warmup = warmupCount != null && Number.isFinite(Number(warmupCount)) ? Math.max(0, Math.floor(Number(warmupCount))) : 0;
+  let main = mainCount != null && Number.isFinite(Number(mainCount)) ? Math.max(0, Math.floor(Number(mainCount))) : 21;
+  let review = reviewCount != null && Number.isFinite(Number(reviewCount)) ? Math.max(0, Math.floor(Number(reviewCount))) : 2;
+  if (warmup + main + review === 0) {
+    main = 21;
+    review = 2;
+  }
+  let overflow = warmup + main + review - MAX_COHORT_DAYS;
+  if (overflow > 0) {
+    const cutReview = Math.min(review, overflow);
+    review -= cutReview;
+    overflow -= cutReview;
+  }
+  if (overflow > 0) {
+    const cutWarmup = Math.min(warmup, overflow);
+    warmup -= cutWarmup;
+    overflow -= cutWarmup;
+  }
+  if (overflow > 0) {
+    main = Math.max(1, main - overflow);
+  }
+  return { warmup, main, review, total: warmup + main + review };
+}
+
+/**
+ * ساخت روزهای دوره بر اساس تعداد روز گرم‌کردن، اصلی و مرور (حداکثر ۹۰ روز)
+ */
 function createDefaultDays(
   warmupCount?: number | null,
   mainCount?: number | null,
   reviewCount?: number | null
 ): DayConfig[] {
-  const w = warmupCount != null ? Math.max(0, warmupCount) : 0;
-  const m = mainCount != null ? mainCount : 21;
-  const r = reviewCount != null ? reviewCount : 2;
-  const total = w + m + r;
+  const { warmup: w, main: m, review: r, total } = normalizePhaseCounts(warmupCount, mainCount, reviewCount);
 
   const days: DayConfig[] = [];
   for (let i = 1; i <= total; i++) {
@@ -187,7 +218,7 @@ function validateBackup(raw: unknown): ValidateResult {
       }
       if (g.dayParticipants !== undefined) {
         if (!isPlainObject(g.dayParticipants) || Object.entries(g.dayParticipants).some(([day, ids]) =>
-          !/^\d+$/.test(day) || Number(day) < 1 || Number(day) > 30 ||
+          !/^\d+$/.test(day) || Number(day) < 1 || Number(day) > MAX_COHORT_DAYS ||
           !Array.isArray(ids) || ids.some((id) => typeof id !== 'string'))) {
           return { ok: false, error: label + ': سابقهٔ اعضای روز نامعتبر است؛ فایل سالم را انتخاب کن.' };
         }

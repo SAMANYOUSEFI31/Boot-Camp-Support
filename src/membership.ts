@@ -1,4 +1,4 @@
-import type { Cohort, Participant, Payment } from './types';
+﻿import type { Cohort, Participant, Payment } from './types';
 import { doneIndexes } from './habits';
 
 export const DONATION_STEP = 200000;
@@ -54,7 +54,7 @@ export function validatePayments(payments: unknown, kind: 'donation' | 'life'): 
     const p = value as Partial<Payment>;
     if (typeof p.id !== 'string' || !p.id || ids.has(p.id) ||
         typeof p.amount !== 'number' || !Number.isSafeInteger(p.amount) || p.amount <= 0 ||
-        typeof p.dayN !== 'number' || !Number.isInteger(p.dayN) || p.dayN < 1 || p.dayN > 30 ||
+        typeof p.dayN !== 'number' || !Number.isInteger(p.dayN) || p.dayN < 1 || p.dayN > 90 ||
         typeof p.paidAt !== 'string' || !Number.isFinite(Date.parse(p.paidAt))) return false;
     if (kind === 'life' && p.amount !== LIFE_PRICE) return false;
     if (p.warningsAtPurchase !== undefined &&

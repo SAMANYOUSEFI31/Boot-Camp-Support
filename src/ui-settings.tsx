@@ -1,4 +1,4 @@
-/**
+﻿/**
  * @license
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -72,11 +72,11 @@ function SettingsTab(props: { cohort: Cohort; toast?: Toast }) {
     const start = parseInt(rangeStart, 10);
     const end = parseInt(rangeEnd, 10);
     const hard = parseInt(rangeHard, 10);
-    if (isNaN(start) || isNaN(end) || start > end || start < 1 || end > 30) {
+    if (isNaN(start) || isNaN(end) || start > end || start < 1 || end > Math.max(90, days.length)) {
       if (toast)
         toast.show({
           intent: 'danger',
-          message: 'بازه درست نیست. «از» و «تا» را بین ۱ و ۳۰ بنویس و «از» را کوچک‌تر یا مساوی «تا» بگذار.'
+          message: 'بازه درست نیست. «از» و «تا» را بین ۱ و ۹۰ بنویس و «از» را کوچک‌تر یا مساوی «تا» بگذار.'
         });
       return;
     }

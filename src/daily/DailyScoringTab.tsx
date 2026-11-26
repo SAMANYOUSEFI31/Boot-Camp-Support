@@ -30,7 +30,7 @@ export function calculateCurrentDayNumber(startDateIso: string | null | undefine
     now.setHours(0, 0, 0, 0);
     const diffDays = Math.floor((now.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1;
     if (diffDays < 1) return 1;
-    if (diffDays > 30) return 30;
+    if (diffDays > 90) return 90;
     return diffDays;
   } catch (e) {
     return 8;
