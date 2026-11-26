@@ -1,4 +1,4 @@
-/**
+﻿/**
  * @license
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -149,8 +149,7 @@ const TableRowItem = memo(function TableRowItem(props: TableRowItemProps) {
   let dayScoreVal = '—';
   if (rec && (rec.done != null || rec.hard != null || rec.special != null)) {
     const sc = Scoring.dayScore(p, rec, dayCfg);
-    const mx = Scoring.dayMax(p, dayCfg, rec);
-    dayScoreVal = Names.toPersianDigits(sc) + ' از ' + Names.toPersianDigits(mx);
+    dayScoreVal = Names.toPersianDigits(sc);
   }
 
   return (

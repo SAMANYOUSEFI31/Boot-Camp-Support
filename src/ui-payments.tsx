@@ -48,7 +48,7 @@ export function PaymentDialog(props: {
       </div>}>
       <div className="bsh-stack">
 <p className="body-md">
-          {'دونیت کل: ' + Names.toPersianDigits(total) + ' تومان · ' + Names.toPersianDigits(donationScore(p)) + ' از ۵ امتیاز'}
+          {'دونیت کل: ' + Names.toPersianDigits(total) + ' تومان · ' + Names.toPersianDigits(donationScore(p)) + ' امتیاز'}
         </p>
 <B.Select label="روز دریافت وجه" value={String(dayN)}
           options={cohort.days.map((d) => ({ value: String(d.n), label: 'روز ' + Names.toPersianDigits(d.n) }))}
