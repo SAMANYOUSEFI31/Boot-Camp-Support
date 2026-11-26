@@ -138,7 +138,7 @@ const goalText = (r: ReportRow, _ctx?: ReportContext): string => {
 };
 
 const dayScoreText = (r: ReportRow, _ctx?: ReportContext): string =>
-  r.dayScore != null && r.dayMax != null ? ofText(r.dayScore, r.dayMax) : 'ثبت‌نشده';
+  r.dayScore != null ? fa(r.dayScore) : 'ثبت‌نشده';
 
 export const REPORT_COLUMNS: ReportColumn[] = [
   {
@@ -286,7 +286,7 @@ export const REPORT_COLUMNS: ReportColumn[] = [
     kind: 'text',
     excelWidth: 16,
     imageWidth: 130,
-    text: (r) => ofText(r.totalScore, r.totalMax),
+    text: (r) => fa(r.totalScore),
     data: [
       { header: 'totalScore', group: 'score', value: (r) => r.totalScore },
       { header: 'totalMax', group: 'score', value: (r) => r.totalMax }

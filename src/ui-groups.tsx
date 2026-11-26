@@ -382,11 +382,10 @@ function GroupDetailsView(props: GroupDetailsViewProps) {
       label: 'دونیت و پرداخت',
       render: (row) => {
         const p = cohort.participants.find((p) => p.id === row.id)!;
-        const life = membership(p);
         return <div className="bsh-stack">
           <span className="caption">{'دونیت: ' + Names.toPersianDigits(donationTotal(p)) + ' تومان · ' + Names.toPersianDigits(donationScore(p)) + ' امتیاز'}</span>
           <B.Button variant="secondary" size="sm" onClick={() => setPaymentTarget(p)}>
-            'مدیریت دونیت'
+            مدیریت دونیت
           </B.Button>
         </div>;
       }
