@@ -37,10 +37,10 @@ function createDefaultDays(
   mainCount?: number | null,
   reviewCount?: number | null
 ): DayConfig[] {
-  const w = warmupCount != null ? warmupCount : 7;
+  const w = warmupCount != null ? Math.max(0, warmupCount) : 0;
   const m = mainCount != null ? mainCount : 21;
   const r = reviewCount != null ? reviewCount : 2;
-  const total = 30;
+  const total = w + m + r;
 
   const days: DayConfig[] = [];
   for (let i = 1; i <= total; i++) {

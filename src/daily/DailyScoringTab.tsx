@@ -281,7 +281,6 @@ export function DailyScoringTab(props: { cohort: Cohort; toast?: Toast; onGoToGr
       <B.Alert intent="info" title="سقف روز اصلی: ۱۱ امتیاز، بدون دونیت">
         چهار عادت اصلی ۴ امتیاز؛ روز استاندارد ۲؛ عادت پنجم ۱؛ کار سخت تا ۳؛ مأموریت ویژه ۱.
         با انجام نشدن یک یا چند عادت اصلی، فقط یک اخطار برای آن روز ثبت می‌شود.
-        دونیت و خرید جان را در «گروه‌ها و افراد ← مدیریت پرداخت‌ها» ثبت کن.
       </B.Alert>
       <B.Card padding="md">
         <div className="bsh-row" style={{ justifyContent: 'space-between' }}>
