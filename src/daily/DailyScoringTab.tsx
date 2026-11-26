@@ -1,4 +1,4 @@
-/**
+﻿/**
  * @license
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -52,7 +52,8 @@ export function DailyScoringTab(props: { cohort: Cohort; toast?: Toast; onGoToGr
   }
 
   const [selectedGroupId, setSelectedGroupId] = useState<string | null>(myGroups[0] ? myGroups[0].id : null);
-  const [selectedDayN, setSelectedDayN] = useState(calculateCurrentDayNumber(cohort.startDate));
+  const maxDayN = (cohort.days && cohort.days.length) ? Math.max(...cohort.days.map((d) => d.n)) : 23;
+  const [selectedDayN, setSelectedDayN] = useState(Math.min(maxDayN, calculateCurrentDayNumber(cohort.startDate)));
   const [showFrozen, setShowFrozen] = useState(false);
   const [saveIndicator, setSaveIndicator] = useState(false);
 
@@ -280,7 +281,6 @@ export function DailyScoringTab(props: { cohort: Cohort; toast?: Toast; onGoToGr
       <B.Alert intent="info" title="سقف روز اصلی: ۱۱ امتیاز، بدون دونیت">
         چهار عادت اصلی ۴ امتیاز؛ روز استاندارد ۲؛ عادت پنجم ۱؛ کار سخت تا ۳؛ مأموریت ویژه ۱.
         با انجام نشدن یک یا چند عادت اصلی، فقط یک اخطار برای آن روز ثبت می‌شود.
-        دونیت و خرید جان را در «گروه‌ها و افراد ← مدیریت پرداخت‌ها» ثبت کن.
       </B.Alert>
       <B.Card padding="md">
         <div className="bsh-row" style={{ justifyContent: 'space-between' }}>
@@ -375,10 +375,10 @@ export function DailyScoringTab(props: { cohort: Cohort; toast?: Toast; onGoToGr
               flip={true}
               style={{ flex: 'none' }}
               label="روز بعد"
-              disabled={selectedDayN >= 30}
+              disabled={selectedDayN >= maxDayN}
               onClick={function () {
                 setSelectedDayN(function (prev) {
-                  return Math.min(30, prev + 1);
+                  return Math.min(maxDayN, prev + 1);
                 });
               }}
             />
@@ -650,7 +650,7 @@ export function DailyScoringTab(props: { cohort: Cohort; toast?: Toast; onGoToGr
                       intent: 'success',
                       message: 'روز ' + Names.toPersianDigits(selectedDayN) + ' بسته شد.',
                       action:
-                        selectedDayN < 30
+                        selectedDayN < maxDayN
                           ? {
                               label: 'روز بعد',
                               onClick: function () {

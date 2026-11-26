@@ -1,4 +1,4 @@
-/**
+﻿/**
  * @license
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -70,8 +70,7 @@ const ParticipantCard = memo(function ParticipantCard(props: ParticipantCardProp
   let dayScoreVal = '—';
   if (hasRecord) {
     const sc = Scoring.dayScore(p, rec, dayCfg);
-    const mx = Scoring.dayMax(p, dayCfg, rec);
-    dayScoreVal = Names.toPersianDigits(sc) + ' از ' + Names.toPersianDigits(mx);
+    dayScoreVal = Names.toPersianDigits(sc);
   }
 
   // آرایه سطوح کار سخت (۰ تا hardLevels)

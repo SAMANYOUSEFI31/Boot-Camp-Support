@@ -1,4 +1,4 @@
-/**
+﻿/**
  * @license
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -37,10 +37,10 @@ function createDefaultDays(
   mainCount?: number | null,
   reviewCount?: number | null
 ): DayConfig[] {
-  const w = warmupCount != null ? warmupCount : 7;
+  const w = warmupCount != null ? Math.max(0, warmupCount) : 0;
   const m = mainCount != null ? mainCount : 21;
   const r = reviewCount != null ? reviewCount : 2;
-  const total = 30;
+  const total = w + m + r;
 
   const days: DayConfig[] = [];
   for (let i = 1; i <= total; i++) {
@@ -506,7 +506,7 @@ interface CreateCohortParams {
 function createCohort(params?: CreateCohortParams): Cohort {
   const name = (params && params.name) || 'دوره جدید';
   const startDate = (params && params.startDate) || new Date().toISOString().slice(0, 10);
-  const warmup = params && params.warmupDays != null ? params.warmupDays : 7;
+  const warmup = params && params.warmupDays != null ? params.warmupDays : 0;
   const main = params && params.mainDays != null ? params.mainDays : 21;
   const review = params && params.reviewDays != null ? params.reviewDays : 2;
 
@@ -792,18 +792,15 @@ function recordPayment(cohortId: string, participantId: string, kind: 'donation'
   if (!c || !p) throw new Error('فرد پیدا نشد؛ دوباره انتخابش کن.');
   if (!Number.isSafeInteger(amount) || amount <= 0) throw new Error('مبلغ باید عدد صحیح و بیشتر از صفر باشد.');
   if (!c.days.some((d) => d.n === dayN)) throw new Error('روز پرداخت نامعتبر است.');
+  if (kind !== 'donation') throw new Error('خرید جان غیرفعال است.');
   if (kind === 'donation' && donationTotal(p) + amount > DONATION_CAP) {
     throw new Error('مجموع دونیت نمی‌تواند بیشتر از ۱٬۰۰۰٬۰۰۰ تومان باشد.');
-  }
-  if (kind === 'life' && (amount !== LIFE_PRICE || !p.expelledForWarnings || membership(p).remaining !== 0)) {
-    throw new Error('خرید جان فقط پس از تمام شدن جان‌ها و با پرداخت ۲۰۰٬۰۰۰ تومان امکان دارد.');
   }
   const payment = {
     id: 'pay_' + Date.now() + '_' + Math.random().toString(36).slice(2, 9),
     amount, dayN, paidAt: new Date().toISOString()
   };
-  if (kind === 'donation') (p.donations ||= []).push(payment);
-  else (p.lifePayments ||= []).push({ ...payment, warningsAtPurchase: membership(p).warnings });
+  (p.donations ||= []).push(payment);
   reconcileWarnings(c);
   saveImmediately();
   notifyListeners({ type: 'payment_recorded', participantId, kind });

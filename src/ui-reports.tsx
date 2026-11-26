@@ -1,4 +1,4 @@
-/**
+﻿/**
  * @license
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -12,7 +12,7 @@ import { Excel } from './excel';
 import { ImageExport, ImagePreviewModal, type ImagesData } from './image-export';
 import type { Cohort, Group, Toast } from './types';
 
-type LoadingKey = 'day' | 'full' | 'all_day' | 'all_full' | 'image' | 'both';
+type LoadingKey = 'day' | 'full' | 'summary21' | 'all_day' | 'all_full' | 'image' | 'both';
 
 /**
  * تب گزارش‌ها و دریافت خروجی‌های استاندارد اکسل و تصویر PNG
@@ -140,6 +140,27 @@ function ReportsTab(props: { cohort: Cohort; toast?: Toast }) {
       });
   }
 
+  function handleExportSummary21() {
+    if (!activeGroup) return;
+    setLoadingReport('summary21');
+    Excel.exportGroupSummary21Report(cohort, activeGroup, includeFrozen)
+      .then(function () {
+        setLoadingReport(null);
+        if (toast)
+          toast.show({
+            intent: 'success',
+            message: 'گزارش جمع‌بندی ۲۱ روز ' + activeGroup.name + ' دانلود شد.'
+          });
+      })
+      .catch(function (err) {
+        setLoadingReport(null);
+        if (toast)
+          toast.show({
+            intent: 'danger',
+            message: 'فایل ساخته نشد: ' + errorMessage(err) + ' دوباره امتحان کن.'
+          });
+      });
+  }
   function handleExportAllGroupsDay() {
     setLoadingReport('all_day');
     Excel.exportAllMyGroupsReport(cohort, 'day', selectedDayN, includeFrozen)
@@ -331,6 +352,35 @@ function ReportsTab(props: { cohort: Cohort; toast?: Toast }) {
             onClick={handleExportFullCohort}
           >
             {'دانلود Excel کل دوره ' + (activeGroup ? activeGroup.name : '')}
+          </B.Button>
+        </B.Card>
+        <B.Card
+          padding="lg"
+          style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}
+        >
+          <div>
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 'var(--space-2)',
+                marginBottom: 'var(--space-2)'
+              }}
+            >
+              <B.Icon name="CircleCheck" size="lg" className="text-brand" />
+              <h4 className="title">جمع‌بندی پایانی ۲۱ روز</h4>
+            </div>
+            <p className="body-sm" style={{ color: 'var(--text-subtle)', marginBottom: 'var(--space-4)' }}>
+              خلاصهٔ نهایی ۲۱ روز اصلی گروه شامل تعداد روزهای بسته‌شده، امتیاز دونیت، مجموع و درصد.
+            </p>
+          </div>
+          <B.Button
+            variant="secondary"
+            iconStart="CircleCheck"
+            loading={loadingReport === 'summary21'}
+            onClick={handleExportSummary21}
+          >
+            {'دانلود جمع‌بندی ۲۱ روز ' + (activeGroup ? activeGroup.name : '')}
           </B.Button>
         </B.Card>
         <B.Card
