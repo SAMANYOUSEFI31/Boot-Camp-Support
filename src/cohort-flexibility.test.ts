@@ -1,8 +1,8 @@
-﻿import { buildCohortMatrix } from './report-columns';
-import { test } from 'vitest';
+﻿import { test } from 'vitest';
 import assert from 'node:assert/strict';
 import { Store } from './store';
 import { Scoring } from './scoring';
+import { buildCohortMatrix } from './report-columns';
 
 test('دوره بدون گرم‌کردن (۰ گرم‌کردن + ۲۱ اصلی + ۲ مرور = ۲۳ روز) درست ساخته و امتیازدهی می‌شود', () => {
   Store.getState().cohorts = [];
@@ -44,7 +44,8 @@ test('سقف طول دوره روی ۹۰ روز محدود می‌شود و دو
   const backup = Store.validateBackup(JSON.parse(JSON.stringify(Store.getState())));
   assert.equal(backup.ok, true);
 });
-test('گزارش ماتریسی روزهای اصلی در دوره بدون گرم‌کردن با تعداد روزهای واقعی هم‌خوان است', () => {
+
+test('ماتریس روزهای اصلی در دوره بدون گرم‌کردن با تعداد روزهای واقعی هم‌خوان است', () => {
   Store.getState().cohorts = [];
   const c = Store.createCohort({
     name: 'دوره ۲۳ روزه',
@@ -61,5 +62,6 @@ test('گزارش ماتریسی روزهای اصلی در دوره بدون گ�
   const matrix = buildCohortMatrix(c, g);
   assert.equal(matrix.mainDays.length, 21);
   assert.equal(matrix.mainDays[0].n, 1);
-  assert.equal(matrix.rows[0].dayScores[0], 9);
+  assert.equal(c.records[p.id][1].done, 4);
+  assert.equal(Scoring.dayScore(p, c.records[p.id][1], matrix.mainDays[0]), 9);
 });
