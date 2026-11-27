@@ -373,20 +373,25 @@ function GroupDetailsView(props: GroupDetailsViewProps) {
       label: 'دونیت و پرداخت',
       render: (row) => {
         const p = cohort.participants.find((p) => p.id === row.id)!;
-        return <div className="bsh-stack">
-          <span className="caption">{'دونیت: ' + Names.toPersianDigits(donationTotal(p)) + ' تومان · ' + Names.toPersianDigits(donationScore(p)) + ' امتیاز'}</span>
-          <B.Button variant="secondary" size="sm" onClick={() => setPaymentTarget(p)}>
-            مدیریت دونیت
-          </B.Button>
-        </div>;
+        return (
+          <span className="caption">
+            {'دونیت: ' + Names.toPersianDigits(donationTotal(p)) + ' تومان · ' + Names.toPersianDigits(donationScore(p)) + ' امتیاز'}
+          </span>
+        );
       }
     },
     {
       key: 'actions',
       label: 'اقدام',
       render: function (row) {
+        const participantForPayment = cohort.participants.find((item) => item.id === row.id);
         return (
-          <div style={{ display: 'flex', gap: 'var(--space-2)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 'var(--space-2)' }}>
+            {participantForPayment && (
+              <B.Button variant="secondary" size="sm" onClick={() => setPaymentTarget(participantForPayment)}>
+                مدیریت دونیت
+              </B.Button>
+            )}
             <B.Button variant="secondary" size="sm" onClick={() => {
               const p = members.find((p) => p.id === row.id);
               if (p) props.onEditRegistration(p);
