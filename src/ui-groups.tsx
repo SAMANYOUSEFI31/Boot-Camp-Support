@@ -307,7 +307,6 @@ function GroupDetailsView(props: GroupDetailsViewProps) {
     {
       key: 'rowNum',
       label: 'ردیف',
-      numeric: true,
       render: function (row) {
         return Names.toPersianDigits(row.rowNum);
       }
@@ -351,7 +350,6 @@ function GroupDetailsView(props: GroupDetailsViewProps) {
     {
       key: 'habitCount',
       label: 'تعداد عادت',
-      numeric: true,
       render: function (row) {
         return (
           <div style={{ maxInlineSize: 'calc(var(--space-16) * 2)' }}>
@@ -1233,4 +1231,5 @@ function DeleteParticipantAlert(props: {
 }
 
 export { GroupsTab };
+
 
