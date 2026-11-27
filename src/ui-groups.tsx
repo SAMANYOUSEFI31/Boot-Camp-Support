@@ -445,7 +445,7 @@ function GroupDetailsView(props: GroupDetailsViewProps) {
           )}
         </div>
         <div style={{ display: 'flex', gap: 'var(--space-2)', flexWrap: 'wrap' }}>
-          <B.Button variant="secondary" size="sm" iconStart="Plus" onClick={props.onAssignRegistrants}>
+          <B.Button variant="secondary" size="md" iconStart="Plus" onClick={props.onAssignRegistrants}>
             انتخاب از ثبت‌نامی‌ها
           </B.Button>
           <B.Menu
@@ -491,7 +491,7 @@ function GroupDetailsView(props: GroupDetailsViewProps) {
         {viewMode === 'members' && (
           <div style={{ display: 'flex', gap: 'var(--space-2)' }}>
             <B.Select
-              size="sm"
+              size="md"
               options={[
                 { value: 'all', label: 'همه وضعیت‌ها' },
                 { value: 'active', label: 'فقط فعال' },
@@ -1231,6 +1231,7 @@ function DeleteParticipantAlert(props: {
 }
 
 export { GroupsTab };
+
 
 
 
