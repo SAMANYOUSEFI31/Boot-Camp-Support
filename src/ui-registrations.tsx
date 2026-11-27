@@ -47,8 +47,8 @@ export function RegistrationsTab(props: { cohort: Cohort; toast?: Toast; onGoToG
     <B.Button variant="secondary" size="sm" iconStart="Pencil" onClick={() => setEditing(p)}>
       {registrationComplete(p) ? 'ویرایش ثبت‌نام' : 'تکمیل ثبت‌نام'}
     </B.Button>
-    {canAssign(p) && <B.Button variant="ghost" size="sm" onClick={() => setAssignment([p.id])}>انتخاب گروه</B.Button>}
-    <B.IconButton icon="Trash2" label={'حذف ثبت‌نام ' + p.name} variant="danger" onClick={() => setDeleting(p)} />
+    {canAssign(p) && <B.Button variant="secondary" size="sm" onClick={() => setAssignment([p.id])}>انتخاب گروه</B.Button>}
+    <B.IconButton icon="Trash2" size="sm" label={'حذف ثبت‌نام ' + p.name} variant="danger" onClick={() => setDeleting(p)} />
   </div>;
   const columns: TableProps['columns'] = [
     { key: 'name', label: 'نام و نام خانوادگی' },

@@ -375,7 +375,7 @@ function GroupDetailsView(props: GroupDetailsViewProps) {
         const p = cohort.participants.find((p) => p.id === row.id)!;
         return <div className="bsh-stack">
           <span className="caption">{'دونیت: ' + Names.toPersianDigits(donationTotal(p)) + ' تومان · ' + Names.toPersianDigits(donationScore(p)) + ' امتیاز'}</span>
-          <B.Button variant="secondary" size="md" onClick={() => setPaymentTarget(p)}>
+          <B.Button variant="secondary" size="sm" onClick={() => setPaymentTarget(p)}>
             مدیریت دونیت
           </B.Button>
         </div>;
@@ -387,7 +387,7 @@ function GroupDetailsView(props: GroupDetailsViewProps) {
       render: function (row) {
         return (
           <div style={{ display: 'flex', gap: 'var(--space-2)' }}>
-            <B.Button variant="secondary" size="md" onClick={() => {
+            <B.Button variant="secondary" size="sm" onClick={() => {
               const p = members.find((p) => p.id === row.id);
               if (p) props.onEditRegistration(p);
             }}>مشخصات ثبت‌نام</B.Button>
