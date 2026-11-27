@@ -308,6 +308,15 @@ function fitFont(
 /**
  * نام بلند: اول کوچک کردن قلم، بعد شکستن به دو سطر
  */
+function clipLine(ctx: CanvasRenderingContext2D, text: string, maxWidth: number): string {
+  if (maxWidth <= 0 || ctx.measureText(text).width <= maxWidth) return text;
+  let trimmed = text.trim();
+  while (trimmed.length > 1 && ctx.measureText(trimmed + '…').width > maxWidth) {
+    trimmed = trimmed.slice(0, -1).trimEnd();
+  }
+  return trimmed.length > 1 ? trimmed + '…' : trimmed;
+}
+
 function wrapNameText(
   ctx: CanvasRenderingContext2D,
   T: Tokens,
@@ -316,12 +325,20 @@ function wrapNameText(
   size: number,
   minSize: number
 ) {
-  const sz = fitFont(ctx, T, text, maxWidth, size, minSize, T.wSemibold);
-  if (ctx.measureText(text).width <= maxWidth) return { lines: [text], fontSize: sz };
+  const uniformSize = Math.min(size, Math.max(minSize, T.f20));
+  ctx.font = T.wSemibold + ' ' + uniformSize + 'px ' + T.font;
+  if (ctx.measureText(text).width <= maxWidth) return { lines: [text], fontSize: uniformSize };
   const words = text.split(/\s+/);
-  if (words.length <= 1) return { lines: [text], fontSize: sz };
+  if (words.length <= 1) {
+    return { lines: [clipLine(ctx, text, maxWidth)], fontSize: uniformSize };
+  }
   const mid = Math.ceil(words.length / 2);
-  return { lines: [words.slice(0, mid).join(' '), words.slice(mid).join(' ')], fontSize: minSize };
+  const l1 = words.slice(0, mid).join(' ');
+  const l2 = words.slice(mid).join(' ');
+  return {
+    lines: [clipLine(ctx, l1, maxWidth), clipLine(ctx, l2, maxWidth)],
+    fontSize: uniformSize
+  };
 }
 
 interface HabitChipItem {
@@ -502,7 +519,7 @@ function layoutTableRow(
   habitsWidth: number,
   nameText: string
 ): TableRowLayout {
-  const nameWrapped = wrapNameText(mctx, T, nameText, nameWidth - 2 * T.s4, T.f24, T.f20);
+  const nameWrapped = wrapNameText(mctx, T, nameText, nameWidth - 2 * T.s4, T.f20, T.f20);
   const habitLayout = buildRowHabitsLayout(mctx, T, row, habitsWidth - 2 * T.s3);
 
   const nameLines = nameWrapped.lines.length;
@@ -537,7 +554,7 @@ function renderSingleCanvasPart(
   const T = getTokens();
   const brand: Partial<BrandImages> = brandImages || {};
   const scale = 2;
-  const width = 1240;
+  const width = 1360;
 
   const padX = T.s8;
   const tableX = T.s4;
@@ -791,7 +808,10 @@ function renderSingleCanvasPart(
           let startY = midY - totalLinesH / 2;
 
           habitLayout.lines.forEach(function (line) {
-            let curX = cx - T.s4;
+            const lineW = line.reduce(function (acc, chip, idx) {
+              return acc + chip.w + (idx > 0 ? chipGap : 0);
+            }, 0);
+            let curX = center + lineW / 2;
             line.forEach(function (chip) {
               drawHabitChip(ctx, T, chip, curX, startY, chipH, chipR);
               curX -= chip.w + chipGap;
