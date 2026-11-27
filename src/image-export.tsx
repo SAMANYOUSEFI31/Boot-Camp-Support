@@ -823,7 +823,7 @@ function renderSingleCanvasPart(
         const tone = col.def.tone ? col.def.tone(row, 'image') : undefined;
         let color = tone === 'success' ? T.success : tone === 'subtle' ? T.subtle : T.text;
         if (text === '—') color = T.subtle;
-        fitFont(ctx, T, text, col.width - T.s4, T.f26, T.f20, weight);
+        fitFont(ctx, T, text, col.width - T.s4, T.f24, T.f20, weight);
         ctx.fillStyle = color;
         ctx.fillText(text, center, midY);
       }
