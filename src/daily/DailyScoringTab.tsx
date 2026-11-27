@@ -283,155 +283,172 @@ export function DailyScoringTab(props: { cohort: Cohort; toast?: Toast; onGoToGr
         با انجام نشدن یک یا چند عادت اصلی، فقط یک اخطار برای آن روز ثبت می‌شود.
       </B.Alert>
       <B.Card padding="md">
-        <div className="bsh-row" style={{ justifyContent: 'space-between' }}>
-          <div
-            style={{
-              maxWidth: '100%',
-              overflowX: 'auto',
-              WebkitOverflowScrolling: 'touch',
-              paddingBlock: 'var(--space-1)'
-            }}
-          >
-            {myGroups.length > 5 ? (
-              <B.Select
-                label="گروه"
-                options={myGroups.map(function (g) {
-                  return { value: g.id, label: g.name };
-                })}
-                value={activeGroup.id}
-                onChange={function (e) {
-                  setSelectedGroupId(e.target.value);
-                }}
-              />
-            ) : (
-              <B.SegmentedControl
-                label="انتخاب گروه"
-                items={myGroups.map(function (g) {
-                  return { id: g.id, label: g.name };
-                })}
-                value={activeGroup.id}
-                onChange={function (id) {
-                  setSelectedGroupId(id);
-                }}
-              />
-            )}
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
-            <B.IconButton
-              icon="ChevronRight"
-              flip={true}
-              style={{ flex: 'none' }}
-              label="روز قبل"
-              disabled={selectedDayN <= 1}
-              onClick={function () {
-                setSelectedDayN(function (prev) {
-                  return Math.max(1, prev - 1);
-                });
-              }}
-            />
+        <div style={{ display: 'grid', gap: 'var(--space-3)' }}>
+          <div className="bsh-row" style={{ justifyContent: 'space-between' }}>
             <div
               style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 'var(--space-2)',
-                background: 'var(--surface-overlay)',
-                padding: 'var(--space-2) var(--space-4)',
-                borderRadius: 'var(--radius-md)',
-                flexWrap: 'wrap'
+                maxWidth: '100%',
+                overflowX: 'auto',
+                WebkitOverflowScrolling: 'touch',
+                paddingBlock: 'var(--space-1)'
               }}
             >
-              <div style={{ display: 'grid' }}>
-                <span className="heading-xs">{'روز ' + Names.toPersianDigits(selectedDayN)}</span>
-                <span className="caption" style={{ color: 'var(--text-subtle)' }}>
-                  <bdi>{dayShamsi}</bdi>
-                  {' — روز ' + dayTypeName}
-                </span>
-              </div>
-              <HelpHint help="dayTypes" />
-              {isDayClosed ? (
-                <B.Badge intent="success" emphasis="bold" icon="Check">
-                  بسته شده
-                </B.Badge>
+              {myGroups.length > 5 ? (
+                <B.Select
+                  label="گروه"
+                  options={myGroups.map(function (g) {
+                    return { value: g.id, label: g.name };
+                  })}
+                  value={activeGroup.id}
+                  onChange={function (e) {
+                    setSelectedGroupId(e.target.value);
+                  }}
+                />
               ) : (
-                <B.Badge intent="warning" emphasis="subtle" icon="Info">
-                  باز
-                </B.Badge>
+                <B.SegmentedControl
+                  label="انتخاب گروه"
+                  items={myGroups.map(function (g) {
+                    return { id: g.id, label: g.name };
+                  })}
+                  value={activeGroup.id}
+                  onChange={function (id) {
+                    setSelectedGroupId(id);
+                  }}
+                />
               )}
-              <HelpHint help="closeDay" />
             </div>
-            {selectedDayN !== todayDayN && (
-              <B.Button
-                variant="ghost"
-                size="sm"
+            <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', flexWrap: 'wrap' }}>
+              <B.IconButton
+                icon="ChevronRight"
+                flip={true}
+                style={{ flex: 'none' }}
+                label="روز قبل"
+                disabled={selectedDayN <= 1}
                 onClick={function () {
-                  setSelectedDayN(todayDayN);
+                  setSelectedDayN(function (prev) {
+                    return Math.max(1, prev - 1);
+                  });
+                }}
+              />
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 'var(--space-2)',
+                  background: 'var(--surface-overlay)',
+                  padding: 'var(--space-2) var(--space-4)',
+                  borderRadius: 'var(--radius-md)',
+                  flexWrap: 'wrap'
                 }}
               >
-                برو به امروز
-              </B.Button>
-            )}
-            <B.IconButton
-              icon="ChevronLeft"
-              flip={true}
-              style={{ flex: 'none' }}
-              label="روز بعد"
-              disabled={selectedDayN >= maxDayN}
-              onClick={function () {
-                setSelectedDayN(function (prev) {
-                  return Math.min(maxDayN, prev + 1);
-                });
-              }}
-            />
+                <div style={{ display: 'grid' }}>
+                  <span className="heading-xs">{'روز ' + Names.toPersianDigits(selectedDayN)}</span>
+                  <span className="caption" style={{ color: 'var(--text-subtle)' }}>
+                    <bdi>{dayShamsi}</bdi>
+                    {' — روز ' + dayTypeName}
+                  </span>
+                </div>
+                <HelpHint help="dayTypes" />
+                {isDayClosed ? (
+                  <B.Badge intent="success" emphasis="bold" icon="Check">
+                    بسته شده
+                  </B.Badge>
+                ) : (
+                  <B.Badge intent="warning" emphasis="subtle" icon="Info">
+                    باز
+                  </B.Badge>
+                )}
+                <HelpHint help="closeDay" />
+              </div>
+              {selectedDayN !== todayDayN && (
+                <B.Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={function () {
+                    setSelectedDayN(todayDayN);
+                  }}
+                >
+                  برو به امروز
+                </B.Button>
+              )}
+              <B.IconButton
+                icon="ChevronLeft"
+                flip={true}
+                style={{ flex: 'none' }}
+                label="روز بعد"
+                disabled={selectedDayN >= maxDayN}
+                onClick={function () {
+                  setSelectedDayN(function (prev) {
+                    return Math.min(maxDayN, prev + 1);
+                  });
+                }}
+              />
+            </div>
           </div>
-          {saveIndicator && (
-            <span
-              className="caption"
-              style={{
-                color: 'var(--text-success)',
-                display: 'flex',
-                alignItems: 'center',
-                gap: 'var(--space-1)'
-              }}
-            >
-              <B.Icon name="Check" size="xs" />
-              ذخیره شد
-            </span>
-          )}
           <div
-            className="bsh-wide-only"
-            style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', flexWrap: 'wrap' }}
+            className="bsh-row"
+            style={{
+              justifyContent: 'space-between',
+              borderBlockStart: 'var(--border-width-thin) solid var(--border-subtle)',
+              paddingBlockStart: 'var(--space-2)'
+            }}
           >
-            <B.Button
-              variant="secondary"
-              size="sm"
-              loading={isGeneratingImage}
-              onClick={function () {
-                handleGenerateImage(showFrozen);
-              }}
+            <div>
+              {saveIndicator && (
+                <span
+                  className="caption"
+                  style={{
+                    color: 'var(--text-success)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 'var(--space-1)'
+                  }}
+                >
+                  <B.Icon name="Check" size="xs" />
+                  ذخیره شد
+                </span>
+              )}
+            </div>
+            <div
+              className="bsh-wide-only"
+              style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', flexWrap: 'wrap' }}
             >
-              دانلود تصویر گروه
-            </B.Button>
-            <B.Button
-              variant="secondary"
-              size="sm"
-              iconStart="Share2"
-              onClick={function () {
-                setExportModalOpen(true);
-              }}
-            >
-              دانلود Excel گروه
-            </B.Button>
-            <B.Button
-              variant="secondary"
-              size="sm"
-              loading={isGeneratingImage}
-              onClick={function () {
-                handleExportBoth(showFrozen);
-              }}
-            >
-              دانلود هر دو
-            </B.Button>
-            {closeDayButton}
+              <B.Menu
+                label="دانلود گزارش گروه"
+                side="bottom"
+                trigger={
+                  <B.Button
+                    variant="secondary"
+                    size="sm"
+                    iconStart="Share2"
+                    loading={isGeneratingImage}
+                  >
+                    دانلود گزارش
+                  </B.Button>
+                }
+                items={[
+                  {
+                    label: 'دانلود تصویر گروه',
+                    onSelect: function () {
+                      handleGenerateImage(showFrozen);
+                    }
+                  },
+                  {
+                    label: 'دانلود Excel گروه',
+                    onSelect: function () {
+                      setExportModalOpen(true);
+                    }
+                  },
+                  {
+                    label: 'دانلود هر دو',
+                    onSelect: function () {
+                      handleExportBoth(showFrozen);
+                    }
+                  }
+                ]}
+              />
+              {closeDayButton}
+            </div>
           </div>
         </div>
       </B.Card>
