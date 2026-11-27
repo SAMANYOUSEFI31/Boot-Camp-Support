@@ -283,11 +283,19 @@ export function DailyScoringTab(props: { cohort: Cohort; toast?: Toast; onGoToGr
         با انجام نشدن یک یا چند عادت اصلی، فقط یک اخطار برای آن روز ثبت می‌شود.
       </B.Alert>
       <B.Card padding="md">
-        <div style={{ display: 'grid', gap: 'var(--space-3)' }}>
-          <div className="bsh-row" style={{ justifyContent: 'space-between' }}>
+        <div style={{ display: 'grid', gap: 'var(--space-3)', minInlineSize: 0 }}>
+          <div
+            className="bsh-row"
+            style={{
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              gap: 'var(--space-3)'
+            }}
+          >
             <div
               style={{
                 maxWidth: '100%',
+                minInlineSize: 0,
                 overflowX: 'auto',
                 WebkitOverflowScrolling: 'touch',
                 paddingBlock: 'var(--space-1)'
@@ -317,7 +325,15 @@ export function DailyScoringTab(props: { cohort: Cohort; toast?: Toast; onGoToGr
                 />
               )}
             </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', flexWrap: 'wrap' }}>
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 'var(--space-2)',
+                flexWrap: 'wrap',
+                minInlineSize: 0
+              }}
+            >
               <B.IconButton
                 icon="ChevronRight"
                 flip={true}
@@ -338,7 +354,8 @@ export function DailyScoringTab(props: { cohort: Cohort; toast?: Toast; onGoToGr
                   background: 'var(--surface-overlay)',
                   padding: 'var(--space-2) var(--space-4)',
                   borderRadius: 'var(--radius-md)',
-                  flexWrap: 'wrap'
+                  flexWrap: 'wrap',
+                  flexShrink: 0
                 }}
               >
                 <div style={{ display: 'grid' }}>
@@ -389,11 +406,13 @@ export function DailyScoringTab(props: { cohort: Cohort; toast?: Toast; onGoToGr
             className="bsh-row"
             style={{
               justifyContent: 'space-between',
+              alignItems: 'center',
+              gap: 'var(--space-2)',
               borderBlockStart: 'var(--border-width-thin) solid var(--border-subtle)',
               paddingBlockStart: 'var(--space-2)'
             }}
           >
-            <div>
+            <div style={{ minInlineSize: 0 }}>
               {saveIndicator && (
                 <span
                   className="caption"
@@ -411,7 +430,13 @@ export function DailyScoringTab(props: { cohort: Cohort; toast?: Toast; onGoToGr
             </div>
             <div
               className="bsh-wide-only"
-              style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', flexWrap: 'wrap' }}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 'var(--space-2)',
+                flexWrap: 'wrap',
+                minInlineSize: 0
+              }}
             >
               <B.Menu
                 label="دانلود گزارش گروه"
