@@ -375,7 +375,7 @@ function GroupDetailsView(props: GroupDetailsViewProps) {
         const p = cohort.participants.find((p) => p.id === row.id)!;
         return <div className="bsh-stack">
           <span className="caption">{'دونیت: ' + Names.toPersianDigits(donationTotal(p)) + ' تومان · ' + Names.toPersianDigits(donationScore(p)) + ' امتیاز'}</span>
-          <B.Button variant="secondary" size="sm" onClick={() => setPaymentTarget(p)}>
+          <B.Button variant="secondary" size="md" onClick={() => setPaymentTarget(p)}>
             مدیریت دونیت
           </B.Button>
         </div>;
@@ -387,7 +387,7 @@ function GroupDetailsView(props: GroupDetailsViewProps) {
       render: function (row) {
         return (
           <div style={{ display: 'flex', gap: 'var(--space-2)' }}>
-            <B.Button variant="ghost" size="sm" onClick={() => {
+            <B.Button variant="secondary" size="md" onClick={() => {
               const p = members.find((p) => p.id === row.id);
               if (p) props.onEditRegistration(p);
             }}>مشخصات ثبت‌نام</B.Button>
@@ -522,7 +522,7 @@ function GroupDetailsView(props: GroupDetailsViewProps) {
           />
         ) : (
           <>
-            <div className="bsh-desktop-table"><B.Table
+            <div className="bsh-desktop-table bsh-table-align-fix"><B.Table
               caption={'افراد گروه ' + group.name}
               columns={columns}
               rows={members.map((m, idx) => ({ ...m, rowNum: idx + 1 }))}
@@ -1231,5 +1231,7 @@ function DeleteParticipantAlert(props: {
 }
 
 export { GroupsTab };
+
+
 
 

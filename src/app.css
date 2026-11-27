@@ -431,4 +431,13 @@ th.bsh-sticky-right { z-index: calc(var(--layer-raised) + 1); }
 @media (max-width: 639px) {
   .bsh-person-actions > .bsh-btn { flex: 1 1 auto; justify-content: center; }
 }
+.bsh-table-align-fix .bsh-table th,
+.bsh-table-align-fix .bsh-table td {
+  text-align: start;
+  vertical-align: middle;
+}
+.bsh-table-align-fix .bsh-table th.is-num,
+.bsh-table-align-fix .bsh-table td.is-num {
+  text-align: center;
+}
 
