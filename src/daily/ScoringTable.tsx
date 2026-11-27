@@ -85,7 +85,9 @@ export function DailyScoringTable(props: RowsViewProps) {
               عادت‌های انجام‌شده
             </th>
             <th className="label-sm is-num" style={{ textAlign: 'center', width: 'var(--space-32)' }}>
-              {'کار سخت (۰ تا ' + Names.toPersianDigits(dayCfg.hardLevels) + ')'}
+              {Number(dayCfg.hardLevels) === 1
+                ? 'کار سخت (۳ امتیاز)'
+                : 'کار سخت (۰ تا ' + Names.toPersianDigits(dayCfg.hardLevels) + ')'}
             </th>
             <th className="label-sm is-num" style={{ textAlign: 'center', width: 'calc(var(--space-24) + var(--space-4))' }}>
               مأموریت ویژه (۱ امتیاز)
@@ -200,10 +202,18 @@ const TableRowItem = memo(function TableRowItem(props: TableRowItemProps) {
         )}
       </td>
       <td style={{ textAlign: 'center' }}>
-        {dayCfg.hardLevels === 0 ? (
+        {Number(dayCfg.hardLevels) === 0 ? (
           <span className="caption" style={{ color: 'var(--text-subtle)' }}>
             ندارد
           </span>
+        ) : Number(dayCfg.hardLevels) === 1 ? (
+          <B.Checkbox
+            label={'کار سخت (۳ امتیاز) ' + p.name}
+            checked={Number(hardVal) > 0}
+            onChange={function (e) {
+              onCellChange(p.id, 'hard', e.target.checked ? 1 : 0);
+            }}
+          />
         ) : (
           <input
             ref={function (el) {
@@ -223,17 +233,21 @@ const TableRowItem = memo(function TableRowItem(props: TableRowItemProps) {
               }
               const latin = Names.toLatinDigits(raw);
               const hVal = parseInt(latin, 10);
+              const maxAllowed = Number(dayCfg.hardLevels) === 1 ? 1 : 3;
               if (!/^\d+$/.test(latin) || isNaN(hVal)) {
-                toast?.show({ intent: 'danger', message: 'سطح کار سخت باید عدد صحیح از ۰ تا ۳ باشد.' });
+                toast?.show({
+                  intent: 'danger',
+                  message: 'سطح کار سخت باید عدد صحیح از ۰ تا ' + Names.toPersianDigits(maxAllowed) + ' باشد.'
+                });
                 return;
               }
 
-              if (hVal > dayCfg.hardLevels) {
+              if (hVal > maxAllowed) {
                 if (toast)
                   toast.show({
                     intent: 'danger',
                     message:
-                      'بیشترین سطح کار سخت این روز ' + Names.toPersianDigits(dayCfg.hardLevels) + ' است.'
+                      'بیشترین سطح کار سخت این روز ' + Names.toPersianDigits(maxAllowed) + ' است.'
                   });
                 return;
               }

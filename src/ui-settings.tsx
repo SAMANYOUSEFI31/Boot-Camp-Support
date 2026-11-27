@@ -169,12 +169,11 @@ function SettingsTab(props: { cohort: Cohort; toast?: Toast }) {
                 }}
               />
               <B.Select
-                label="بیشترین سطح کار سخت"
+                label="وضعیت کار سخت"
                 options={[
                   { value: '0', label: 'بدون کار سخت' },
-                  { value: '1', label: 'تا سطح ۱' },
-                  { value: '2', label: 'تا سطح ۲' },
-                  { value: '3', label: 'تا سطح ۳' }
+                  { value: '1', label: 'تک‌سطحی (۳ امتیاز)' },
+                  { value: '3', label: 'سه‌سطحی (۱ تا ۳ امتیاز)' }
                 ]}
                 value={rangeHard}
                 onChange={function (e) {
@@ -249,9 +248,8 @@ function SettingsTab(props: { cohort: Cohort; toast?: Toast }) {
                           disabled={d.type !== 'main'}
                           options={[
                             { value: '0', label: 'بدون کار سخت' },
-                            { value: '1', label: 'تا سطح ۱' },
-                            { value: '2', label: 'تا سطح ۲' },
-                            { value: '3', label: 'تا سطح ۳' }
+                            { value: '1', label: 'تک‌سطحی (۳ امتیاز)' },
+                            { value: '3', label: 'سه‌سطحی (۱ تا ۳ امتیاز)' }
                           ]}
                           value={String(d.hardLevels != null ? d.hardLevels : 3)}
                           onChange={function (e) {
