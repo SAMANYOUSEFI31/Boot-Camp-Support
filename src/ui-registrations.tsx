@@ -1,4 +1,4 @@
-import { useId, useState } from 'react';
+﻿import { useId, useState } from 'react';
 import { B } from './bushido';
 import { Names } from './names';
 import { Store } from './store';
@@ -70,10 +70,10 @@ export function RegistrationsTab(props: { cohort: Cohort; toast?: Toast; onGoToG
       <B.Button variant="primary" iconStart="Plus" onClick={() => setEditing(null)}>ثبت‌نام جدید</B.Button>
     </div>
     <div className="bsh-workflow-stats">
-      <B.Card padding="md"><B.Stat label="کل افراد دوره" value={Names.toPersianDigits(members.length)} /></B.Card>
-      <B.Card padding="md"><B.Stat label="بدون گروه" value={Names.toPersianDigits(unassigned.length)} /></B.Card>
-      <B.Card padding="md"><B.Stat label="گروه‌بندی‌شده" value={Names.toPersianDigits(members.length - unassigned.length)} /></B.Card>
-      <B.Card padding="md"><B.Stat label="نیازمند تکمیل مشخصات" value={Names.toPersianDigits(incomplete.length)} /></B.Card>
+      <B.Stat label="کل افراد دوره" value={Names.toPersianDigits(members.length)} />
+      <B.Stat label="بدون گروه" value={Names.toPersianDigits(unassigned.length)} />
+      <B.Stat label="گروه‌بندی‌شده" value={Names.toPersianDigits(members.length - unassigned.length)} />
+      <B.Stat label="نیازمند تکمیل مشخصات" value={Names.toPersianDigits(incomplete.length)} />
     </div>
     <B.Alert intent="info" title="مشخصات ثبت‌نام خصوصی است">
       موبایل، سن و جنسیت فقط در مدیریت داخلی و بکاپ ذخیره می‌شوند؛ در گزارش عمومی روزانه و تصویر گروه نمایش داده نمی‌شوند.
@@ -110,7 +110,7 @@ export function RegistrationsTab(props: { cohort: Cohort; toast?: Toast; onGoToG
         else setEditing(null);
       }}>{members.length ? 'پاک کردن فیلترها' : 'ثبت اولین فرد'}</B.Button>} /></B.Card> :
       <>
-        <div className="bsh-desktop-table"><B.Table caption="فهرست ثبت‌نامی‌های دوره" columns={columns} rows={visible.map((p) => ({ ...p }))} /></div>
+        <div className="bsh-desktop-table bsh-table-align-fix"><B.Table caption="فهرست ثبت‌نامی‌های دوره" columns={columns} rows={visible.map((p) => ({ ...p }))} /></div>
         <div className="bsh-responsive-cards">
           {visible.map((p) => <B.Card key={p.id} padding="md">
             <div className="bsh-stack">
@@ -119,7 +119,6 @@ export function RegistrationsTab(props: { cohort: Cohort; toast?: Toast; onGoToG
                   {registrationComplete(p) ? groupName(p) : 'مشخصات ناقص'}
                 </B.Badge></div>
               <ProfileDetails participant={p} />
-              {!registrationComplete(p) && <p className="body-sm bsh-muted">{groupName(p)}</p>}
               {actions(p)}
             </div>
           </B.Card>)}
@@ -273,3 +272,6 @@ export function AssignmentDialog(props: {
     </div>
   </B.Dialog>;
 }
+
+
+
