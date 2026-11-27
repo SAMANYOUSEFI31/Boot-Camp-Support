@@ -1,4 +1,4 @@
-import { useId, useState } from 'react';
+﻿import { useId, useState } from 'react';
 import { B } from './bushido';
 import { Names } from './names';
 import { Store } from './store';
@@ -119,7 +119,6 @@ export function RegistrationsTab(props: { cohort: Cohort; toast?: Toast; onGoToG
                   {registrationComplete(p) ? groupName(p) : 'مشخصات ناقص'}
                 </B.Badge></div>
               <ProfileDetails participant={p} />
-              {!registrationComplete(p) && <p className="body-sm bsh-muted">{groupName(p)}</p>}
               {actions(p)}
             </div>
           </B.Card>)}
@@ -273,3 +272,4 @@ export function AssignmentDialog(props: {
     </div>
   </B.Dialog>;
 }
+

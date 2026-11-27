@@ -1,4 +1,4 @@
-/*
+﻿/*
  * استایل‌های مشترک برنامه — فقط توکن‌های دیزاین سیستم (ds/tokens.css)
  * فایل‌های ds/ دست‌نخورده می‌مانند.
  */
@@ -419,3 +419,16 @@ th.bsh-sticky-right { z-index: calc(var(--layer-raised) + 1); }
   .bsh-card-pressable { transition: none; }
   .bsh-opt:active { transform: none; }
 }
+.bsh-group-switcher {
+  max-inline-size: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: var(--space-2) var(--space-3);
+  background: var(--surface-raised);
+  border: var(--border-width-thin) solid var(--border-subtle);
+  border-radius: var(--radius-md);
+}
+@media (max-width: 639px) {
+  .bsh-person-actions > .bsh-btn { flex: 1 1 auto; justify-content: center; }
+}
+

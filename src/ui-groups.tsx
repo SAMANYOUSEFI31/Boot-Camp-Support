@@ -129,14 +129,7 @@ function GroupsTab(props: { cohort: Cohort; toast?: Toast; onGoToRegistrations?:
         </B.Card>
       ) : (
         <div className="bsh-stack">
-          <div
-            style={{
-              maxWidth: '100%',
-              overflowX: 'auto',
-              WebkitOverflowScrolling: 'touch',
-              paddingBlock: 'var(--space-1)'
-            }}
-          >
+          <div className="bsh-group-switcher">
             {visibleGroups.length > 5 ? (
               <B.Select
                 label="گروه"
@@ -1240,3 +1233,4 @@ function DeleteParticipantAlert(props: {
 }
 
 export { GroupsTab };
+
