@@ -71,6 +71,7 @@ const ParticipantCard = memo(function ParticipantCard(props: ParticipantCardProp
     dayScoreVal = Names.toPersianDigits(sc);
   }
 
+  const isSingleHardLevel = Number(dayCfg.hardLevels) === 1;
   // آرایه سطوح کار سخت (۰ تا hardLevels)
   const hardOptions = [];
   if (dayCfg.hardLevels > 0) {
@@ -157,11 +158,20 @@ const ParticipantCard = memo(function ParticipantCard(props: ParticipantCardProp
         {dayCfg.hardLevels > 0 && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-1)' }}>
             <span className="caption" style={{ color: 'var(--text-subtle)' }}>
-              {'سطح کار سخت (سقف ' + Names.toPersianDigits(dayCfg.hardLevels) + '):'}
+              {isSingleHardLevel
+                ? 'کار سخت (تک‌سطحی — ۳ امتیاز):'
+                : 'سطح کار سخت (سقف ' + Names.toPersianDigits(dayCfg.hardLevels) + '):'}
             </span>
             <div className="bsh-opts">
               {hardOptions.map(function (lvl) {
                 const isSelected = hardVal === lvl;
+                const btnLabel = isSingleHardLevel
+                  ? lvl === 0
+                    ? 'انجام نداد (۰)'
+                    : 'انجام داد (۳ امتیاز)'
+                  : lvl === 0
+                  ? '۰ (انجام نداد)'
+                  : 'سطح ' + Names.toPersianDigits(lvl);
                 return (
                   <button
                     key={lvl}
@@ -172,7 +182,7 @@ const ParticipantCard = memo(function ParticipantCard(props: ParticipantCardProp
                       onCellChange(p.id, 'hard', isSelected ? null : lvl);
                     }}
                   >
-                    {lvl === 0 ? '۰ (انجام نداد)' : 'سطح ' + Names.toPersianDigits(lvl)}
+                    {btnLabel}
                   </button>
                 );
               })}

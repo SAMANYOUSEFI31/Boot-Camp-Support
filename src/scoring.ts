@@ -94,6 +94,12 @@ export function standardDay(
  * حداکثر امتیاز ممکن یک فرد در یک روز:
  * ۵ عادت + ۲ روز استاندارد + سطح کار سخت + ۱ مأموریت ویژه؛ بدون دونیت.
  */
+const normalizeHardLevels = (rawLevels: Num): 0 | 1 | 3 => {
+  const n = toInt(rawLevels != null ? rawLevels : 0);
+  if (isNaN(n) || n <= 0) return 0;
+  return n === 1 ? 1 : 3;
+};
+
 function dayMax(
   participant: ParticipantInput | null | undefined,
   dayCfg: DayInput | null | undefined,
@@ -102,9 +108,9 @@ function dayMax(
   if (!isScoredDay(dayCfg)) return 0;
 
   const cap = habitCap(participant, record);
-  // روز استاندارد فقط وقتی معنا دارد که habitCount ثبت شده باشد
   const standardMax = STANDARD_DAY_POINTS;
-  const hardMax = Math.min(3, Math.max(0, toInt(dayCfg.hardLevels != null ? dayCfg.hardLevels : 0) || 0));
+  const hardLevels = normalizeHardLevels(dayCfg.hardLevels);
+  const hardMax = hardLevels > 0 ? 3 : 0;
 
   return cap + standardMax + hardMax + GOAL_REPORT_POINTS;
 }
@@ -134,11 +140,17 @@ function dayBreakdown(
   res.habits = habitsDone(participant, record);
   res.standard = standardDay(participant, record, dayCfg) ? STANDARD_DAY_POINTS : 0;
 
-  // کار سخت (سطحِ بالاترین مرحله، نه جمع مراحل)
-  const hardCap = Math.min(3, Math.max(0, toInt(dayCfg.hardLevels != null ? dayCfg.hardLevels : 0) || 0));
-  if (hardCap > 0 && record.hard != null && record.hard !== '') {
+  // کار سخت: اگر ۱ سطح باشد و انجام شود ۳ امتیاز دارد؛ اگر ۳ سطحی باشد بر اساس سطح انجام‌شده (۱ تا ۳) امتیاز می‌گیرد
+  const hardLevels = normalizeHardLevels(dayCfg.hardLevels);
+  if (hardLevels > 0 && record.hard != null && record.hard !== '') {
     const h = parseInt(toLatinDigits(record.hard), 10);
-    if (!isNaN(h)) res.hard = Math.max(0, Math.min(h, hardCap));
+    if (!isNaN(h) && h > 0) {
+      if (hardLevels === 1) {
+        res.hard = 3;
+      } else {
+        res.hard = Math.max(0, Math.min(h, 3));
+      }
+    }
   }
 
   // مأموریت ویژه: گزارش کار در راستای هدف.
@@ -183,7 +195,7 @@ function validateRecord(
 
   if (record.hard != null && record.hard !== '') {
     const h = parseInt(toLatinDigits(record.hard), 10);
-    const maxH = Math.min(3, Math.max(0, toInt(dayCfg.hardLevels != null ? dayCfg.hardLevels : 0) || 0));
+    const maxH = normalizeHardLevels(dayCfg.hardLevels);
     if (isNaN(h) || h < 0) {
       errors.push('سطح کار سخت نامعتبر است.');
     } else if (h > maxH) {

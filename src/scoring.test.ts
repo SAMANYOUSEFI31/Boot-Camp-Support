@@ -64,3 +64,14 @@ test('امتیاز روزهای بسته + دونیت کل دوره؛ خرید �
   assert.equal(full.totalMax, 27);
   assert.equal(full.percent, 100);
 });
+
+test('کار سخت تک‌سطحی (hardLevels: 1) در صورت انجام ۳ امتیاز می‌دهد', () => {
+  const singleDay: DayConfig = { n: 5, type: 'main', hardLevels: 1, specialMission: true };
+  assert.equal(Scoring.dayMax(participant, singleDay), 11);
+  assert.deepEqual(
+    Scoring.dayBreakdown(participant, { done: 0, hard: 1, special: 0 }, singleDay),
+    { habits: 0, standard: 0, hard: 3, goal: 0, total: 3 }
+  );
+  assert.equal(Scoring.dayScore(participant, { done: 0, hard: 0, special: 0 }, singleDay), 0);
+  assert.equal(Scoring.validateRecord(participant, { hard: 2 }, singleDay).valid, false);
+});
