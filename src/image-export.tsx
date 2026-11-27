@@ -1,4 +1,4 @@
-/**
+﻿/**
  * @license
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -275,6 +275,18 @@ function roundRectPath(
 /**
  * کوچک کردن قلم تا متن در عرض مجاز جا شود (حداقل minSize)
  */
+function truncateToWidth(
+  ctx: CanvasRenderingContext2D,
+  text: string,
+  maxWidth: number
+): string {
+  if (maxWidth <= 0 || ctx.measureText(text).width <= maxWidth) return text;
+  let trimmed = text;
+  while (trimmed.length > 1 && ctx.measureText(trimmed + '…').width > maxWidth) {
+    trimmed = trimmed.slice(0, -1);
+  }
+  return trimmed.length > 1 ? trimmed + '…' : trimmed;
+}
 function fitFont(
   ctx: CanvasRenderingContext2D,
   T: Tokens,
@@ -1218,3 +1230,4 @@ export const ImageExport = {
 };
 
 export { ImagePreviewModal };
+

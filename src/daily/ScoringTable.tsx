@@ -8,7 +8,6 @@ import { B } from '../bushido';
 import { Names } from '../names';
 import { Scoring, standardDay } from '../scoring';
 import { HabitChips } from './HabitChips';
-import { membership } from '../membership';
 import type { ParticipantCardProps, RowsViewProps } from './types';
 
 /**
@@ -165,9 +164,6 @@ const TableRowItem = memo(function TableRowItem(props: TableRowItemProps) {
         }}
       >
         {p.name}
-        <div className="caption">
-          {Names.toPersianDigits(membership(p).warnings) + ' اخطار · ' + Names.toPersianDigits(membership(p).remaining) + ' جان'}
-        </div>
         {p.status === 'frozen' && (
           <span
             className="caption"
@@ -283,3 +279,4 @@ const TableRowItem = memo(function TableRowItem(props: TableRowItemProps) {
     </tr>
   );
 });
+
