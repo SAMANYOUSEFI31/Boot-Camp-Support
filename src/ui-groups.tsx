@@ -459,7 +459,7 @@ function GroupDetailsView(props: GroupDetailsViewProps) {
             trigger={<B.IconButton icon="Ellipsis" label="کارهای بیشتر گروه" variant="ghost" />}
             items={[
               {
-                label: 'ورود مستقیم لیست قدیمی',
+                label: 'چسباندن لیست اسامی',
                 icon: 'Inbox',
                 onSelect: onAddPaste
               },
