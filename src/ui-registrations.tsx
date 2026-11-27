@@ -97,7 +97,7 @@ export function RegistrationsTab(props: { cohort: Cohort; toast?: Toast; onGoToG
           <B.Button variant="secondary" onClick={() => setAssignment([])} disabled={!members.some(canAssign)}>
             گروه‌بندی ثبت‌نامی‌ها
           </B.Button>
-          <B.Button variant="ghost" onClick={props.onGoToGroups}>مدیریت گروه‌ها</B.Button>
+          <B.Button variant="secondary" onClick={props.onGoToGroups}>مدیریت گروه‌ها</B.Button>
           <B.Button variant="secondary" iconStart="Inbox" onClick={props.onOpenImport}>ورود فایل / دانلود قالب</B.Button>
         </div>
       </div>
@@ -272,6 +272,7 @@ export function AssignmentDialog(props: {
     </div>
   </B.Dialog>;
 }
+
 
 
 

@@ -440,4 +440,9 @@ th.bsh-sticky-right { z-index: calc(var(--layer-raised) + 1); }
 .bsh-table-align-fix .bsh-table td.is-num {
   text-align: center;
 }
+.bsh-scoring-table-wrap .bsh-table th,
+.bsh-scoring-table-wrap .bsh-table td {
+  vertical-align: middle;
+}
+
 
