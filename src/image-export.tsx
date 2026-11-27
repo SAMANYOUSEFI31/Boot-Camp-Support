@@ -502,7 +502,7 @@ function layoutTableRow(
   habitsWidth: number,
   nameText: string
 ): TableRowLayout {
-  const nameWrapped = wrapNameText(mctx, T, nameText, nameWidth - 2 * T.s4, T.f30, T.f24);
+  const nameWrapped = wrapNameText(mctx, T, nameText, nameWidth - 2 * T.s4, T.f24, T.f20);
   const habitLayout = buildRowHabitsLayout(mctx, T, row, habitsWidth - 2 * T.s3);
 
   const nameLines = nameWrapped.lines.length;
@@ -823,7 +823,7 @@ function renderSingleCanvasPart(
         const tone = col.def.tone ? col.def.tone(row, 'image') : undefined;
         let color = tone === 'success' ? T.success : tone === 'subtle' ? T.subtle : T.text;
         if (text === '—') color = T.subtle;
-        fitFont(ctx, T, text, col.width - T.s3, T.f30, T.f24, weight);
+        fitFont(ctx, T, text, col.width - T.s4, T.f26, T.f20, weight);
         ctx.fillStyle = color;
         ctx.fillText(text, center, midY);
       }
