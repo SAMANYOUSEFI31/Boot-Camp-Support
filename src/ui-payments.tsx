@@ -1,36 +1,62 @@
-﻿import { useState } from 'react';
+﻿import { useEffect, useState } from 'react';
 import { B } from './bushido';
 import { Names } from './names';
 import { Store } from './store';
 import { errorMessage } from './errors';
-import { DONATION_CAP, LIFE_PRICE, donationScore, donationTotal, membership } from './membership';
+import { DONATION_CAP, DONATION_STEP, donationScore, donationTotal } from './membership';
 import type { Cohort, Participant, Toast } from './types';
 
 export function PaymentDialog(props: {
   cohort: Cohort; participant: Participant; dayN: number; onClose: () => void; toast?: Toast;
 }) {
-  const { cohort, participant: p, onClose, toast } = props;
-  const kind = 'donation' as const;
+  const { cohort, onClose, toast } = props;
+  const participant = cohort.participants.find((item) => item.id === props.participant.id) || props.participant;
   const [amount, setAmount] = useState('');
   const [dayN, setDayN] = useState(props.dayN);
   const [confirmed, setConfirmed] = useState(false);
   const [error, setError] = useState('');
-  const total = donationTotal(p);
-  const life = membership(p);
-  const canDonate = total < DONATION_CAP;
+
+  useEffect(() => {
+    setAmount('');
+    setDayN(props.dayN);
+    setConfirmed(false);
+    setError('');
+  }, [participant.id, props.dayN]);
+
+  const total = donationTotal(participant);
+  const score = donationScore(participant);
+  const remainingCap = Math.max(0, DONATION_CAP - total);
+  const canDonate = remainingCap > 0;
   const history = [
-    ...(p.donations || []).map((payment) => ({ ...payment, label: 'دونیت' })),
+    ...(participant.donations || []).map((payment) => ({ ...payment, label: 'دونیت' })),
   ].sort((a, b) => b.paidAt.localeCompare(a.paidAt));
 
   function save() {
-    const latin = Names.toLatinDigits(amount).replace(/[٬,]/g, '').trim();
-    if (!/^\d+$/.test(latin)) {
-      setError(Names.toPersianDigits('مبلغ را به تومان و با عدد صحیح بنویس.'));
+    setError('');
+    if (!canDonate) {
+      setError('سقف دونیت دوره (' + Names.toPersianDigits(DONATION_CAP) + ' تومان / ۵ امتیاز) تکمیل شده است.');
       return;
     }
-    if (!confirmed) { setError('ابتدا دریافت وجه را تأیید کن.'); return; }
+    const latin = Names.toLatinDigits(amount).replace(/[٬,\s]/g, '').trim();
+    if (!/^\d+$/.test(latin)) {
+      setError('مبلغ را به تومان و با عدد صحیح بنویس.');
+      return;
+    }
+    const parsedAmount = Number(latin);
+    if (!Number.isSafeInteger(parsedAmount) || parsedAmount <= 0) {
+      setError('مبلغ باید عدد صحیح و بیشتر از صفر باشد.');
+      return;
+    }
+    if (total + parsedAmount > DONATION_CAP) {
+      setError('مجموع دونیت نمی‌تواند بیشتر از ' + Names.toPersianDigits(DONATION_CAP) + ' تومان باشد (باقیمانده مجاز: ' + Names.toPersianDigits(remainingCap) + ' تومان).');
+      return;
+    }
+    if (!confirmed) {
+      setError('ابتدا دریافت وجه را تأیید کن.');
+      return;
+    }
     try {
-      Store.recordPayment(cohort.id, p.id, 'donation', Number(latin), dayN);
+      Store.recordPayment(cohort.id, participant.id, 'donation', parsedAmount, dayN);
       toast?.show({ intent: 'success', message: 'دونیت ثبت شد.' });
       onClose();
     } catch (err) {
@@ -39,7 +65,7 @@ export function PaymentDialog(props: {
   }
 
   return (
-    <B.Dialog open title={'ثبت دونیت ' + p.name} onClose={onClose} size="md"
+    <B.Dialog open title={'ثبت دونیت ' + participant.name} onClose={onClose} size="md"
       footer={<div className="bsh-row">
         <B.Button variant="primary" onClick={save} disabled={!confirmed || !canDonate}>
           تأیید و ثبت پرداخت
@@ -47,10 +73,29 @@ export function PaymentDialog(props: {
         <B.Button variant="ghost" onClick={onClose}>بستن</B.Button>
       </div>}>
       <div className="bsh-stack">
-<p className="body-md">
-          {'دونیت کل: ' + Names.toPersianDigits(total) + ' تومان · ' + Names.toPersianDigits(donationScore(p)) + ' امتیاز'}
+        <p className="body-md">
+          {'دونیت کل: ' + Names.toPersianDigits(total) + ' تومان · ' + Names.toPersianDigits(score) + ' از ۵ امتیاز'}
         </p>
-<B.Select label="روز دریافت وجه" value={String(dayN)}
+        <p className="caption" style={{ color: 'var(--text-subtle)' }}>
+          {'هر ' + Names.toPersianDigits(DONATION_STEP) + ' تومان ۱ امتیاز؛ سقف دوره ' + Names.toPersianDigits(DONATION_CAP) + ' تومان (۵ امتیاز). باقیمانده مجاز: ' + Names.toPersianDigits(remainingCap) + ' تومان.'}
+        </p>
+        {!canDonate && (
+          <B.Alert intent="info">
+            این فرد به سقف کامل دونیت و ۵ امتیاز رسیده است.
+          </B.Alert>
+        )}
+        <B.TextField
+          label="مبلغ دونیت (تومان)"
+          value={amount}
+          disabled={!canDonate}
+          placeholder={Names.toPersianDigits(Math.min(DONATION_STEP, remainingCap || DONATION_STEP))}
+          inputMode="numeric"
+          onChange={(e) => {
+            setAmount(e.target.value);
+            if (error) setError('');
+          }}
+        />
+        <B.Select label="روز دریافت وجه" value={String(dayN)}
           options={cohort.days.map((d) => ({ value: String(d.n), label: 'روز ' + Names.toPersianDigits(d.n) }))}
           onChange={(e) => setDayN(Number(e.target.value))} />
         <B.Checkbox label="دریافت وجه را تأیید می‌کنم" checked={confirmed}

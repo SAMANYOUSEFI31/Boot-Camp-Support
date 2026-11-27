@@ -485,3 +485,4 @@ export function buildCohortMatrix(
   });
   return { mainDays: mainDays, rows: rows };
 }
+

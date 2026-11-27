@@ -65,3 +65,26 @@ test('ماتریس روزهای اصلی در دوره بدون گرم‌کرد�
   assert.equal(c.records[p.id][1].done, 4);
   assert.equal(Scoring.dayScore(p, c.records[p.id][1], matrix.mainDays[0]), 9);
 });
+
+test('امتیاز دونیت هر ۲۰۰٬۰۰۰ تومان ۱ امتیاز تا سقف ۱٬۰۰۰٬۰۰۰ تومان (۵ امتیاز کل دوره) محاسبه می‌شود', () => {
+  Store.getState().cohorts = [];
+  const c = Store.createCohort({
+    name: 'دوره تست دونیت',
+    startDate: '2026-11-01',
+    warmupDays: 0,
+    mainDays: 21,
+    reviewDays: 0
+  });
+  const g = Store.addGroup(c.id, { name: 'گروه دونیت' })!;
+  const [p] = Store.addParticipants(c.id, g.id, [{ name: 'شرکت‌کننده دونیت' }]);
+
+  Store.recordPayment(c.id, p.id, 'donation', 200000, 1);
+  assert.equal(Scoring.personTotals(p, c, g, 1).donationScore, 1);
+
+  Store.recordPayment(c.id, p.id, 'donation', 800000, 2);
+  assert.equal(Scoring.personTotals(p, c, g, 2).donationScore, 5);
+  assert.equal(Scoring.personTotals(p, c, g, 2).totalScore, 5);
+  assert.equal(Scoring.personTotals(p, c, g, 2).totalMax, 5);
+
+  assert.throws(() => Store.recordPayment(c.id, p.id, 'donation', 200000, 3));
+});
